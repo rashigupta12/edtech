@@ -50,7 +50,7 @@ const RegisterFormSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters")
     .max(128, "Password must not exceed 128 characters"),
-  role: z.enum(["USER", "ADMIN", "JYOTISHI"]).optional(),
+  role: z.enum(["ADMIN", "COLLEGE", "STUDENT"]).optional(),
 });
 
 type RegisterFormProps = {
@@ -72,7 +72,7 @@ const RegisterForm = ({ text, role }: RegisterFormProps) => {
       email: "",
       mobile: "",
       password: "",
-      role: "USER",
+      role: "STUDENT",
     },
     mode: "onChange",
   });
