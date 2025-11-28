@@ -147,8 +147,21 @@ const getCourseById = async (id: string) => {
   if (!course) {
     return errorResponse('Course not found', 'NOT_FOUND', 404);
   }
+  const outcomes = await db
+    .select()
+    .from(CourseLearningOutcomesTable)
+    .where(eq(CourseLearningOutcomesTable.courseId, id))
+    .orderBy(CourseLearningOutcomesTable.sortOrder);
 
-  return successResponse(course);
+  const requirements = await db
+    .select()
+    .from(CourseRequirementsTable)
+    .where(eq(CourseRequirementsTable.courseId, id))
+    .orderBy(CourseRequirementsTable.sortOrder);
+
+  return successResponse({...course,
+    outcomes,
+    requirements,});
 };
 
 // GET COURSE CURRICULUM (Full structure with modules)

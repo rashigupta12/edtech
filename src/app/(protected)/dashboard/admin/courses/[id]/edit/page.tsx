@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, Plus, X } from "lucide-react";
+import { ArrowLeft, Save, Plus, X, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
@@ -27,6 +27,18 @@ type College = {
 type Category = {
   id: string;
   name: string;
+};
+
+type Outcome = {
+  id: string;
+  outcome: string;
+  sortOrder: number;
+};
+
+type Requirement = {
+  id: string;
+  requirement: string;
+  sortOrder: number;
 };
 
 type Course = {
@@ -48,6 +60,8 @@ type Course = {
   discountPrice: number | null;
   maxStudents: number | null;
   status: string;
+  outcomes: Outcome[];
+  requirements: Requirement[];
 };
 
 export default function EditCoursePage() {
@@ -78,9 +92,13 @@ export default function EditCoursePage() {
     maxStudents: "",
   });
 
-  // New outcomes/requirements to add
-  const [newOutcomes, setNewOutcomes] = useState<string[]>([]);
-  const [newRequirements, setNewRequirements] = useState<string[]>([]);
+  // Outcomes and requirements (both existing and new)
+  const [outcomes, setOutcomes] = useState<(Outcome | { id: string; outcome: string; isNew: true })[]>([]);
+  const [requirements, setRequirements] = useState<(Requirement | { id: string; requirement: string; isNew: true })[]>([]);
+
+  // Editing states
+  const [editingOutcome, setEditingOutcome] = useState<{id: string; value: string} | null>(null);
+  const [editingRequirement, setEditingRequirement] = useState<{id: string; value: string} | null>(null);
 
   // Fetch course data
   useEffect(() => {
@@ -120,6 +138,10 @@ export default function EditCoursePage() {
           maxStudents: course.maxStudents ? String(course.maxStudents) : "",
         });
 
+        // Set outcomes and requirements from API
+        setOutcomes(courseData.data.outcomes || []);
+        setRequirements(courseData.data.requirements || []);
+
         // Fetch colleges
         const collegesRes = await fetch("/api/colleges");
         const collegesData = await collegesRes.json();
@@ -155,32 +177,74 @@ export default function EditCoursePage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Outcome functions
   const addNewOutcome = () => {
-    setNewOutcomes([...newOutcomes, ""]);
+    const newId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    setOutcomes(prev => [...prev, { id: newId, outcome: "", isNew: true }]);
   };
 
-  const removeNewOutcome = (index: number) => {
-    setNewOutcomes(newOutcomes.filter((_, i) => i !== index));
+  const removeOutcome = (id: string) => {
+    setOutcomes(prev => prev.filter(item => item.id !== id));
   };
 
-  const updateNewOutcome = (index: number, value: string) => {
-    const updated = [...newOutcomes];
-    updated[index] = value;
-    setNewOutcomes(updated);
+  const updateOutcome = (id: string, value: string) => {
+    setOutcomes(prev =>
+      prev.map(item =>
+        item.id === id
+          ? { ...item, outcome: value }
+          : item
+      )
+    );
   };
 
+  const startEditOutcome = (id: string, currentValue: string) => {
+    setEditingOutcome({ id, value: currentValue });
+  };
+
+  const cancelEditOutcome = () => {
+    setEditingOutcome(null);
+  };
+
+  const saveEditOutcome = () => {
+    if (!editingOutcome || !editingOutcome.value.trim()) return;
+    
+    updateOutcome(editingOutcome.id, editingOutcome.value);
+    setEditingOutcome(null);
+  };
+
+  // Requirement functions
   const addNewRequirement = () => {
-    setNewRequirements([...newRequirements, ""]);
+    const newId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    setRequirements(prev => [...prev, { id: newId, requirement: "", isNew: true }]);
   };
 
-  const removeNewRequirement = (index: number) => {
-    setNewRequirements(newRequirements.filter((_, i) => i !== index));
+  const removeRequirement = (id: string) => {
+    setRequirements(prev => prev.filter(item => item.id !== id));
   };
 
-  const updateNewRequirement = (index: number, value: string) => {
-    const updated = [...newRequirements];
-    updated[index] = value;
-    setNewRequirements(updated);
+  const updateRequirement = (id: string, value: string) => {
+    setRequirements(prev =>
+      prev.map(item =>
+        item.id === id
+          ? { ...item, requirement: value }
+          : item
+      )
+    );
+  };
+
+  const startEditRequirement = (id: string, currentValue: string) => {
+    setEditingRequirement({ id, value: currentValue });
+  };
+
+  const cancelEditRequirement = () => {
+    setEditingRequirement(null);
+  };
+
+  const saveEditRequirement = () => {
+    if (!editingRequirement || !editingRequirement.value.trim()) return;
+    
+    updateRequirement(editingRequirement.id, editingRequirement.value);
+    setEditingRequirement(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -221,22 +285,46 @@ export default function EditCoursePage() {
       const response = await res.json();
 
       if (response.success) {
-        // Add new learning outcomes
-        for (const outcome of newOutcomes.filter((o) => o.trim())) {
-          await fetch(`/api/courses?id=${params.id}&outcomes=true`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ outcome }),
-          });
+        // Process outcomes - update existing and create new ones
+        for (const outcome of outcomes) {
+          if ('isNew' in outcome) {
+            // Create new outcome
+            if (outcome.outcome.trim()) {
+              await fetch(`/api/courses?id=${params.id}&outcomes=true`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ outcome: outcome.outcome }),
+              });
+            }
+          } else {
+            // Update existing outcome
+            await fetch(`/api/courses/outcomes?id=${outcome.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ outcome: outcome.outcome }),
+            });
+          }
         }
 
-        // Add new requirements
-        for (const requirement of newRequirements.filter((r) => r.trim())) {
-          await fetch(`/api/courses?id=${params.id}&requirements=true`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ requirement }),
-          });
+        // Process requirements - update existing and create new ones
+        for (const requirement of requirements) {
+          if ('isNew' in requirement) {
+            // Create new requirement
+            if (requirement.requirement.trim()) {
+              await fetch(`/api/courses?id=${params.id}&requirements=true`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ requirement: requirement.requirement }),
+              });
+            }
+          } else {
+            // Update existing requirement
+            await fetch(`/api/courses/requirements?id=${requirement.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ requirement: requirement.requirement }),
+            });
+          }
         }
 
         Swal.fire({
@@ -521,14 +609,14 @@ export default function EditCoursePage() {
             </CardContent>
           </Card>
 
-          {/* Add Learning Outcomes */}
+          {/* Learning Outcomes */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50 border-b">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl text-gray-900">Add Learning Outcomes</CardTitle>
+                  <CardTitle className="text-xl text-gray-900">Learning Outcomes</CardTitle>
                   <p className="text-sm text-gray-500 mt-1">
-                    Add new learning outcomes to this course
+                    What students will learn in this course
                   </p>
                 </div>
                 <Button type="button" onClick={addNewOutcome} size="sm" variant="outline">
@@ -538,40 +626,91 @@ export default function EditCoursePage() {
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {newOutcomes.map((outcome, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={outcome}
-                    onChange={(e) => updateNewOutcome(index, e.target.value)}
-                    placeholder="What students will learn..."
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeNewOutcome(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+              {outcomes.map((item) => (
+                <div key={item.id} className="flex gap-2 items-center">
+                  {editingOutcome?.id === item.id ? (
+                    <>
+                      <Input
+                        value={editingOutcome.value}
+                        onChange={(e) => setEditingOutcome({...editingOutcome, value: e.target.value})}
+                        placeholder="What students will learn..."
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={saveEditOutcome}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={cancelEditOutcome}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        value={item.outcome}
+                        onChange={(e) => updateOutcome(item.id, e.target.value)}
+                        placeholder="What students will learn..."
+                        className="flex-1"
+                        readOnly={'isNew' in item ? false : true}
+                      />
+                      {'isNew' in item ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeOutcome(item.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => startEditOutcome(item.id, item.outcome)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeOutcome(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               ))}
 
-              {newOutcomes.length === 0 && (
+              {outcomes.length === 0 && (
                 <p className="text-sm text-gray-500 text-center py-4">
-                  No new outcomes to add. Click &quot;Add Outcome&quot; to add one.
+                  No learning outcomes added yet. Click &quot;Add Outcome&quot; to add one.
                 </p>
               )}
             </CardContent>
           </Card>
 
-          {/* Add Requirements */}
+          {/* Requirements */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50 border-b">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl text-gray-900">Add Requirements</CardTitle>
+                  <CardTitle className="text-xl text-gray-900">Requirements</CardTitle>
                   <p className="text-sm text-gray-500 mt-1">
-                    Add new requirements to this course
+                    Prerequisites for this course
                   </p>
                 </div>
                 <Button type="button" onClick={addNewRequirement} size="sm" variant="outline">
@@ -581,27 +720,78 @@ export default function EditCoursePage() {
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {newRequirements.map((requirement, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={requirement}
-                    onChange={(e) => updateNewRequirement(index, e.target.value)}
-                    placeholder="Prerequisites for the course..."
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeNewRequirement(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+              {requirements.map((item) => (
+                <div key={item.id} className="flex gap-2 items-center">
+                  {editingRequirement?.id === item.id ? (
+                    <>
+                      <Input
+                        value={editingRequirement.value}
+                        onChange={(e) => setEditingRequirement({...editingRequirement, value: e.target.value})}
+                        placeholder="Prerequisites for the course..."
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={saveEditRequirement}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={cancelEditRequirement}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        value={item.requirement}
+                        onChange={(e) => updateRequirement(item.id, e.target.value)}
+                        placeholder="Prerequisites for the course..."
+                        className="flex-1"
+                        readOnly={'isNew' in item ? false : true}
+                      />
+                      {'isNew' in item ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeRequirement(item.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => startEditRequirement(item.id, item.requirement)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeRequirement(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               ))}
 
-              {newRequirements.length === 0 && (
+              {requirements.length === 0 && (
                 <p className="text-sm text-gray-500 text-center py-4">
-                  No new requirements to add. Click &quot;Add Requirement&quot; to add one.
+                  No requirements added yet. Click &quot;Add Requirement&quot; to add one.
                 </p>
               )}
             </CardContent>

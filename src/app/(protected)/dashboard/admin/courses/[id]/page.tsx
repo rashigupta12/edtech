@@ -29,6 +29,18 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
+type LearningOutcome = {
+  id: string;
+  outcome: string;
+  sortOrder: number;
+};
+
+type Requirement = {
+  id: string;
+  requirement: string;
+  sortOrder: number;
+};
+
 type Course = {
   id: string;
   slug: string;
@@ -50,6 +62,8 @@ type Course = {
   collegeName: string | null;
   categoryName: string | null;
   thumbnailUrl: string | null;
+  outcomes?: LearningOutcome[]; // Add this
+  requirements?: Requirement[]; 
   previewVideoUrl: string | null;
 };
 
@@ -434,6 +448,53 @@ export default function ViewCoursePage() {
                 </div>
               </CardContent>
             </Card>
+            {/* Learning Outcomes */}
+{course.outcomes && course.outcomes.length > 0 && (
+  <Card>
+    <CardHeader className="bg-gradient-to-r from-green-50 to-green-50">
+      <CardTitle>Learning Outcomes</CardTitle>
+      <CardDescription>
+        What students will learn from this course
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="p-6">
+      <ul className="space-y-3">
+        {course.outcomes.map((outcome, index) => (
+          <li key={outcome.id} className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
+              {index + 1}
+            </div>
+            <span className="text-gray-700">{outcome.outcome}</span>
+          </li>
+        ))}
+      </ul>
+    </CardContent>
+  </Card>
+)}
+
+{/* Requirements */}
+{course.requirements && course.requirements.length > 0 && (
+  <Card>
+    <CardHeader className="bg-gradient-to-r from-orange-50 to-orange-50">
+      <CardTitle>Requirements</CardTitle>
+      <CardDescription>
+        What students need before taking this course
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="p-6">
+      <ul className="space-y-3">
+        {course.requirements.map((requirement, index) => (
+          <li key={requirement.id} className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
+              {index + 1}
+            </div>
+            <span className="text-gray-700">{requirement.requirement}</span>
+          </li>
+        ))}
+      </ul>
+    </CardContent>
+  </Card>
+)}
 
             {/* Curriculum */}
             <Card>
