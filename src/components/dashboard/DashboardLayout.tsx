@@ -55,6 +55,14 @@ const navConfigs = {
       ],
     },
     {
+      title: "College",
+      icon: BookOpen,
+      children: [
+        { title: "List of Colleges", href: "/dashboard/admin/colleges", icon: List },
+        { title: "Add Course", href: "/dashboard/admin/courses/add", icon: Plus },
+      ],
+    },
+    {
       title: "Blogs",
       icon: FileText,
       children: [
