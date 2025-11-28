@@ -1,7 +1,5 @@
-// ===========================
-// 8. CATEGORIES API
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/api/categories/route.ts
-// ===========================
 
 import { db } from '@/db';
 import { CategoriesTable, CoursesTable } from '@/db/schema';
@@ -9,12 +7,6 @@ import { eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 const parseBoolean = (value: string | null | undefined): boolean => value === 'true' || value === '1';
-const validateId = (id: string | undefined): { valid: boolean; error?: string } => {
-  if (!id) return { valid: false, error: 'ID is required' };
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(id)) return { valid: false, error: 'Invalid ID format' };
-  return { valid: true };
-};
 
 export async function GET(request: NextRequest) {
   try {

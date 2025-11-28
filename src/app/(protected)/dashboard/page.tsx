@@ -32,7 +32,7 @@ export default function Dashboard() {
         router.replace("/dashboard/user");
         break;
       case "COLLEGE":
-        router.replace("/dashboard/college");
+        router.replace("/dashboard/agent");
         break;
       default:
         router.replace("/auth/login");

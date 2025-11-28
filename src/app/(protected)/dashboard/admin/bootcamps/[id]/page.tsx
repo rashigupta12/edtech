@@ -1,13 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// src/app/(protected)/dashboard/admin/courses/[id]/page.tsx
+// src/app/(protected)/dashboard/admin/bootcamps/[id]/page.tsx
 "use client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
   Building2,
@@ -15,81 +11,71 @@ import {
   Clock,
   Edit,
   Eye,
-  ListTree,
-  Plus,
-  Save,
-  Star,
+  Calendar,
   Trash2,
   Users,
-  X,
-  XCircle
+  XCircle,
+  BookOpen,
+  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
-type Course = {
+type Bootcamp = {
   id: string;
   slug: string;
   title: string;
-  shortDescription: string;
   description: string;
   status: string;
-  level: string;
   duration: string;
-  language: string;
-  isFeatured: boolean;
+  startDate: string;
+  endDate: string;
+  currentEnrollments: number;
+  maxStudents: number | null;
   isFree: boolean;
   price: number;
-  discountPrice: number | null;
-  maxStudents: number | null;
-  currentEnrollments: number;
   createdAt: string;
   publishedAt: string | null;
   collegeName: string | null;
-  categoryName: string | null;
   thumbnailUrl: string | null;
-  previewVideoUrl: string | null;
 };
 
-type Module = {
+type Course = {
   id: string;
   title: string;
-  description: string | null;
+  slug: string;
+  thumbnailUrl: string | null;
+  duration: string | null;
+  level: string;
   sortOrder: number;
 };
 
-export default function ViewCoursePage() {
+export default function ViewBootcampPage() {
   const params = useParams();
   const router = useRouter();
-  const [course, setCourse] = useState<Course | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
+  const [bootcamp, setBootcamp] = useState<Bootcamp | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModuleForm, setShowModuleForm] = useState(false);
-  const [editingModule, setEditingModule] = useState<Module | null>(null);
-  const [moduleForm, setModuleForm] = useState({
-    title: "",
-    description: "",
-  });
 
-  const fetchCourse = async () => {
+  const fetchBootcamp = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/courses?id=${params.id}`);
+      const res = await fetch(`/api/bootcamps?id=${params.id}`);
       const response = await res.json();
 
       if (response.success) {
-        setCourse(response.data);
+        setBootcamp(response.data);
       } else {
-        throw new Error("Course not found");
+        throw new Error("Bootcamp not found");
       }
     } catch (err) {
       console.error(err);
       Swal.fire({
         icon: "error",
         title: "Not Found",
-        text: "Course not found",
+        text: "Bootcamp not found",
       });
       router.back();
     } finally {
@@ -97,23 +83,23 @@ export default function ViewCoursePage() {
     }
   };
 
-  const fetchModules = async () => {
+  const fetchCourses = async () => {
     try {
-      const res = await fetch(`/api/courses?id=${params.id}&modules=true`);
+      const res = await fetch(`/api/bootcamps?id=${params.id}&courses=true`);
       const response = await res.json();
 
       if (response.success) {
-        setModules(response.data);
+        setCourses(response.data);
       }
     } catch (err) {
-      console.error("Failed to fetch modules:", err);
+      console.error("Failed to fetch courses:", err);
     }
   };
 
   useEffect(() => {
     if (params.id) {
-      fetchCourse();
-      fetchModules();
+      fetchBootcamp();
+      fetchCourses();
     }
   }, [params.id]);
 
@@ -131,18 +117,18 @@ export default function ViewCoursePage() {
     if (!result.isConfirmed) return;
 
     try {
-      const res = await fetch(`/api/courses?id=${params.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/bootcamps?id=${params.id}`, { method: "DELETE" });
       const response = await res.json();
 
       if (response.success) {
         await Swal.fire({
           icon: "success",
           title: "Deleted!",
-          text: "Course deleted successfully",
+          text: "Bootcamp deleted successfully",
           timer: 2000,
           showConfirmButton: false,
         });
-        router.push("/dashboard/admin/courses");
+        router.push("/dashboard/admin/bootcamps");
       } else {
         Swal.fire({
           icon: "error",
@@ -155,14 +141,14 @@ export default function ViewCoursePage() {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Error deleting course",
+        text: "Error deleting bootcamp",
       });
     }
   };
 
   const handleApprove = async () => {
     try {
-      const res = await fetch(`/api/courses?id=${params.id}&approve=true`, {
+      const res = await fetch(`/api/bootcamps?id=${params.id}&approve=true`, {
         method: "POST",
       });
       const response = await res.json();
@@ -171,11 +157,11 @@ export default function ViewCoursePage() {
         Swal.fire({
           icon: "success",
           title: "Approved!",
-          text: "Course has been approved.",
+          text: "Bootcamp has been approved.",
           timer: 2000,
           showConfirmButton: false,
         });
-        fetchCourse();
+        fetchBootcamp();
       } else {
         Swal.fire({
           icon: "error",
@@ -188,14 +174,14 @@ export default function ViewCoursePage() {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Error approving course",
+        text: "Error approving bootcamp",
       });
     }
   };
 
   const handleReject = async () => {
     const { value: reason } = await Swal.fire({
-      title: "Reject Course",
+      title: "Reject Bootcamp",
       input: "textarea",
       inputLabel: "Rejection Reason",
       inputPlaceholder: "Please provide a reason for rejection...",
@@ -210,7 +196,7 @@ export default function ViewCoursePage() {
     if (!reason) return;
 
     try {
-      const res = await fetch(`/api/courses?id=${params.id}&reject=true`, {
+      const res = await fetch(`/api/bootcamps?id=${params.id}&reject=true`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason }),
@@ -218,18 +204,18 @@ export default function ViewCoursePage() {
       const response = await res.json();
 
       if (response.success) {
-        Swal.fire("Rejected", "Course has been rejected.", "success");
-        fetchCourse();
+        Swal.fire("Rejected", "Bootcamp has been rejected.", "success");
+        fetchBootcamp();
       }
     } catch (err) {
       console.error(err);
-      Swal.fire("Error", "Error rejecting course", "error");
+      Swal.fire("Error", "Error rejecting bootcamp", "error");
     }
   };
 
   const handlePublish = async () => {
     try {
-      const res = await fetch(`/api/courses?id=${params.id}&publish=true`, {
+      const res = await fetch(`/api/bootcamps?id=${params.id}&publish=true`, {
         method: "PUT",
       });
       const response = await res.json();
@@ -238,11 +224,11 @@ export default function ViewCoursePage() {
         Swal.fire({
           icon: "success",
           title: "Published!",
-          text: "Course is now live.",
+          text: "Bootcamp is now live.",
           timer: 2000,
           showConfirmButton: false,
         });
-        fetchCourse();
+        fetchBootcamp();
       } else {
         Swal.fire({
           icon: "error",
@@ -252,71 +238,24 @@ export default function ViewCoursePage() {
       }
     } catch (err) {
       console.error(err);
-      Swal.fire("Error", "Error publishing course", "error");
+      Swal.fire("Error", "Error publishing bootcamp", "error");
     }
   };
 
   const handleArchive = async () => {
     try {
-      const res = await fetch(`/api/courses?id=${params.id}&archive=true`, {
+      const res = await fetch(`/api/bootcamps?id=${params.id}&archive=true`, {
         method: "PUT",
       });
       const response = await res.json();
 
       if (response.success) {
-        Swal.fire("Archived", "Course has been archived.", "success");
-        fetchCourse();
+        Swal.fire("Archived", "Bootcamp has been archived.", "success");
+        fetchBootcamp();
       }
     } catch (err) {
       console.error(err);
-      Swal.fire("Error", "Error archiving course", "error");
-    }
-  };
-
-  const handleAddModule = () => {
-    setShowModuleForm(true);
-    setEditingModule(null);
-    setModuleForm({ title: "", description: "" });
-  };
-
-  const handleEditModule = (module: Module) => {
-    setEditingModule(module);
-    setModuleForm({
-      title: module.title,
-      description: module.description || "",
-    });
-    setShowModuleForm(true);
-  };
-
-  const handleSaveModule = async () => {
-    if (!moduleForm.title.trim()) {
-      Swal.fire("Error", "Module title is required", "error");
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&modules=true`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(moduleForm),
-      });
-
-      const response = await res.json();
-
-      if (response.success) {
-        Swal.fire({
-          icon: "success",
-          title: "Module Added!",
-          timer: 1500,
-          showConfirmButton: false,
-        });
-        setShowModuleForm(false);
-        setModuleForm({ title: "", description: "" });
-        fetchModules();
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "Failed to add module", "error");
+      Swal.fire("Error", "Error archiving bootcamp", "error");
     }
   };
 
@@ -332,7 +271,7 @@ export default function ViewCoursePage() {
     return colors[status] || "bg-gray-500";
   };
 
-  if (loading || !course) {
+  if (loading || !bootcamp) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
@@ -348,50 +287,42 @@ export default function ViewCoursePage() {
           <div className="max-w-7xl">
             <div className="flex items-center justify-between mb-6">
               <Link
-                href="/dashboard/admin/courses"
+                href="/dashboard/admin/bootcamps"
                 className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back to Courses
+                Back to Bootcamps
               </Link>
 
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs bg-white">
                   ADMIN VIEW
                 </Badge>
-                <Badge className={`text-white ${getStatusColor(course.status)}`}>
-                  {course.status.replace(/_/g, " ")}
+                <Badge className={`text-white ${getStatusColor(bootcamp.status)}`}>
+                  {bootcamp.status.replace(/_/g, " ")}
                 </Badge>
-                {course.isFeatured && (
-                  <Badge className="bg-yellow-500 text-white">
-                    <Star className="h-3 w-3 mr-1" />
-                    Featured
-                  </Badge>
-                )}
               </div>
             </div>
 
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">{course.title}</h1>
-              {course.shortDescription && (
-                <p className="text-lg text-gray-600 mb-6">{course.shortDescription}</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">{bootcamp.title}</h1>
+              {bootcamp.description && (
+                <p className="text-lg text-gray-600 mb-6">{bootcamp.description}</p>
               )}
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Badge variant="outline" className="bg-white">
-                {course.categoryName || "Uncategorized"}
+              <Badge variant="outline" className="bg-white flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {new Date(bootcamp.startDate).toLocaleDateString()} - {new Date(bootcamp.endDate).toLocaleDateString()}
               </Badge>
               <Badge variant="outline" className="bg-white">
-                {course.level}
+                {bootcamp.duration}
               </Badge>
-              <Badge variant="outline" className="bg-white">
-                {course.language}
-              </Badge>
-              {course.collegeName && (
+              {bootcamp.collegeName && (
                 <Badge variant="outline" className="bg-white flex items-center gap-1">
                   <Building2 className="h-3 w-3" />
-                  {course.collegeName}
+                  {bootcamp.collegeName}
                 </Badge>
               )}
             </div>
@@ -403,123 +334,50 @@ export default function ViewCoursePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Course Overview */}
-            <Card>
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50">
-                <CardTitle>Course Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {course.description || "No description provided."}
-                </p>
-
-                <div className="grid sm:grid-cols-2 gap-6 mt-6 p-4 bg-blue-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Clock className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="text-sm text-gray-600">Duration</p>
-                      <p className="font-semibold">{course.duration || "Not specified"}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Users className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="text-sm text-gray-600">Enrolled</p>
-                      <p className="font-semibold">
-                        {course.currentEnrollments}
-                        {course.maxStudents && ` / ${course.maxStudents}`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Curriculum */}
+            {/* Course Curriculum */}
             <Card>
               <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-50">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Course Curriculum</CardTitle>
-                    <CardDescription>{modules.length} modules</CardDescription>
+                    <CardTitle>Bootcamp Curriculum</CardTitle>
+                    <CardDescription>{courses.length} courses</CardDescription>
                   </div>
-                  <Button onClick={handleAddModule} size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Module
+                  <Button asChild size="sm">
+                    <Link href={`/dashboard/admin/bootcamps/${bootcamp.id}/edit`}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Manage Courses
+                    </Link>
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="p-6">
-                {showModuleForm && (
-                  <Card className="mb-4 border-2 border-blue-200">
-                    <CardContent className="p-4 space-y-4">
-                      <div>
-                        <Label>Module Title *</Label>
-                        <Input
-                          value={moduleForm.title}
-                          onChange={(e) =>
-                            setModuleForm({ ...moduleForm, title: e.target.value })
-                          }
-                          placeholder="Introduction to Web Development"
-                        />
-                      </div>
-                      <div>
-                        <Label>Description</Label>
-                        <Textarea
-                          value={moduleForm.description}
-                          onChange={(e) =>
-                            setModuleForm({ ...moduleForm, description: e.target.value })
-                          }
-                          placeholder="Module description..."
-                          rows={3}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button onClick={handleSaveModule} size="sm">
-                          <Save className="h-4 w-4 mr-2" />
-                          Save Module
-                        </Button>
-                        <Button
-                          onClick={() => setShowModuleForm(false)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Cancel
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {modules.length === 0 ? (
+                {courses.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    <ListTree className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                    <p>No modules added yet.</p>
-                    <p className="text-sm mt-2">Add modules to structure your course content.</p>
+                    <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <p>No courses added yet.</p>
+                    <p className="text-sm mt-2">Add courses to build your bootcamp curriculum.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {modules.map((module, index) => (
+                    {courses.map((course, index) => (
                       <div
-                        key={module.id}
+                        key={course.id}
                         className="flex items-start gap-3 p-4 border rounded-lg hover:bg-gray-50"
                       >
                         <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold text-sm">
                           {index + 1}
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900">{module.title}</h4>
-                          {module.description && (
-                            <p className="text-sm text-gray-600 mt-1">{module.description}</p>
-                          )}
+                          <h4 className="font-semibold text-gray-900">{course.title}</h4>
+                          <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                            <span>{course.level}</span>
+                            {course.duration && <span>{course.duration}</span>}
+                          </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditModule(module)}
-                        >
-                          <Edit className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/dashboard/admin/courses/${course.id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
                         </Button>
                       </div>
                     ))}
@@ -527,6 +385,40 @@ export default function ViewCoursePage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <Users className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Enrolled Students</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {bootcamp.currentEnrollments}
+                        {bootcamp.maxStudents && ` / ${bootcamp.maxStudents}`}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <BookOpen className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Total Courses</p>
+                      <p className="text-2xl font-bold text-gray-900">{courses.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Sidebar */}
@@ -534,19 +426,14 @@ export default function ViewCoursePage() {
             {/* Pricing & Actions */}
             <Card>
               <CardHeader className="bg-gradient-to-r from-green-50 to-green-50">
-                <CardTitle>Course Details</CardTitle>
+                <CardTitle>Bootcamp Details</CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-3xl font-bold text-green-600">
-                      {course.isFree ? "Free" : `$${course.price}`}
+                      {bootcamp.isFree ? "Free" : `$${bootcamp.price}`}
                     </span>
-                    {!course.isFree && course.discountPrice && (
-                      <span className="text-lg text-gray-500 line-through">
-                        ${course.discountPrice}
-                      </span>
-                    )}
                   </div>
                 </div>
 
@@ -554,22 +441,26 @@ export default function ViewCoursePage() {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Created</span>
                     <span className="font-medium">
-                      {new Date(course.createdAt).toLocaleDateString()}
+                      {new Date(bootcamp.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  {course.publishedAt && (
+                  {bootcamp.publishedAt && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Published</span>
                       <span className="font-medium">
-                        {new Date(course.publishedAt).toLocaleDateString()}
+                        {new Date(bootcamp.publishedAt).toLocaleDateString()}
                       </span>
                     </div>
                   )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Duration</span>
+                    <span className="font-medium">{bootcamp.duration}</span>
+                  </div>
                 </div>
 
                 <div className="space-y-2 pt-4 border-t">
                   <Button asChild variant="outline" className="w-full">
-                    <Link href={`/courses/${course.slug}`} target="_blank">
+                    <Link href={`/bootcamps/${bootcamp.slug}`} target="_blank">
                       <Eye className="h-4 w-4 mr-2" />
                       View Live Page
                     </Link>
@@ -579,13 +470,13 @@ export default function ViewCoursePage() {
                     asChild
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    <Link href={`/dashboard/admin/courses/${course.id}/edit`}>
+                    <Link href={`/dashboard/admin/bootcamps/${bootcamp.id}/edit`}>
                       <Edit className="h-4 w-4 mr-2" />
-                      Edit Course
+                      Edit Bootcamp
                     </Link>
                   </Button>
 
-                  {course.status === "PENDING_APPROVAL" && (
+                  {bootcamp.status === "PENDING_APPROVAL" && (
                     <>
                       <Button
                         onClick={handleApprove}
@@ -604,7 +495,7 @@ export default function ViewCoursePage() {
                     </>
                   )}
 
-                  {course.status === "APPROVED" && (
+                  {bootcamp.status === "APPROVED" && (
                     <Button
                       onClick={handlePublish}
                       className="w-full bg-blue-600 hover:bg-blue-700"
@@ -614,7 +505,7 @@ export default function ViewCoursePage() {
                     </Button>
                   )}
 
-                  {(course.status === "PUBLISHED" || course.status === "APPROVED") && (
+                  {(bootcamp.status === "PUBLISHED" || bootcamp.status === "APPROVED") && (
                     <Button
                       onClick={handleArchive}
                       variant="outline"
@@ -630,7 +521,7 @@ export default function ViewCoursePage() {
                     className="w-full"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Course
+                    Delete Bootcamp
                   </Button>
                 </div>
               </CardContent>
@@ -645,13 +536,13 @@ export default function ViewCoursePage() {
                 <div className="flex justify-between">
                   <span className="text-gray-600">ID</span>
                   <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-                    {course.id.slice(0, 8)}...
+                    {bootcamp.id.slice(0, 8)}...
                   </code>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Slug</span>
                   <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-                    {course.slug}
+                    {bootcamp.slug}
                   </code>
                 </div>
               </CardContent>

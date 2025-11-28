@@ -1,6 +1,4 @@
-
-// ===========================
-// 9. ANNOUNCEMENTS API
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/api/announcements/route.ts
 // ===========================
 

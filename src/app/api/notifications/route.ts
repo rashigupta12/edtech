@@ -1,8 +1,5 @@
-
-// ===========================
-// 10. NOTIFICATIONS API
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/api/notifications/route.ts
-// ===========================
 
 import { db } from '@/db';
 import { NotificationsTable } from '@/db/schema';

@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/api/progress/route.ts
-import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { LessonProgressTable, EnrollmentsTable, CourseLessonsTable, CourseModulesTable } from '@/db/schema';
-import { eq, and, count } from 'drizzle-orm';
+import { CourseLessonsTable, EnrollmentsTable, LessonProgressTable } from '@/db/schema';
+import { and, count, eq } from 'drizzle-orm';
+import { NextRequest, NextResponse } from 'next/server';
 
 // ===========================
 // TYPES & HELPERS
