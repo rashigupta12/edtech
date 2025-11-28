@@ -1,1 +1,0 @@
-ALTER TABLE "courses" ADD COLUMN "Commission_per_course" numeric;

@@ -28,11 +28,11 @@ export default function Dashboard() {
       case "ADMIN":
         router.replace("/dashboard/admin");
         break;
-      case "USER":
+      case "STUDENT":
         router.replace("/dashboard/user");
         break;
-      case "JYOTISHI":
-        router.replace("/dashboard/agent");
+      case "COLLEGE":
+        router.replace("/dashboard/college");
         break;
       default:
         router.replace("/auth/login");

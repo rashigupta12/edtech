@@ -1,1 +1,0 @@
-ALTER TABLE "enrollments" ADD COLUMN "certificate_data" jsonb;

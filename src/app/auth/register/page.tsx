@@ -5,7 +5,7 @@ function RegisterPage() {
   return (
     <div className="flex items-center">
       <div className="flex-grow">
-        <RegisterForm text="Register to get started" role={"USER"} />
+        <RegisterForm text="Register to get started" role={"STUDENT"} />
       </div>
     </div>
   );
