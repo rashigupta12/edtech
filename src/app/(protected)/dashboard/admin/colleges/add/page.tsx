@@ -1,3 +1,4 @@
+/*eslint-disable  @typescript-eslint/no-explicit-any */
 // app/admin/colleges/add/page.tsx
 'use client';
 
@@ -154,7 +155,7 @@ export default function AddCollegePage() {
       }
 
       // Redirect to colleges list on success
-      router.push('/admin/colleges');
+      router.push('/dashboard/admin/colleges');
       router.refresh();
       
     } catch (err: any) {

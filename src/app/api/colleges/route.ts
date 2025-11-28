@@ -79,6 +79,8 @@ const listColleges = async () => {
       contactEmail: CollegesTable.contactEmail,
       contactPhone: CollegesTable.contactPhone,
       createdAt: CollegesTable.createdAt,
+      userId: CollegesTable.userId,
+      createdby: CollegesTable.createdBy,
     })
     .from(CollegesTable)
     .orderBy(sql`${CollegesTable.createdAt} DESC`);

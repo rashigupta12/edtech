@@ -1,6 +1,7 @@
 // src/app/(protected)/dashboard/admin/bootcamps/page.tsx
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,23 +11,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
+  Archive,
   BookOpen,
+  Building2,
+  Calendar,
+  CheckCircle,
+  Clock,
   Edit,
   Eye,
-  Filter,
   Plus,
   Search,
   Trash2,
   Users,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Archive,
-  Star,
-  Building2,
-  Calendar,
+  XCircle
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
