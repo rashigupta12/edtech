@@ -1,0 +1,1 @@
+ALTER TABLE "courses" ALTER COLUMN "Commission_per_course" SET DATA TYPE numeric(10, 2);
