@@ -62,6 +62,19 @@ const navConfigs = {
 
     { title: "Categories", href: "/dashboard/admin/categories", icon: List },
 
+     {
+      title: "Bootcamp",
+      icon: BookOpen,
+      children: [
+        { title: "All Bootcamps", href: "/dashboard/admin/bootcamps", icon: List },
+        {
+          title: "Add Bootcamp",
+          href: "/dashboard/admin/bootcamps/create",
+          icon: Plus,
+        },
+      ],
+    },
+
     {
       title: "Blogs",
       icon: FileText,
