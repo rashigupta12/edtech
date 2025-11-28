@@ -1,13 +1,11 @@
-// ===========================
-// 7. SESSIONS API
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/api/sessions/route.ts
 // ===========================
 
-import { SessionsTable, SessionAttendanceTable } from '@/db/schema';
-import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { CertificatesTable, EnrollmentsTable, CoursesTable } from '@/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { SessionAttendanceTable, SessionsTable } from '@/db/schema';
+import { desc, eq } from 'drizzle-orm';
+import { NextRequest, NextResponse } from 'next/server';
 
 
 const parseBoolean = (value: string | null | undefined): boolean => value === 'true' || value === '1';

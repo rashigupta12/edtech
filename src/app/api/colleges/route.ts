@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/api/colleges/route.ts
-import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { CollegesTable, UsersTable, CoursesTable } from '@/db/schema';
-import { eq, and, count, sql } from 'drizzle-orm';
+import { CollegesTable, CoursesTable } from '@/db/schema';
+import { and, count, eq, sql } from 'drizzle-orm';
+import { NextRequest, NextResponse } from 'next/server';
 
 // ===========================
 // TYPES

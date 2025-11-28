@@ -10,7 +10,6 @@ import {
   boolean,
   jsonb,
   varchar,
-  serial,
   decimal,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";

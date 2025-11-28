@@ -9,12 +9,13 @@ import {
   DollarSign,
   FileText,
   Home,
-  List, Plus,
+  List,
+  Plus,
   Tag,
   Ticket,
   TrendingUp,
   Users,
-  Wallet
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -51,9 +52,16 @@ const navConfigs = {
       icon: BookOpen,
       children: [
         { title: "All Courses", href: "/dashboard/admin/courses", icon: List },
-        { title: "Add Course", href: "/dashboard/admin/courses/add", icon: Plus },
+        {
+          title: "Add Course",
+          href: "/dashboard/admin/courses/create",
+          icon: Plus,
+        },
       ],
     },
+
+    { title: "Categories", href: "/dashboard/admin/categories", icon: List },
+
     {
       title: "Blogs",
       icon: FileText,
@@ -67,17 +75,33 @@ const navConfigs = {
       icon: Users,
       children: [
         { title: "All Astrologer", href: "/dashboard/admin/agent", icon: List },
-        { title: "Add Astrologer", href: "/dashboard/admin/agent/add", icon: Plus },
+        {
+          title: "Add Astrologer",
+          href: "/dashboard/admin/agent/add",
+          icon: Plus,
+        },
       ],
     },
     {
       title: "Coupons",
       icon: Tag,
       children: [
-        { title: "Coupon Types", href: "/dashboard/admin/coupons-types", icon: List },
-        { title: "Add Type", href: "/dashboard/admin/coupons-types/add", icon: Plus },
+        {
+          title: "Coupon Types",
+          href: "/dashboard/admin/coupons-types",
+          icon: List,
+        },
+        {
+          title: "Add Type",
+          href: "/dashboard/admin/coupons-types/add",
+          icon: Plus,
+        },
         { title: "All Coupons", href: "/dashboard/admin/coupons", icon: List },
-        { title: "Add Coupon", href: "/dashboard/admin/coupons/add", icon: Plus },
+        {
+          title: "Add Coupon",
+          href: "/dashboard/admin/coupons/add",
+          icon: Plus,
+        },
       ],
     },
     {
@@ -85,16 +109,32 @@ const navConfigs = {
       icon: Users,
       children: [
         { title: "All Users", href: "/dashboard/admin/users", icon: List },
-        { title: "Enrollments", href: "/dashboard/admin/enrollments", icon: Users },
-        { title: "Revenue", href: "/dashboard/admin/payments", icon: CreditCard },
+        {
+          title: "Enrollments",
+          href: "/dashboard/admin/enrollments",
+          icon: Users,
+        },
+        {
+          title: "Revenue",
+          href: "/dashboard/admin/payments",
+          icon: CreditCard,
+        },
       ],
     },
     {
       title: "Certificates",
       icon: Award,
       children: [
-        { title: "Pending Requests", href: "/dashboard/admin/certificates/requests", icon: List },
-        { title: "All Certificates", href: "/dashboard/admin/certificates", icon: Award },
+        {
+          title: "Pending Requests",
+          href: "/dashboard/admin/certificates/requests",
+          icon: List,
+        },
+        {
+          title: "All Certificates",
+          href: "/dashboard/admin/certificates",
+          icon: Award,
+        },
       ],
     },
   ] as const,
@@ -106,18 +146,34 @@ const navConfigs = {
       icon: Tag,
       children: [
         { title: "All Coupons", href: "/dashboard/agent/coupons", icon: List },
-        { title: "Coupon Types", href: "/dashboard/agent/coupon-types", icon: Ticket },
+        {
+          title: "Coupon Types",
+          href: "/dashboard/agent/coupon-types",
+          icon: Ticket,
+        },
       ],
     },
     {
       title: "Earnings",
       icon: TrendingUp,
       children: [
-        { title: "Commission Overview", href: "/dashboard/agent/earnings", icon: DollarSign },
-        { title: "Payout History", href: "/dashboard/agent/payouts", icon: Wallet },
+        {
+          title: "Commission Overview",
+          href: "/dashboard/agent/earnings",
+          icon: DollarSign,
+        },
+        {
+          title: "Payout History",
+          href: "/dashboard/agent/payouts",
+          icon: Wallet,
+        },
       ],
     },
-    { title: "Assign Coupons", href: "/dashboard/agent/assign-coupons", icon: Users },
+    {
+      title: "Assign Coupons",
+      href: "/dashboard/agent/assign-coupons",
+      icon: Users,
+    },
   ] as const,
 
   user: [
@@ -155,8 +211,6 @@ export default function DashboardLayout({ children, role }: Props) {
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r fixed inset-y-0 left-0 overflow-y-auto pt-20 pb-10">
         <div className="px-6">
-   
-
           {/* Navigation */}
           <nav className="space-y-1">
             {items.map((item) => (
@@ -182,7 +236,9 @@ export default function DashboardLayout({ children, role }: Props) {
                     >
                       <div className="flex items-center gap-3">
                         <item.icon className="h-5 w-5" />
-                        <span className="text-sm font-medium">{item.title}</span>
+                        <span className="text-sm font-medium">
+                          {item.title}
+                        </span>
                       </div>
                       <ChevronDown
                         className={`h-4 w-4 transition-transform ${
