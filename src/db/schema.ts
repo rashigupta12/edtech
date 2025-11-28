@@ -173,8 +173,7 @@ export const CollegesTable = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey().notNull(),
     userId: uuid("user_id")
-      .notNull()
-      .references(() => UsersTable.id, { onDelete: "cascade" }),
+      .references(() => UsersTable.id, { onDelete: "set null" }),
     collegeName: text("college_name").notNull(),
     collegeCode: varchar("college_code", { length: 10 }).notNull(),
     registrationNumber: text("registration_number"),
@@ -188,6 +187,7 @@ export const CollegesTable = pgTable(
     contactPhone: text("contact_phone").notNull(),
     logo: text("logo"),
     banner: text("banner"),
+    createdBy: uuid("created_by").references(() => UsersTable.id, { onDelete: "set null" }),
     about: text("about"),
     
     // Verification Documents

@@ -211,7 +211,7 @@ const createCollege = async (request: NextRequest) => {
     const body = await request.json();
 
     // Basic validation
-    if (!body.userId || !body.collegeName || !body.collegeCode) {
+    if ( !body.collegeName || !body.collegeCode) {
       return errorResponse('Missing required fields: userId, collegeName, collegeCode');
     }
 
@@ -243,6 +243,7 @@ const createCollege = async (request: NextRequest) => {
         logo: body.logo || null,
         about: body.about || null,
         verificationDocument: body.verificationDocument || null,
+        createdBy: body.createdBy || null,
         status: 'PENDING',
       })
       .returning();
