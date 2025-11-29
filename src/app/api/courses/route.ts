@@ -176,48 +176,6 @@ const getCourseById = async (id: string) => {
     requirements,});
 };
 
-
-// GET COURSE BY SLUG (NEW!)
-const getCourseBySlug = async (slug: string) => {
-  const [course] = await db
-    .select({
-      id: CoursesTable.id,
-      slug: CoursesTable.slug,
-      title: CoursesTable.title,
-      shortDescription: CoursesTable.shortDescription,
-      description: CoursesTable.description,
-      thumbnailUrl: CoursesTable.thumbnailUrl,
-      previewVideoUrl: CoursesTable.previewVideoUrl,
-      duration: CoursesTable.duration,
-      level: CoursesTable.level,
-      language: CoursesTable.language,
-      prerequisites: CoursesTable.prerequisites,
-      status: CoursesTable.status,
-      isFeatured: CoursesTable.isFeatured,
-      maxStudents: CoursesTable.maxStudents,
-      currentEnrollments: CoursesTable.currentEnrollments,
-      isFree: CoursesTable.isFree,
-      price: CoursesTable.price,
-      discountPrice: CoursesTable.discountPrice,
-      createdAt: CoursesTable.createdAt,
-      publishedAt: CoursesTable.publishedAt,
-      collegeName: CollegesTable.collegeName,
-      collegeId: CollegesTable.id,
-      categoryName: CategoriesTable.name,
-      categoryId: CategoriesTable.id,
-    })
-    .from(CoursesTable)
-    .leftJoin(CollegesTable, eq(CoursesTable.collegeId, CollegesTable.id))
-    .leftJoin(CategoriesTable, eq(CoursesTable.categoryId, CategoriesTable.id))
-    .where(eq(CoursesTable.slug, slug))
-    .limit(1);
-
-  if (!course) {
-    return errorResponse('Course not found', 'NOT_FOUND', 404);
-  }
-
-  return successResponse(course);
-};
 // GET COURSE CURRICULUM (Full structure with modules)
 const getCourseCurriculum = async (id: string) => {
   const [course] = await db
@@ -972,19 +930,15 @@ const getCourseCurriculumWithLessons = async (id: string) => {
 // MAIN ROUTE HANDLERS
 // ===========================
 
-// GET Handler – NOW SUPPORTS ?slug=... AND ?id=...
+// GET Handler
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    const slug = searchParams.get('slug'); // ← NEW
-    const curriculum = searchParams.get('curriculum');
-    const modules = searchParams.get('modules');
-
-    // 1. GET /api/courses?slug=python-programming
-    if (slug) {
-      return await getCourseBySlug(slug);
-    }
+    const params: SearchParams = {
+      id: searchParams.get('id') || undefined,
+      curriculum: searchParams.get('curriculum') || undefined,
+      modules: searchParams.get('modules') || undefined,
+    };
 
     // Route: GET /api/courses?id=123&curriculum=true
     if (params.id && parseBoolean(params.curriculum)) {
@@ -995,18 +949,22 @@ export async function GET(request: NextRequest) {
       return await getCourseCurriculumWithLessons(params.id); // This should be the only call for curriculum
     }
 
-    // 3. GET /api/courses?id=123&modules=true
-    if (id && parseBoolean(modules)) {
-      const validation = validateId(id);
-      if (!validation.valid) return errorResponse(validation.error!);
-      return await getCourseModules(id);
+    // Route: GET /api/courses?id=123&modules=true
+    if (params.id && parseBoolean(params.modules)) {
+      const validation = validateId(params.id);
+      if (!validation.valid) {
+        return errorResponse(validation.error!);
+      }
+      return await getCourseModules(params.id);
     }
 
-    // 4. GET /api/courses?id=123
-    if (id) {
-      const validation = validateId(id);
-      if (!validation.valid) return errorResponse(validation.error!);
-      return await getCourseById(id);
+    // Route: GET /api/courses?id=123
+    if (params.id) {
+      const validation = validateId(params.id);
+      if (!validation.valid) {
+        return errorResponse(validation.error!);
+      }
+      return await getCourseById(params.id);
     }
 
     // Route: GET /api/courses (list all)
