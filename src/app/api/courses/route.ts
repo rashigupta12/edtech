@@ -110,6 +110,8 @@ const listCourses = async () => {
       createdAt: CoursesTable.createdAt,
       collegeName: CollegesTable.collegeName,
       categoryName: CategoriesTable.name,
+      price: CoursesTable.price,
+      isFree: CoursesTable.isFree,
     })
     .from(CoursesTable)
     .leftJoin(CollegesTable, eq(CoursesTable.collegeId, CollegesTable.id))
@@ -944,7 +946,7 @@ export async function GET(request: NextRequest) {
       if (!validation.valid) {
         return errorResponse(validation.error!);
       }
-      return await getCourseCurriculum(params.id);
+      return await getCourseCurriculumWithLessons(params.id); // This should be the only call for curriculum
     }
 
     // Route: GET /api/courses?id=123&modules=true
@@ -965,14 +967,6 @@ export async function GET(request: NextRequest) {
       return await getCourseById(params.id);
     }
 
-    // In GET handler, add:
-if (params.id && parseBoolean(params.curriculum)) {
-  const validation = validateId(params.id);
-  if (!validation.valid) {
-    return errorResponse(validation.error!);
-  }
-  return await getCourseCurriculumWithLessons(params.id); // Update this call
-}
     // Route: GET /api/courses (list all)
     return await listCourses();
   } catch (error: any) {
@@ -1065,7 +1059,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT Handler
 // PUT Handler
 export async function PUT(request: NextRequest) {
   try {

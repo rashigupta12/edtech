@@ -162,7 +162,15 @@ export default function CreateCoursePage() {
 
   
   const addModule = () => {
-    setModules([...modules, { title: "", description: "" }]);
+    setModules([
+      ...modules,
+      {
+        title: "",
+        description: "",
+        sortOrder: modules.length,
+        lessons: [],
+      },
+    ]);
   };
 
   const removeModule = (index: number) => {
@@ -205,7 +213,7 @@ const updateLesson = (
   value: any
 ) => {
   const updatedModules = [...modules];
-  updatedModules[moduleIndex].lessons[lessonIndex][field] = value;
+  (updatedModules[moduleIndex].lessons[lessonIndex] as any)[field] = value;
   setModules(updatedModules);
 };
 
