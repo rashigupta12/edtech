@@ -46,6 +46,7 @@ type Bootcamp = {
   createdAt: string;
   collegeName: string | null;
   thumbnailUrl: string | null;
+  
 };
 
 export default function BootcampsPage() {

@@ -196,7 +196,7 @@ export default function EditCollegePage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/colleges/${collegeId}`, {
+      const response = await fetch(`/api/colleges?id=${collegeId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
