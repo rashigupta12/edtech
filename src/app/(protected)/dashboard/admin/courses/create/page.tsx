@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, Plus, X } from "lucide-react";
+import { ArrowLeft, Save, Plus, X, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
@@ -30,12 +30,39 @@ type Category = {
   name: string;
 };
 
+type Lesson = {
+  id?: string;
+  title: string;
+  description: string;
+  contentType: "VIDEO" | "ARTICLE" | "QUIZ";
+  videoUrl?: string;
+  articleContent?: string;
+  videoDuration?: number;
+  isFree: boolean;
+  sortOrder: number;
+};
+
+type Module = {
+  id?: string;
+  title: string;
+  description: string;
+  sortOrder: number;
+  lessons: Lesson[];
+};
 export default function CreateCoursePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [colleges, setColleges] = useState<College[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const user = useCurrentUser()
+  const user = useCurrentUser();
+ const [modules, setModules] = useState<Module[]>([
+  { 
+    title: "", 
+    description: "", 
+    sortOrder: 0,
+    lessons: []
+  }
+]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -55,11 +82,13 @@ export default function CreateCoursePage() {
     price: "",
     discountPrice: "",
     maxStudents: "",
+    status: "DRAFT",
   });
 
   // Dynamic arrays
   const [learningOutcomes, setLearningOutcomes] = useState<string[]>([""]);
   const [requirements, setRequirements] = useState<string[]>([""]);
+  const [expandedModules, setExpandedModules] = useState<number[]>([]);
 
   // Fetch colleges and categories
   useEffect(() => {
@@ -131,94 +160,187 @@ export default function CreateCoursePage() {
     setRequirements(updated);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  
+  const addModule = () => {
+    setModules([...modules, { title: "", description: "" }]);
+  };
 
-    // Validation
-    if (!formData.title || !formData.categoryId) {
-      Swal.fire({
-        icon: "warning",
-        title: "Missing Required Fields",
-        text: "Please fill in title and category",
-      });
-      return;
-    }
+  const removeModule = (index: number) => {
+    setModules(modules.filter((_, i) => i !== index));
+  };
 
-    setLoading(true);
+  const updateModule = (
+    index: number,
+    field: "title" | "description",
+    value: string
+  ) => {
+    const updated = [...modules];
+    updated[index][field] = value;
+    setModules(updated);
+  };
+  const addLesson = (moduleIndex: number) => {
+  const updatedModules = [...modules];
+  updatedModules[moduleIndex].lessons.push({
+    title: "",
+    description: "",
+    contentType: "VIDEO",
+    isFree: false,
+    sortOrder: updatedModules[moduleIndex].lessons.length
+  });
+  setModules(updatedModules);
+};
 
-    // Get user ID (you'll need to implement this based on your auth)
-    const createdBy = user?.id; // Replace with actual user ID from auth
+const removeLesson = (moduleIndex: number, lessonIndex: number) => {
+  const updatedModules = [...modules];
+  updatedModules[moduleIndex].lessons = updatedModules[moduleIndex].lessons.filter(
+    (_, i) => i !== lessonIndex
+  );
+  setModules(updatedModules);
+};
 
-    const payload = {
-      ...formData,
-      createdBy,
-      collegeId: formData.collegeId || null,
-      thumbnailUrl: formData.thumbnailUrl || null,
-      previewVideoUrl: formData.previewVideoUrl || null,
-      prerequisites: formData.prerequisites || null,
-      price: formData.price ? Number(formData.price) : null,
-      discountPrice: formData.discountPrice ? Number(formData.discountPrice) : null,
-      maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
-    };
+const updateLesson = (
+  moduleIndex: number,
+  lessonIndex: number,
+  field: keyof Lesson,
+  value: any
+) => {
+  const updatedModules = [...modules];
+  updatedModules[moduleIndex].lessons[lessonIndex][field] = value;
+  setModules(updatedModules);
+};
 
-    try {
-      const res = await fetch("/api/courses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-      const response = await res.json();
+  // Validation
+  if (!formData.title || !formData.categoryId) {
+    Swal.fire({
+      icon: "warning",
+      title: "Missing Required Fields",
+      text: "Please fill in title and category",
+    });
+    return;
+  }
 
-      if (response.success) {
-        const courseId = response.data.id;
+  setLoading(true);
 
-        // Add learning outcomes
-        for (const outcome of learningOutcomes.filter((o) => o.trim())) {
-          await fetch(`/api/courses?id=${courseId}&outcomes=true`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ outcome }),
-          });
-        }
+  const createdBy = user?.id;
 
-        // Add requirements
-        for (const requirement of requirements.filter((r) => r.trim())) {
-          await fetch(`/api/courses?id=${courseId}&requirements=true`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ requirement }),
-          });
-        }
+  const payload = {
+    ...formData,
+    createdBy,
+    status: formData.status,
+    collegeId: formData.collegeId || null,
+    thumbnailUrl: formData.thumbnailUrl || null,
+    previewVideoUrl: formData.previewVideoUrl || null,
+    prerequisites: formData.prerequisites || null,
+    price: formData.price ? Number(formData.price) : null,
+    discountPrice: formData.discountPrice
+      ? Number(formData.discountPrice)
+      : null,
+    maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
+  };
 
-        Swal.fire({
-          icon: "success",
-          title: "Course Created!",
-          text: "Course has been created successfully",
-          timer: 2000,
-          showConfirmButton: false,
-        }).then(() => {
-          router.push("/dashboard/admin/courses");
-        });
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: response.error?.message || "Failed to create course",
+  try {
+    const res = await fetch("/api/courses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const response = await res.json();
+
+    if (response.success) {
+      const courseId = response.data.id;
+
+      // Add learning outcomes
+      for (const outcome of learningOutcomes.filter((o) => o.trim())) {
+        await fetch(`/api/courses?id=${courseId}&outcomes=true`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ outcome }),
         });
       }
-    } catch (err) {
-      console.error(err);
+
+      // Add requirements
+      for (const requirement of requirements.filter((r) => r.trim())) {
+        await fetch(`/api/courses?id=${courseId}&requirements=true`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requirement }),
+        });
+      }
+
+      // Add modules and lessons
+      for (let i = 0; i < modules.length; i++) {
+        const module = modules[i];
+        if (module.title.trim()) {
+          // Create module
+          const moduleRes = await fetch(`/api/courses?id=${courseId}&modules=true`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: module.title,
+              description: module.description,
+              sortOrder: i,
+            }),
+          });
+          
+          const moduleData = await moduleRes.json();
+          
+          if (moduleData.success) {
+            // Add lessons for this module
+            for (let j = 0; j < module.lessons.length; j++) {
+              const lesson = module.lessons[j];
+              if (lesson.title.trim()) {
+                await fetch(`/api/courses?id=${courseId}&lessons=true&moduleId=${moduleData.data.id}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    ...lesson,
+                    sortOrder: j,
+                  }),
+                });
+              }
+            }
+          }
+        }
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Course Created!",
+        text: "Course has been created successfully",
+        timer: 2000,
+        showConfirmButton: false,
+      }).then(() => {
+        router.push("/dashboard/admin/courses");
+      });
+    } else {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "An unexpected error occurred",
+        text: response.error?.message || "Failed to create course",
       });
-    } finally {
-      setLoading(false);
     }
-  };
-
+  } catch (err) {
+    console.error(err);
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "An unexpected error occurred",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+const toggleModule = (index: number) => {
+  setExpandedModules(prev =>
+    prev.includes(index) 
+      ? prev.filter(i => i !== index)
+      : [...prev, index]
+  );
+};
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -234,7 +356,9 @@ export default function CreateCoursePage() {
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Course</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Create New Course
+              </h1>
               <p className="text-gray-600">
                 Fill in the course details to create a new course.
               </p>
@@ -246,7 +370,9 @@ export default function CreateCoursePage() {
           {/* Basic Information */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50 border-b">
-              <CardTitle className="text-xl text-gray-900">Basic Information</CardTitle>
+              <CardTitle className="text-xl text-gray-900">
+                Basic Information
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -280,7 +406,9 @@ export default function CreateCoursePage() {
                   <Textarea
                     id="shortDescription"
                     value={formData.shortDescription}
-                    onChange={(e) => handleFieldChange("shortDescription", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("shortDescription", e.target.value)
+                    }
                     placeholder="A brief summary of the course..."
                     rows={2}
                   />
@@ -291,7 +419,9 @@ export default function CreateCoursePage() {
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => handleFieldChange("description", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("description", e.target.value)
+                    }
                     placeholder="Detailed course description..."
                     rows={6}
                   />
@@ -301,7 +431,9 @@ export default function CreateCoursePage() {
                   <Label htmlFor="categoryId">Category *</Label>
                   <Select
                     value={formData.categoryId}
-                    onValueChange={(value) => handleFieldChange("categoryId", value)}
+                    onValueChange={(value) =>
+                      handleFieldChange("categoryId", value)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
@@ -320,7 +452,12 @@ export default function CreateCoursePage() {
                   <Label htmlFor="collegeId">College (Optional)</Label>
                   <Select
                     value={formData.collegeId || "NONE"}
-                    onValueChange={(value) => handleFieldChange("collegeId", value === "NONE" ? "" : value)}
+                    onValueChange={(value) =>
+                      handleFieldChange(
+                        "collegeId",
+                        value === "NONE" ? "" : value
+                      )
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select college" />
@@ -358,9 +495,34 @@ export default function CreateCoursePage() {
                   <Input
                     id="language"
                     value={formData.language}
-                    onChange={(e) => handleFieldChange("language", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("language", e.target.value)
+                    }
                     placeholder="English"
                   />
+                </div>
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      handleFieldChange("status", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DRAFT">Draft</SelectItem>
+                      <SelectItem value="PENDING_APPROVAL">
+                        Pending Approval
+                      </SelectItem>
+                      <SelectItem value="APPROVED">Approved</SelectItem>
+                      <SelectItem value="REJECTED">Rejected</SelectItem>
+                      <SelectItem value="PUBLISHED">Published</SelectItem>
+                      <SelectItem value="ARCHIVED">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
@@ -368,7 +530,9 @@ export default function CreateCoursePage() {
                   <Input
                     id="duration"
                     value={formData.duration}
-                    onChange={(e) => handleFieldChange("duration", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("duration", e.target.value)
+                    }
                     placeholder="40 hours"
                   />
                 </div>
@@ -379,7 +543,9 @@ export default function CreateCoursePage() {
                     id="maxStudents"
                     type="number"
                     value={formData.maxStudents}
-                    onChange={(e) => handleFieldChange("maxStudents", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("maxStudents", e.target.value)
+                    }
                     placeholder="50"
                   />
                 </div>
@@ -399,7 +565,9 @@ export default function CreateCoursePage() {
                   id="thumbnailUrl"
                   type="url"
                   value={formData.thumbnailUrl}
-                  onChange={(e) => handleFieldChange("thumbnailUrl", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("thumbnailUrl", e.target.value)
+                  }
                   placeholder="https://example.com/thumbnail.jpg"
                 />
               </div>
@@ -410,7 +578,9 @@ export default function CreateCoursePage() {
                   id="previewVideoUrl"
                   type="url"
                   value={formData.previewVideoUrl}
-                  onChange={(e) => handleFieldChange("previewVideoUrl", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("previewVideoUrl", e.target.value)
+                  }
                   placeholder="https://youtube.com/..."
                 />
               </div>
@@ -428,7 +598,9 @@ export default function CreateCoursePage() {
                   type="checkbox"
                   id="isFree"
                   checked={formData.isFree}
-                  onChange={(e) => handleFieldChange("isFree", e.target.checked)}
+                  onChange={(e) =>
+                    handleFieldChange("isFree", e.target.checked)
+                  }
                   className="rounded"
                 />
                 <Label htmlFor="isFree">This course is free</Label>
@@ -443,7 +615,9 @@ export default function CreateCoursePage() {
                       type="number"
                       step="0.01"
                       value={formData.price}
-                      onChange={(e) => handleFieldChange("price", e.target.value)}
+                      onChange={(e) =>
+                        handleFieldChange("price", e.target.value)
+                      }
                       placeholder="99.00"
                     />
                   </div>
@@ -455,7 +629,9 @@ export default function CreateCoursePage() {
                       type="number"
                       step="0.01"
                       value={formData.discountPrice}
-                      onChange={(e) => handleFieldChange("discountPrice", e.target.value)}
+                      onChange={(e) =>
+                        handleFieldChange("discountPrice", e.target.value)
+                      }
                       placeholder="79.00"
                     />
                   </div>
@@ -468,7 +644,9 @@ export default function CreateCoursePage() {
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50 border-b">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl text-gray-900">Learning Outcomes</CardTitle>
+                <CardTitle className="text-xl text-gray-900">
+                  Learning Outcomes
+                </CardTitle>
                 <Button
                   type="button"
                   onClick={addLearningOutcome}
@@ -485,7 +663,9 @@ export default function CreateCoursePage() {
                 <div key={index} className="flex gap-2">
                   <Input
                     value={outcome}
-                    onChange={(e) => updateLearningOutcome(index, e.target.value)}
+                    onChange={(e) =>
+                      updateLearningOutcome(index, e.target.value)
+                    }
                     placeholder="What students will learn..."
                   />
                   {learningOutcomes.length > 1 && (
@@ -507,8 +687,15 @@ export default function CreateCoursePage() {
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50 border-b">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl text-gray-900">Requirements</CardTitle>
-                <Button type="button" onClick={addRequirement} size="sm" variant="outline">
+                <CardTitle className="text-xl text-gray-900">
+                  Requirements
+                </CardTitle>
+                <Button
+                  type="button"
+                  onClick={addRequirement}
+                  size="sm"
+                  variant="outline"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Requirement
                 </Button>
@@ -537,10 +724,200 @@ export default function CreateCoursePage() {
             </CardContent>
           </Card>
 
+          {/* Course Modules */}
+         <Card className="border border-gray-200 hover:shadow-md transition-shadow">
+  <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-50 border-b">
+    <div className="flex items-center justify-between">
+      <CardTitle className="text-xl text-gray-900">
+        Course Modules
+      </CardTitle>
+      <Button
+        type="button"
+        onClick={addModule}
+        size="sm"
+        variant="outline"
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Add Module
+      </Button>
+    </div>
+  </CardHeader>
+  <CardContent className="p-6 space-y-4">
+    {modules.map((module, moduleIndex) => (
+      <div key={moduleIndex} className="border rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => toggleModule(moduleIndex)}
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform ${
+                expandedModules.includes(moduleIndex) ? 'rotate-180' : ''
+              }`} />
+            </Button>
+            <Label className="text-sm font-medium">
+              Module {moduleIndex + 1}
+            </Label>
+          </div>
+          {modules.length > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => removeModule(moduleIndex)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        <Input
+          value={module.title}
+          onChange={(e) =>
+            updateModule(moduleIndex, "title", e.target.value)
+          }
+          placeholder="Module title..."
+        />
+        <Textarea
+          value={module.description}
+          onChange={(e) =>
+            updateModule(moduleIndex, "description", e.target.value)
+          }
+          placeholder="Module description (optional)..."
+          rows={2}
+        />
+
+        {/* Lessons Section */}
+        {expandedModules.includes(moduleIndex) && (
+          <div className="ml-6 border-l-2 border-gray-200 pl-4 space-y-4">
+            <div className="flex items-center justify-between pt-2">
+              <Label className="text-sm font-medium text-gray-700">
+                Lessons ({module.lessons.length})
+              </Label>
+              <Button
+                type="button"
+                onClick={() => addLesson(moduleIndex)}
+                size="sm"
+                variant="outline"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add Lesson
+              </Button>
+            </div>
+
+            {module.lessons.map((lesson, lessonIndex) => (
+              <div key={lessonIndex} className="border rounded p-3 space-y-3 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">
+                    Lesson {lessonIndex + 1}
+                  </Label>
+                  {module.lessons.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeLesson(moduleIndex, lessonIndex)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+
+                <Input
+                  value={lesson.title}
+                  onChange={(e) =>
+                    updateLesson(moduleIndex, lessonIndex, "title", e.target.value)
+                  }
+                  placeholder="Lesson title..."
+                  className="text-sm"
+                />
+
+                <Textarea
+                  value={lesson.description}
+                  onChange={(e) =>
+                    updateLesson(moduleIndex, lessonIndex, "description", e.target.value)
+                  }
+                  placeholder="Lesson description..."
+                  rows={2}
+                  className="text-sm"
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor={`content-type-${moduleIndex}-${lessonIndex}`} className="text-xs">
+                      Content Type
+                    </Label>
+                    <Select
+                      value={lesson.contentType}
+                      onValueChange={(value: "VIDEO" | "ARTICLE" | "QUIZ") =>
+                        updateLesson(moduleIndex, lessonIndex, "contentType", value)
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="VIDEO">Video</SelectItem>
+                        <SelectItem value="ARTICLE">Article</SelectItem>
+                        <SelectItem value="QUIZ">Quiz</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-6">
+                    <input
+                      type="checkbox"
+                      id={`is-free-${moduleIndex}-${lessonIndex}`}
+                      checked={lesson.isFree}
+                      onChange={(e) =>
+                        updateLesson(moduleIndex, lessonIndex, "isFree", e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                    <Label htmlFor={`is-free-${moduleIndex}-${lessonIndex}`} className="text-xs">
+                      Free Lesson
+                    </Label>
+                  </div>
+                </div>
+
+                {lesson.contentType === "VIDEO" && (
+                  <Input
+                    value={lesson.videoUrl || ""}
+                    onChange={(e) =>
+                      updateLesson(moduleIndex, lessonIndex, "videoUrl", e.target.value)
+                    }
+                    placeholder="Video URL..."
+                    className="text-sm"
+                  />
+                )}
+
+                {lesson.contentType === "ARTICLE" && (
+                  <Textarea
+                    value={lesson.articleContent || ""}
+                    onChange={(e) =>
+                      updateLesson(moduleIndex, lessonIndex, "articleContent", e.target.value)
+                    }
+                    placeholder="Article content..."
+                    rows={4}
+                    className="text-sm"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    ))}
+  </CardContent>
+</Card>
           {/* Additional Info */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-50 border-b">
-              <CardTitle className="text-xl text-gray-900">Additional Information</CardTitle>
+              <CardTitle className="text-xl text-gray-900">
+                Additional Information
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div>
@@ -548,7 +925,9 @@ export default function CreateCoursePage() {
                 <Textarea
                   id="prerequisites"
                   value={formData.prerequisites}
-                  onChange={(e) => handleFieldChange("prerequisites", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("prerequisites", e.target.value)
+                  }
                   placeholder="List any prerequisites for this course..."
                   rows={4}
                 />

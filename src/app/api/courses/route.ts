@@ -7,6 +7,7 @@ import {
   CollegesTable,
   CourseLearningOutcomesTable,
   CourseModulesTable,
+  CourseLessonsTable,
   CourseRequirementsTable,
   CoursesTable,
 } from '@/db/schema';
@@ -38,6 +39,15 @@ type SearchParams = {
   modules?: string;
   outcomes?: string;
   requirements?: string;
+  updateModule?: string;      
+  deleteModule?: string;       
+  updateOutcome?: string;     
+  deleteOutcome?: string;      
+  updateRequirement?: string;  
+  deleteRequirement?: string;
+  lessons?: string;
+  updateLesson?: string;
+  deleteLesson?: string;
 };
 
 // ===========================
@@ -254,7 +264,7 @@ const createCourse = async (request: NextRequest) => {
         language: body.language || 'English',
         level: body.level || 'Beginner',
         prerequisites: body.prerequisites || null,
-        status: 'DRAFT',
+        status: body.status || 'DRAFT',
         isFeatured: false,
         maxStudents: body.maxStudents || null,
         currentEnrollments: 0,
@@ -628,6 +638,292 @@ const addRequirement = async (id: string, request: NextRequest) => {
   }
 };
 
+
+// UPDATE MODULE
+// UPDATE MODULE
+const updateModule = async (id: string, request: NextRequest) => {
+  try {
+    const body = await request.json();
+
+    const [module] = await db
+      .select()
+      .from(CourseModulesTable)
+      .where(eq(CourseModulesTable.id, id))
+      .limit(1);
+
+    if (!module) {
+      return errorResponse('Module not found', 'NOT_FOUND', 404);
+    }
+
+    const [updated] = await db
+      .update(CourseModulesTable)
+      .set({
+        title: body.title,
+        description: body.description || null,
+        sortOrder: body.sortOrder !== undefined ? body.sortOrder : module.sortOrder,
+      })
+      .where(eq(CourseModulesTable.id, id))
+      .returning();
+
+    return successResponse(updated, 'Module updated successfully');
+  } catch (error: any) {
+    return errorResponse(error.message || 'Failed to update module', 'UPDATE_ERROR', 500);
+  }
+};
+
+// DELETE MODULE
+const deleteModule = async (id: string) => {
+  try {
+    const [module] = await db
+      .select()
+      .from(CourseModulesTable)
+      .where(eq(CourseModulesTable.id, id))
+      .limit(1);
+
+    if (!module) {
+      return errorResponse('Module not found', 'NOT_FOUND', 404);
+    }
+
+    await db.delete(CourseModulesTable).where(eq(CourseModulesTable.id, id));
+
+    return successResponse({ id }, 'Module deleted successfully');
+  } catch (error: any) {
+    return errorResponse(error.message || 'Failed to delete module', 'DELETE_ERROR', 500);
+  }
+};
+
+const updateOutcome = async (id: string, request: NextRequest) => {
+  try {
+    const body = await request.json();
+
+    const [outcome] = await db
+      .select()
+      .from(CourseLearningOutcomesTable)
+      .where(eq(CourseLearningOutcomesTable.id, id))
+      .limit(1);
+
+    if (!outcome) {
+      return errorResponse('Outcome not found', 'NOT_FOUND', 404);
+    }
+
+    const [updated] = await db
+      .update(CourseLearningOutcomesTable)
+      .set({ outcome: body.outcome })
+      .where(eq(CourseLearningOutcomesTable.id, id))
+      .returning();
+
+    return successResponse(updated, 'Outcome updated successfully');
+  } catch (error: any) {
+    return errorResponse(error.message || 'Failed to update outcome', 'UPDATE_ERROR', 500);
+  }
+};
+
+
+// DELETE OUTCOME
+const deleteOutcome = async (id: string) => {
+  try {
+    await db.delete(CourseLearningOutcomesTable).where(eq(CourseLearningOutcomesTable.id, id));
+    return successResponse({ id }, 'Outcome deleted successfully');
+  } catch (error: any) {
+    return errorResponse(error.message || 'Failed to delete outcome', 'DELETE_ERROR', 500);
+  }
+};
+
+// UPDATE REQUIREMENT
+const updateRequirement = async (id: string, request: NextRequest) => {
+  try {
+    const body = await request.json();
+
+    const [requirement] = await db
+      .select()
+      .from(CourseRequirementsTable)
+      .where(eq(CourseRequirementsTable.id, id))
+      .limit(1);
+
+    if (!requirement) {
+      return errorResponse('Requirement not found', 'NOT_FOUND', 404);
+    }
+
+    const [updated] = await db
+      .update(CourseRequirementsTable)
+      .set({ requirement: body.requirement })
+      .where(eq(CourseRequirementsTable.id, id))
+      .returning();
+
+    return successResponse(updated, 'Requirement updated successfully');
+  } catch (error: any) {
+    return errorResponse(error.message || 'Failed to update requirement', 'UPDATE_ERROR', 500);
+  }
+};
+
+// DELETE REQUIREMENT
+const deleteRequirement = async (id: string) => {
+  try {
+    await db.delete(CourseRequirementsTable).where(eq(CourseRequirementsTable.id, id));
+    return successResponse({ id }, 'Requirement deleted successfully');
+  } catch (error: any) {
+    return errorResponse(error.message || 'Failed to delete requirement', 'DELETE_ERROR', 500);
+  }
+};
+
+
+
+// CREATE LESSON
+const createLesson = async (id: string, request: NextRequest) => {
+  try {
+    const body = await request.json();
+    const moduleId = new URL(request.url).searchParams.get('moduleId');
+
+    if (!body.title || !moduleId) {
+      return errorResponse('Missing required fields: title, moduleId');
+    }
+
+    const [module] = await db
+      .select()
+      .from(CourseModulesTable)
+      .where(eq(CourseModulesTable.id, moduleId))
+      .limit(1);
+
+    if (!module) {
+      return errorResponse('Module not found', 'NOT_FOUND', 404);
+    }
+
+    // Get current max sort order for lessons in this module
+    const [maxOrder] = await db
+      .select({ max: sql<number>`MAX(${CourseLessonsTable.sortOrder})` })
+      .from(CourseLessonsTable)
+      .where(eq(CourseLessonsTable.moduleId, moduleId));
+
+    const sortOrder = (maxOrder?.max ?? -1) + 1;
+
+    const [newLesson] = await db
+      .insert(CourseLessonsTable)
+      .values({
+        moduleId,
+        courseId: id,
+        title: body.title,
+        description: body.description || null,
+        contentType: body.contentType || 'VIDEO',
+        videoUrl: body.videoUrl || null,
+        videoDuration: body.videoDuration || null,
+        articleContent: body.articleContent || null,
+        resources: body.resources || null,
+        isFree: body.isFree || false,
+        sortOrder: body.sortOrder ?? sortOrder,
+      })
+      .returning();
+
+    return successResponse(newLesson, 'Lesson created successfully', 201);
+  } catch (error: any) {
+    return errorResponse(error.message || 'Failed to create lesson', 'LESSON_ERROR', 500);
+  }
+};
+
+// UPDATE LESSON
+const updateLesson = async (id: string, request: NextRequest) => {
+  try {
+    const body = await request.json();
+
+    const [lesson] = await db
+      .select()
+      .from(CourseLessonsTable)
+      .where(eq(CourseLessonsTable.id, id))
+      .limit(1);
+
+    if (!lesson) {
+      return errorResponse('Lesson not found', 'NOT_FOUND', 404);
+    }
+
+    const [updated] = await db
+      .update(CourseLessonsTable)
+      .set({
+        title: body.title,
+        description: body.description,
+        contentType: body.contentType,
+        videoUrl: body.videoUrl,
+        videoDuration: body.videoDuration,
+        articleContent: body.articleContent,
+        resources: body.resources,
+        isFree: body.isFree,
+        sortOrder: body.sortOrder,
+        updatedAt: new Date(),
+      })
+      .where(eq(CourseLessonsTable.id, id))
+      .returning();
+
+    return successResponse(updated, 'Lesson updated successfully');
+  } catch (error: any) {
+    return errorResponse(error.message || 'Failed to update lesson', 'UPDATE_ERROR', 500);
+  }
+};
+
+// DELETE LESSON
+const deleteLesson = async (id: string) => {
+  try {
+    const [lesson] = await db
+      .select()
+      .from(CourseLessonsTable)
+      .where(eq(CourseLessonsTable.id, id))
+      .limit(1);
+
+    if (!lesson) {
+      return errorResponse('Lesson not found', 'NOT_FOUND', 404);
+    }
+
+    await db.delete(CourseLessonsTable).where(eq(CourseLessonsTable.id, id));
+
+    return successResponse({ id }, 'Lesson deleted successfully');
+  } catch (error: any) {
+    return errorResponse(error.message || 'Failed to delete lesson', 'DELETE_ERROR', 500);
+  }
+};
+
+
+// GET COURSE CURRICULUM WITH LESSONS
+const getCourseCurriculumWithLessons = async (id: string) => {
+  const [course] = await db
+    .select()
+    .from(CoursesTable)
+    .where(eq(CoursesTable.id, id))
+    .limit(1);
+
+  if (!course) {
+    return errorResponse('Course not found', 'NOT_FOUND', 404);
+  }
+
+  // Get modules
+  const modules = await db
+    .select()
+    .from(CourseModulesTable)
+    .where(eq(CourseModulesTable.courseId, id))
+    .orderBy(CourseModulesTable.sortOrder);
+
+  // Get lessons for each module
+  const modulesWithLessons = await Promise.all(
+    modules.map(async (module) => {
+      const lessons = await db
+        .select()
+        .from(CourseLessonsTable)
+        .where(eq(CourseLessonsTable.moduleId, module.id))
+        .orderBy(CourseLessonsTable.sortOrder);
+
+      return {
+        ...module,
+        lessons
+      };
+    })
+  );
+
+  const curriculum = {
+    courseId: id,
+    courseTitle: course.title,
+    modules: modulesWithLessons,
+    totalModules: modulesWithLessons.length,
+    totalLessons: modulesWithLessons.reduce((total, module) => total + module.lessons.length, 0)
+  };
+
+  return successResponse(curriculum);
+};
 // ===========================
 // MAIN ROUTE HANDLERS
 // ===========================
@@ -669,6 +965,14 @@ export async function GET(request: NextRequest) {
       return await getCourseById(params.id);
     }
 
+    // In GET handler, add:
+if (params.id && parseBoolean(params.curriculum)) {
+  const validation = validateId(params.id);
+  if (!validation.valid) {
+    return errorResponse(validation.error!);
+  }
+  return await getCourseCurriculumWithLessons(params.id); // Update this call
+}
     // Route: GET /api/courses (list all)
     return await listCourses();
   } catch (error: any) {
@@ -688,6 +992,7 @@ export async function POST(request: NextRequest) {
       modules: searchParams.get('modules') || undefined,
       outcomes: searchParams.get('outcomes') || undefined,
       requirements: searchParams.get('requirements') || undefined,
+      lessons: searchParams.get('lessons') || undefined, // ADD THIS
     };
 
     // Route: POST /api/courses?id=123&submit=true
@@ -744,6 +1049,15 @@ export async function POST(request: NextRequest) {
       return await addRequirement(params.id, request);
     }
 
+    // Route: POST /api/courses?id=123&lessons=true
+    if (params.id && parseBoolean(params.lessons)) { // ADD THIS
+      const validation = validateId(params.id);
+      if (!validation.valid) {
+        return errorResponse(validation.error!);
+      }
+      return await createLesson(params.id, request);
+    }
+
     // Route: POST /api/courses (create new)
     return await createCourse(request);
   } catch (error: any) {
@@ -752,6 +1066,7 @@ export async function POST(request: NextRequest) {
 }
 
 // PUT Handler
+// PUT Handler
 export async function PUT(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -759,6 +1074,10 @@ export async function PUT(request: NextRequest) {
       id: searchParams.get('id') || undefined,
       publish: searchParams.get('publish') || undefined,
       archive: searchParams.get('archive') || undefined,
+      updateModule: searchParams.get('updateModule') || undefined,
+      updateOutcome: searchParams.get('updateOutcome') || undefined,
+      updateRequirement: searchParams.get('updateRequirement') || undefined,
+      updateLesson: searchParams.get('updateLesson') || undefined, // ADD THIS
     };
 
     if (!params.id) {
@@ -768,6 +1087,26 @@ export async function PUT(request: NextRequest) {
     const validation = validateId(params.id);
     if (!validation.valid) {
       return errorResponse(validation.error!);
+    }
+
+    // Route: PUT /api/courses?id=123&updateModule=true
+    if (parseBoolean(params.updateModule)) {
+      return await updateModule(params.id, request);
+    }
+
+    // Route: PUT /api/courses?id=123&updateOutcome=true
+    if (parseBoolean(params.updateOutcome)) {
+      return await updateOutcome(params.id, request);
+    }
+
+    // Route: PUT /api/courses?id=123&updateRequirement=true
+    if (parseBoolean(params.updateRequirement)) {
+      return await updateRequirement(params.id, request);
+    }
+
+    // Route: PUT /api/courses?id=123&updateLesson=true
+    if (parseBoolean(params.updateLesson)) { // ADD THIS
+      return await updateLesson(params.id, request);
     }
 
     // Route: PUT /api/courses?id=123&publish=true
@@ -791,19 +1130,45 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const params: SearchParams = {
+      id: searchParams.get('id') || undefined,
+      deleteModule: searchParams.get('deleteModule') || undefined,
+      deleteOutcome: searchParams.get('deleteOutcome') || undefined,
+      deleteRequirement: searchParams.get('deleteRequirement') || undefined,
+      deleteLesson: searchParams.get('deleteLesson') || undefined, // ADD THIS
+    };
 
-    if (!id) {
+    if (!params.id) {
       return errorResponse('ID is required for delete operation');
     }
 
-    const validation = validateId(id);
+    const validation = validateId(params.id);
     if (!validation.valid) {
       return errorResponse(validation.error!);
     }
 
-    // Route: DELETE /api/courses?id=123
-    return await deleteCourse(id);
+    // Route: DELETE /api/courses?id=123&deleteModule=true
+    if (parseBoolean(params.deleteModule)) {
+      return await deleteModule(params.id);
+    }
+
+    // Route: DELETE /api/courses?id=123&deleteOutcome=true
+    if (parseBoolean(params.deleteOutcome)) {
+      return await deleteOutcome(params.id);
+    }
+
+    // Route: DELETE /api/courses?id=123&deleteRequirement=true
+    if (parseBoolean(params.deleteRequirement)) {
+      return await deleteRequirement(params.id);
+    }
+
+    // Route: DELETE /api/courses?id=123&deleteLesson=true
+    if (parseBoolean(params.deleteLesson)) { // ADD THIS
+      return await deleteLesson(params.id);
+    }
+
+    // Route: DELETE /api/courses?id=123 (delete course)
+    return await deleteCourse(params.id);
   } catch (error: any) {
     return errorResponse(error.message || 'Internal server error', 'INTERNAL_ERROR', 500);
   }
