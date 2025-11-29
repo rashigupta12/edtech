@@ -110,6 +110,8 @@ const listCourses = async () => {
       createdAt: CoursesTable.createdAt,
       collegeName: CollegesTable.collegeName,
       categoryName: CategoriesTable.name,
+      price: CoursesTable.price,
+      isFree: CoursesTable.isFree,
     })
     .from(CoursesTable)
     .leftJoin(CollegesTable, eq(CoursesTable.collegeId, CollegesTable.id))
@@ -984,11 +986,13 @@ export async function GET(request: NextRequest) {
       return await getCourseBySlug(slug);
     }
 
-    // 2. GET /api/courses?id=123&curriculum=true
-    if (id && parseBoolean(curriculum)) {
-      const validation = validateId(id);
-      if (!validation.valid) return errorResponse(validation.error!);
-      return await getCourseCurriculum(id);
+    // Route: GET /api/courses?id=123&curriculum=true
+    if (params.id && parseBoolean(params.curriculum)) {
+      const validation = validateId(params.id);
+      if (!validation.valid) {
+        return errorResponse(validation.error!);
+      }
+      return await getCourseCurriculumWithLessons(params.id); // This should be the only call for curriculum
     }
 
     // 3. GET /api/courses?id=123&modules=true
@@ -1005,14 +1009,6 @@ export async function GET(request: NextRequest) {
       return await getCourseById(id);
     }
 
-    // In GET handler, add:
-if (params.id && parseBoolean(params.curriculum)) {
-  const validation = validateId(params.id);
-  if (!validation.valid) {
-    return errorResponse(validation.error!);
-  }
-  return await getCourseCurriculumWithLessons(params.id); // Update this call
-}
     // Route: GET /api/courses (list all)
     return await listCourses();
   } catch (error: any) {
@@ -1105,7 +1101,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT Handler
 // PUT Handler
 export async function PUT(request: NextRequest) {
   try {

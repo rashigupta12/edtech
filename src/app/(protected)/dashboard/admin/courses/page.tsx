@@ -644,7 +644,7 @@ export default function CoursesPage() {
                         {course.isFree ? (
                           <span className="text-green-600">Free</span>
                         ) : (
-                          `$${course.price}`
+                          `${course.price}`
                         )}
                       </div>
                     </td>

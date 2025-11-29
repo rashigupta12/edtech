@@ -676,7 +676,7 @@ export default function ViewCoursePage() {
                   <span>Sort order: {module.sortOrder}</span>
                 </div>
               </div>
-              <Button
+              {/* <Button
                 variant="ghost"
                 size="icon"
                 onClick={(e) => {
@@ -685,7 +685,7 @@ export default function ViewCoursePage() {
                 }}
               >
                 <Edit className="h-4 w-4" />
-              </Button>
+              </Button> */}
               <ChevronDown
                 className={`h-5 w-5 text-gray-400 transition-transform ${
                   expandedModules.includes(module.id) ? 'rotate-180' : ''
