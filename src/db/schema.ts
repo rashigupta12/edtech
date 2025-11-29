@@ -18,7 +18,7 @@ import { relations } from "drizzle-orm";
 // Enums
 // =====================
 
-export const UserRole = pgEnum("user_role", ["ADMIN", "COLLEGE", "STUDENT"]);
+export const UserRole = pgEnum("user_role", ["ADMIN", "COLLEGE", "FACULTY", "STUDENT"]);
 
 export const CourseStatus = pgEnum("course_status", [
   "DRAFT",
@@ -82,6 +82,37 @@ export const QuestionType = pgEnum("question_type", [
   "SHORT_ANSWER",
 ]);
 
+export const Gender = pgEnum("gender", ["MALE", "FEMALE", "OTHER"]);
+
+export const QuestionDifficulty = pgEnum("question_difficulty", [
+  "EASY",
+  "MEDIUM",
+  "HARD",
+]);
+
+export const ReportType = pgEnum("report_type", [
+  "ENROLLMENT",
+  "REVENUE",
+  "PROGRESS",
+  "PERFORMANCE",
+  "ATTENDANCE",
+]);
+
+export const FacultyStatus = pgEnum("faculty_status", [
+  "ACTIVE",
+  "INACTIVE",
+  "SUSPENDED",
+]);
+
+export const FacultyRole = pgEnum("faculty_role", [
+  "PROFESSOR",
+  "ASSOCIATE_PROFESSOR",
+  "ASSISTANT_PROFESSOR",
+  "LECTURER",
+  "VISITING_FACULTY",
+  "HOD", // Head of Department
+]);
+
 // =====================
 // User Tables
 // =====================
@@ -113,6 +144,71 @@ export const UsersTable = pgTable(
   ]
 );
 
+export const StudentProfilesTable = pgTable(
+  "student_profiles",
+  {
+    id: uuid("id").primaryKey().references(() => UsersTable.id, { onDelete: "cascade" }),
+    dateOfBirth: timestamp("date_of_birth", { mode: "date" }),
+    gender: Gender("gender"),
+    address: text("address"),
+    city: text("city"),
+    state: text("state"),
+    country: text("country").default("India"),
+    pinCode: text("pin_code"),
+    educationLevel: text("education_level"),
+    institution: text("institution"),
+    currentSemester: integer("current_semester"),
+    specialization: text("specialization"),
+    academicRecords: jsonb("academic_records"),
+    skills: jsonb("skills"),
+    resumeUrl: text("resume_url"),
+    linkedinUrl: text("linkedin_url"),
+    githubUrl: text("github_url"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("student_profiles_education_level_idx").on(table.educationLevel),
+    index("student_profiles_institution_idx").on(table.institution),
+  ]
+);
+
+export const FacultyProfilesTable = pgTable(
+  "faculty_profiles",
+  {
+    id: uuid("id").primaryKey().references(() => UsersTable.id, { onDelete: "cascade" }),
+    dateOfBirth: timestamp("date_of_birth", { mode: "date" }),
+    gender: Gender("gender"),
+    address: text("address"),
+    city: text("city"),
+    state: text("state"),
+    country: text("country").default("India"),
+    pinCode: text("pin_code"),
+    qualifications: jsonb("qualifications").notNull(), // [{degree: "PhD", institution: "XYZ University", year: 2020}]
+    areasOfExpertise: jsonb("areas_of_expertise"),
+    totalExperience: integer("total_experience"), // in years
+    teachingExperience: integer("teaching_experience"), // in years
+    publications: jsonb("publications"),
+    awards: jsonb("awards"),
+    researchInterests: jsonb("research_interests"),
+    officeAddress: text("office_address"),
+    officeHours: jsonb("office_hours"),
+    website: text("website"),
+    linkedinUrl: text("linkedin_url"),
+    googleScholarUrl: text("google_scholar_url"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("faculty_profiles_expertise_idx").on(table.areasOfExpertise),
+  ]
+);
 
 export const EmailVerificationTokenTable = pgTable(
   "email_verification_tokens",
@@ -153,6 +249,15 @@ export const UsersRelations = relations(UsersTable, ({ many, one }) => ({
     fields: [UsersTable.id],
     references: [CollegesTable.userId],
   }),
+  studentProfile: one(StudentProfilesTable, {
+    fields: [UsersTable.id],
+    references: [StudentProfilesTable.id],
+  }),
+  facultyProfile: one(FacultyProfilesTable, {
+    fields: [UsersTable.id],
+    references: [FacultyProfilesTable.id],
+  }),
+  facultyMemberships: many(FacultyTable),
   coursesCreated: many(CoursesTable),
   bootcampsCreated: many(BootcampsTable),
   enrollments: many(EnrollmentsTable),
@@ -162,6 +267,28 @@ export const UsersRelations = relations(UsersTable, ({ many, one }) => ({
   certificates: many(CertificatesTable),
   sessionsCreated: many(SessionsTable),
   announcements: many(AnnouncementsTable),
+  forumPosts: many(ForumPostsTable),
+  batchEnrollments: many(BatchEnrollmentsTable),
+  activityLogs: many(ActivityLogsTable),
+  notifications: many(NotificationsTable),
+  createdReports: many(ReportsTable),
+  gradedAssignments: many(AssignmentSubmissionsTable, {
+    relationName: "graded_assignments"
+  }),
+}));
+
+export const StudentProfilesRelations = relations(StudentProfilesTable, ({ one }) => ({
+  user: one(UsersTable, {
+    fields: [StudentProfilesTable.id],
+    references: [UsersTable.id],
+  }),
+}));
+
+export const FacultyProfilesRelations = relations(FacultyProfilesTable, ({ one }) => ({
+  user: one(UsersTable, {
+    fields: [FacultyProfilesTable.id],
+    references: [UsersTable.id],
+  }),
 }));
 
 // =====================
@@ -221,6 +348,76 @@ export const CollegesTable = pgTable(
   ]
 );
 
+export const DepartmentsTable = pgTable(
+  "departments",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    collegeId: uuid("college_id")
+      .notNull()
+      .references(() => CollegesTable.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    code: varchar("code", { length: 10 }),
+    description: text("description"),
+    headOfDepartment: uuid("head_of_department").references(() => UsersTable.id),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("departments_college_id_idx").on(table.collegeId),
+    index("departments_is_active_idx").on(table.isActive),
+    uniqueIndex("departments_college_code_unique").on(table.collegeId, table.code),
+  ]
+);
+
+export const FacultyTable = pgTable(
+  "faculty",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    collegeId: uuid("college_id")
+      .notNull()
+      .references(() => CollegesTable.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UsersTable.id, { onDelete: "cascade" }),
+    departmentId: uuid("department_id").references(() => DepartmentsTable.id, {
+      onDelete: "set null",
+    }),
+    employeeId: text("employee_id"),
+    facultyRole: FacultyRole("faculty_role").default("LECTURER").notNull(),
+    designation: text("designation").notNull(),
+    employmentType: text("employment_type").default("FULL_TIME"), // FULL_TIME, PART_TIME, VISITING
+    joiningDate: timestamp("joining_date", { mode: "date" }),
+    leavingDate: timestamp("leaving_date", { mode: "date" }),
+    status: FacultyStatus("status").default("ACTIVE").notNull(),
+    
+    // Permissions within college
+    canCreateCourses: boolean("can_create_courses").default(false).notNull(),
+    canApproveContent: boolean("can_approve_content").default(false).notNull(),
+    canManageStudents: boolean("can_manage_students").default(false).notNull(),
+    canScheduleSessions: boolean("can_schedule_sessions").default(true).notNull(),
+    
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("faculty_college_id_idx").on(table.collegeId),
+    index("faculty_user_id_idx").on(table.userId),
+    index("faculty_department_id_idx").on(table.departmentId),
+    index("faculty_status_idx").on(table.status),
+    index("faculty_is_active_idx").on(table.isActive),
+    uniqueIndex("faculty_employee_id_key").on(table.employeeId),
+    uniqueIndex("faculty_user_college_unique").on(table.userId, table.collegeId),
+  ]
+);
+
 export const CollegesRelations = relations(CollegesTable, ({ one, many }) => ({
   user: one(UsersTable, {
     fields: [CollegesTable.userId],
@@ -232,6 +429,42 @@ export const CollegesRelations = relations(CollegesTable, ({ one, many }) => ({
     fields: [CollegesTable.approvedBy],
     references: [UsersTable.id],
   }),
+  departments: many(DepartmentsTable),
+  faculty: many(FacultyTable),
+  batches: many(BatchesTable),
+  questionBanks: many(QuestionBanksTable),
+  payouts: many(PayoutsTable),
+}));
+
+export const DepartmentsRelations = relations(DepartmentsTable, ({ one, many }) => ({
+  college: one(CollegesTable, {
+    fields: [DepartmentsTable.collegeId],
+    references: [CollegesTable.id],
+  }),
+  headOfDepartment: one(UsersTable, {
+    fields: [DepartmentsTable.headOfDepartment],
+    references: [UsersTable.id],
+  }),
+  faculty: many(FacultyTable),
+  courses: many(CoursesTable),
+}));
+
+export const FacultyRelations = relations(FacultyTable, ({ one, many }) => ({
+  college: one(CollegesTable, {
+    fields: [FacultyTable.collegeId],
+    references: [CollegesTable.id],
+  }),
+  user: one(UsersTable, {
+    fields: [FacultyTable.userId],
+    references: [UsersTable.id],
+  }),
+  department: one(DepartmentsTable, {
+    fields: [FacultyTable.departmentId],
+    references: [DepartmentsTable.id],
+  }),
+  courseAssignments: many(CourseFacultyTable),
+  createdSessions: many(SessionsTable),
+  gradedAssignments: many(AssignmentSubmissionsTable),
 }));
 
 // =====================
@@ -287,6 +520,9 @@ export const CoursesTable = pgTable(
     collegeId: uuid("college_id").references(() => CollegesTable.id, {
       onDelete: "cascade",
     }),
+    departmentId: uuid("department_id").references(() => DepartmentsTable.id, {
+      onDelete: "set null",
+    }),
     
     thumbnailUrl: text("thumbnail_url"),
     previewVideoUrl: text("preview_video_url"),
@@ -337,7 +573,30 @@ export const CoursesTable = pgTable(
     index("courses_category_idx").on(table.categoryId),
     index("courses_created_by_idx").on(table.createdBy),
     index("courses_college_id_idx").on(table.collegeId),
+    index("courses_department_id_idx").on(table.departmentId),
     index("courses_featured_idx").on(table.isFeatured),
+  ]
+);
+
+// Course-Faculty Mapping (Multiple faculty can teach same course)
+export const CourseFacultyTable = pgTable(
+  "course_faculty",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => CoursesTable.id, { onDelete: "cascade" }),
+    facultyId: uuid("faculty_id")
+      .notNull()
+      .references(() => FacultyTable.id, { onDelete: "cascade" }),
+    isPrimaryInstructor: boolean("is_primary_instructor").default(false).notNull(),
+    teachingRole: text("teaching_role").default("INSTRUCTOR"), // INSTRUCTOR, CO_INSTRUCTOR, TA
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("course_faculty_course_id_idx").on(table.courseId),
+    index("course_faculty_faculty_id_idx").on(table.facultyId),
+    uniqueIndex("course_faculty_unique_idx").on(table.courseId, table.facultyId),
   ]
 );
 
@@ -354,6 +613,10 @@ export const CoursesRelations = relations(CoursesTable, ({ one, many }) => ({
     fields: [CoursesTable.collegeId],
     references: [CollegesTable.id],
   }),
+  department: one(DepartmentsTable, {
+    fields: [CoursesTable.departmentId],
+    references: [DepartmentsTable.id],
+  }),
   approvedByUser: one(UsersTable, {
     fields: [CoursesTable.approvedBy],
     references: [UsersTable.id],
@@ -367,6 +630,19 @@ export const CoursesRelations = relations(CoursesTable, ({ one, many }) => ({
   sessions: many(SessionsTable),
   bootcampCourses: many(BootcampCoursesTable),
   certificates: many(CertificatesTable),
+  facultyAssignments: many(CourseFacultyTable),
+  discussionForums: many(DiscussionForumsTable),
+}));
+
+export const CourseFacultyRelations = relations(CourseFacultyTable, ({ one }) => ({
+  course: one(CoursesTable, {
+    fields: [CourseFacultyTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  faculty: one(FacultyTable, {
+    fields: [CourseFacultyTable.facultyId],
+    references: [FacultyTable.id],
+  }),
 }));
 
 // Course Learning Outcomes
@@ -672,7 +948,7 @@ export const EnrollmentsRelations = relations(EnrollmentsTable, ({ one, many }) 
   certificate: one(CertificatesTable),
 }));
 
-// Bootcamp Enrollments
+// Bootcamp Enrollments - FIXED
 export const BootcampEnrollmentsTable = pgTable(
   "bootcamp_enrollments",
   {
@@ -705,7 +981,6 @@ export const BootcampEnrollmentsTable = pgTable(
     ),
   ]
 );
-
 export const BootcampEnrollmentsRelations = relations(BootcampEnrollmentsTable, ({ one }) => ({
   user: one(UsersTable, {
     fields: [BootcampEnrollmentsTable.userId],
@@ -716,7 +991,6 @@ export const BootcampEnrollmentsRelations = relations(BootcampEnrollmentsTable, 
     references: [BootcampsTable.id],
   }),
 }));
-
 // Lesson Progress Tracking
 export const LessonProgressTable = pgTable(
   "lesson_progress",
@@ -769,6 +1043,111 @@ export const LessonProgressRelations = relations(LessonProgressTable, ({ one }) 
 }));
 
 // =====================
+// Batch/Class Management
+// =====================
+
+export const BatchesTable = pgTable(
+  "batches",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    collegeId: uuid("college_id")
+      .notNull()
+      .references(() => CollegesTable.id, { onDelete: "cascade" }),
+    departmentId: uuid("department_id").references(() => DepartmentsTable.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    code: varchar("code", { length: 20 }),
+    academicYear: text("academic_year").notNull(),
+    startDate: timestamp("start_date", { mode: "date" }),
+    endDate: timestamp("end_date", { mode: "date" }),
+    description: text("description"),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("batches_college_id_idx").on(table.collegeId),
+    index("batches_department_id_idx").on(table.departmentId),
+    index("batches_academic_year_idx").on(table.academicYear),
+    uniqueIndex("batches_college_code_unique").on(table.collegeId, table.code),
+  ]
+);
+
+export const BatchEnrollmentsTable = pgTable(
+  "batch_enrollments",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    batchId: uuid("batch_id")
+      .notNull()
+      .references(() => BatchesTable.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UsersTable.id, { onDelete: "cascade" }),
+    rollNumber: text("roll_number"),
+    enrollmentDate: timestamp("enrollment_date").defaultNow().notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("batch_enrollments_batch_id_idx").on(table.batchId),
+    index("batch_enrollments_user_id_idx").on(table.userId),
+    uniqueIndex("batch_enrollments_unique_idx").on(table.batchId, table.userId),
+    uniqueIndex("batch_enrollments_roll_number_unique").on(table.batchId, table.rollNumber),
+  ]
+);
+
+export const BatchesRelations = relations(BatchesTable, ({ one, many }) => ({
+  college: one(CollegesTable, {
+    fields: [BatchesTable.collegeId],
+    references: [CollegesTable.id],
+  }),
+  department: one(DepartmentsTable, {
+    fields: [BatchesTable.departmentId],
+    references: [DepartmentsTable.id],
+  }),
+  enrollments: many(BatchEnrollmentsTable),
+  courses: many(BatchCoursesTable),
+}));
+
+export const BatchEnrollmentsRelations = relations(BatchEnrollmentsTable, ({ one }) => ({
+  batch: one(BatchesTable, {
+    fields: [BatchEnrollmentsTable.batchId],
+    references: [BatchesTable.id],
+  }),
+  user: one(UsersTable, {
+    fields: [BatchEnrollmentsTable.userId],
+    references: [UsersTable.id],
+  }),
+}));
+
+// Batch-Course Mapping
+export const BatchCoursesTable = pgTable(
+  "batch_courses",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    batchId: uuid("batch_id")
+      .notNull()
+      .references(() => BatchesTable.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => CoursesTable.id, { onDelete: "cascade" }),
+    facultyId: uuid("faculty_id").references(() => FacultyTable.id),
+    semester: integer("semester"),
+    academicYear: text("academic_year"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("batch_courses_batch_id_idx").on(table.batchId),
+    index("batch_courses_course_id_idx").on(table.courseId),
+    uniqueIndex("batch_courses_unique_idx").on(table.batchId, table.courseId),
+  ]
+);
+
+// =====================
 // Live Session Tables
 // =====================
 
@@ -799,6 +1178,9 @@ export const SessionsTable = pgTable(
     createdBy: uuid("created_by")
       .notNull()
       .references(() => UsersTable.id, { onDelete: "cascade" }),
+    facultyId: uuid("faculty_id").references(() => FacultyTable.id, {
+      onDelete: "set null",
+    }),
     
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -810,6 +1192,7 @@ export const SessionsTable = pgTable(
     index("sessions_course_id_idx").on(table.courseId),
     index("sessions_date_idx").on(table.sessionDate),
     index("sessions_status_idx").on(table.status),
+    index("sessions_faculty_id_idx").on(table.facultyId),
   ]
 );
 
@@ -821,6 +1204,10 @@ export const SessionsRelations = relations(SessionsTable, ({ one, many }) => ({
   createdByUser: one(UsersTable, {
     fields: [SessionsTable.createdBy],
     references: [UsersTable.id],
+  }),
+  faculty: one(FacultyTable, {
+    fields: [SessionsTable.facultyId],
+    references: [FacultyTable.id],
   }),
   attendance: many(SessionAttendanceTable),
 }));
@@ -892,6 +1279,9 @@ export const AssignmentsTable = pgTable(
     createdBy: uuid("created_by")
       .notNull()
       .references(() => UsersTable.id, { onDelete: "cascade" }),
+    facultyId: uuid("faculty_id").references(() => FacultyTable.id, {
+      onDelete: "set null",
+    }),
     
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -902,6 +1292,7 @@ export const AssignmentsTable = pgTable(
   (table) => [
     index("assignments_course_id_idx").on(table.courseId),
     index("assignments_module_id_idx").on(table.moduleId),
+    index("assignments_faculty_id_idx").on(table.facultyId),
   ]
 );
 
@@ -917,6 +1308,10 @@ export const AssignmentsRelations = relations(AssignmentsTable, ({ one, many }) 
   createdByUser: one(UsersTable, {
     fields: [AssignmentsTable.createdBy],
     references: [UsersTable.id],
+  }),
+  faculty: one(FacultyTable, {
+    fields: [AssignmentsTable.facultyId],
+    references: [FacultyTable.id],
   }),
   submissions: many(AssignmentSubmissionsTable),
 }));
@@ -1016,6 +1411,9 @@ export const AssessmentsTable = pgTable(
     createdBy: uuid("created_by")
       .notNull()
       .references(() => UsersTable.id, { onDelete: "cascade" }),
+    facultyId: uuid("faculty_id").references(() => FacultyTable.id, {
+      onDelete: "set null",
+    }),
     
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -1026,6 +1424,7 @@ export const AssessmentsTable = pgTable(
   (table) => [
     index("assessments_course_id_idx").on(table.courseId),
     index("assessments_module_id_idx").on(table.moduleId),
+    index("assessments_faculty_id_idx").on(table.facultyId),
   ]
 );
 
@@ -1042,6 +1441,10 @@ export const AssessmentsRelations = relations(AssessmentsTable, ({ one, many }) 
     fields: [AssessmentsTable.createdBy],
     references: [UsersTable.id],
   }),
+  faculty: one(FacultyTable, {
+    fields: [AssessmentsTable.facultyId],
+    references: [FacultyTable.id],
+  }),
   questions: many(AssessmentQuestionsTable),
   attempts: many(AssessmentAttemptsTable),
 }));
@@ -1054,9 +1457,13 @@ export const AssessmentQuestionsTable = pgTable(
     assessmentId: uuid("assessment_id")
       .notNull()
       .references(() => AssessmentsTable.id, { onDelete: "cascade" }),
+    questionBankId: uuid("question_bank_id").references(() => QuestionBanksTable.id, {
+      onDelete: "set null",
+    }),
     
     questionText: text("question_text").notNull(),
     questionType: QuestionType("question_type").default("MULTIPLE_CHOICE").notNull(),
+    difficulty: QuestionDifficulty("difficulty").default("MEDIUM").notNull(),
     
     options: jsonb("options"),
     correctAnswer: text("correct_answer").notNull(),
@@ -1074,6 +1481,8 @@ export const AssessmentQuestionsTable = pgTable(
   },
   (table) => [
     index("assessment_questions_assessment_id_idx").on(table.assessmentId),
+    index("assessment_questions_question_bank_id_idx").on(table.questionBankId),
+    index("assessment_questions_difficulty_idx").on(table.difficulty),
     index("assessment_questions_sort_order_idx").on(
       table.assessmentId,
       table.sortOrder
@@ -1086,6 +1495,59 @@ export const AssessmentQuestionsRelations = relations(AssessmentQuestionsTable, 
     fields: [AssessmentQuestionsTable.assessmentId],
     references: [AssessmentsTable.id],
   }),
+  questionBank: one(QuestionBanksTable, {
+    fields: [AssessmentQuestionsTable.questionBankId],
+    references: [QuestionBanksTable.id],
+  }),
+}));
+
+// Question Banks
+export const QuestionBanksTable = pgTable(
+  "question_banks",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    collegeId: uuid("college_id")
+      .notNull()
+      .references(() => CollegesTable.id, { onDelete: "cascade" }),
+    departmentId: uuid("department_id").references(() => DepartmentsTable.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    description: text("description"),
+    tags: jsonb("tags"),
+    isShared: boolean("is_shared").default(false).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => UsersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("question_banks_college_id_idx").on(table.collegeId),
+    index("question_banks_department_id_idx").on(table.departmentId),
+    index("question_banks_is_shared_idx").on(table.isShared),
+    uniqueIndex("question_banks_name_college_unique").on(table.collegeId, table.name),
+  ]
+);
+
+export const QuestionBanksRelations = relations(QuestionBanksTable, ({ one, many }) => ({
+  college: one(CollegesTable, {
+    fields: [QuestionBanksTable.collegeId],
+    references: [CollegesTable.id],
+  }),
+  department: one(DepartmentsTable, {
+    fields: [QuestionBanksTable.departmentId],
+    references: [DepartmentsTable.id],
+  }),
+  createdByUser: one(UsersTable, {
+    fields: [QuestionBanksTable.createdBy],
+    references: [UsersTable.id],
+  }),
+  questions: many(AssessmentQuestionsTable),
 }));
 
 // Assessment Attempts
@@ -1137,6 +1599,98 @@ export const AssessmentAttemptsRelations = relations(AssessmentAttemptsTable, ({
   enrollment: one(EnrollmentsTable, {
     fields: [AssessmentAttemptsTable.enrollmentId],
     references: [EnrollmentsTable.id],
+  }),
+}));
+
+// =====================
+// Discussion & Collaboration
+// =====================
+
+export const DiscussionForumsTable = pgTable(
+  "discussion_forums",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => CoursesTable.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    isLocked: boolean("is_locked").default(false).notNull(),
+    isPinned: boolean("is_pinned").default(false).notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => UsersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("discussion_forums_course_id_idx").on(table.courseId),
+    index("discussion_forums_is_locked_idx").on(table.isLocked),
+    index("discussion_forums_is_pinned_idx").on(table.isPinned),
+  ]
+);
+
+export const ForumPostsTable = pgTable(
+  "forum_posts",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    forumId: uuid("forum_id")
+      .notNull()
+      .references(() => DiscussionForumsTable.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UsersTable.id, { onDelete: "cascade" }),
+    parentId: uuid("parent_id"), // For replies
+    title: text("title"),
+    content: text("content").notNull(),
+    isPinned: boolean("is_pinned").default(false).notNull(),
+    isLocked: boolean("is_locked").default(false).notNull(),
+    upvotes: integer("upvotes").default(0).notNull(),
+    downvotes: integer("downvotes").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("forum_posts_forum_id_idx").on(table.forumId),
+    index("forum_posts_user_id_idx").on(table.userId),
+    index("forum_posts_parent_id_idx").on(table.parentId),
+    index("forum_posts_is_pinned_idx").on(table.isPinned),
+  ]
+);
+
+export const DiscussionForumsRelations = relations(DiscussionForumsTable, ({ one, many }) => ({
+  course: one(CoursesTable, {
+    fields: [DiscussionForumsTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  createdByUser: one(UsersTable, {
+    fields: [DiscussionForumsTable.createdBy],
+    references: [UsersTable.id],
+  }),
+  posts: many(ForumPostsTable),
+}));
+
+export const ForumPostsRelations = relations(ForumPostsTable, ({ one, many }) => ({
+  forum: one(DiscussionForumsTable, {
+    fields: [ForumPostsTable.forumId],
+    references: [DiscussionForumsTable.id],
+  }),
+  user: one(UsersTable, {
+    fields: [ForumPostsTable.userId],
+    references: [UsersTable.id],
+  }),
+  parent: one(ForumPostsTable, {
+    fields: [ForumPostsTable.parentId],
+    references: [ForumPostsTable.id],
+  }),
+  replies: many(ForumPostsTable, {
+    relationName: "post_replies"
   }),
 }));
 
@@ -1227,7 +1781,7 @@ export const AnnouncementsTable = pgTable(
     type: AnnouncementType("type").default("PLATFORM").notNull(),
     
     // Target audience
-    targetAudience: jsonb("target_audience"), // {roles: [], colleges: [], courses: []}
+    targetAudience: jsonb("target_audience"), // {roles: [], colleges: [], courses: [], batches: []}
     
     // Scheduling
     isScheduled: boolean("is_scheduled").default(false).notNull(),
@@ -1248,6 +1802,9 @@ export const AnnouncementsTable = pgTable(
     courseId: uuid("course_id").references(() => CoursesTable.id, {
       onDelete: "cascade",
     }),
+    batchId: uuid("batch_id").references(() => BatchesTable.id, {
+      onDelete: "cascade",
+    }),
     
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -1259,6 +1816,7 @@ export const AnnouncementsTable = pgTable(
     index("announcements_type_idx").on(table.type),
     index("announcements_college_id_idx").on(table.collegeId),
     index("announcements_course_id_idx").on(table.courseId),
+    index("announcements_batch_id_idx").on(table.batchId),
     index("announcements_published_idx").on(table.isPublished),
   ]
 );
@@ -1275,6 +1833,51 @@ export const AnnouncementsRelations = relations(AnnouncementsTable, ({ one }) =>
   course: one(CoursesTable, {
     fields: [AnnouncementsTable.courseId],
     references: [CoursesTable.id],
+  }),
+  batch: one(BatchesTable, {
+    fields: [AnnouncementsTable.batchId],
+    references: [BatchesTable.id],
+  }),
+}));
+
+// =====================
+// Admin Analytics & Reporting
+// =====================
+
+export const ReportsTable = pgTable(
+  "reports",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    name: text("name").notNull(),
+    type: ReportType("type").notNull(),
+    description: text("description"),
+    filters: jsonb("filters"),
+    data: jsonb("data"), // Store report data for caching
+    isScheduled: boolean("is_scheduled").default(false).notNull(),
+    scheduleFrequency: text("schedule_frequency"), // DAILY, WEEKLY, MONTHLY
+    lastGeneratedAt: timestamp("last_generated_at", { mode: "date" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => UsersTable.id, { onDelete: "cascade" }),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("reports_type_idx").on(table.type),
+    index("reports_created_by_idx").on(table.createdBy),
+    index("reports_is_scheduled_idx").on(table.isScheduled),
+    index("reports_is_active_idx").on(table.isActive),
+  ]
+);
+
+export const ReportsRelations = relations(ReportsTable, ({ one }) => ({
+  createdByUser: one(UsersTable, {
+    fields: [ReportsTable.createdBy],
+    references: [UsersTable.id],
   }),
 }));
 
