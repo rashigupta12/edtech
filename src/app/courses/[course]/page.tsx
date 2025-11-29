@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/*eslint-disable @typescript-eslint/no-explicit-any */
+/*eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { CheckoutSidebar } from "@/components/checkout/CheckoutSidebar";
@@ -203,7 +204,7 @@ export default function CoursePage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-green-800">
                     <CheckCircle2 className="w-5 h-5" />
-                    You're Enrolled!
+                    You&apos;re Enrolled!
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

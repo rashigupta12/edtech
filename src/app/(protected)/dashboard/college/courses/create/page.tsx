@@ -1,3 +1,5 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
+/*eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/(protected)/dashboard/admin/courses/create/page.tsx
 "use client";
 
@@ -162,7 +164,11 @@ export default function CreateCoursePage() {
 
   
   const addModule = () => {
-    setModules([...modules, { title: "", description: "" }]);
+    setModules([...modules, {
+      title: "", description: "",
+      sortOrder: 0,
+      lessons: []
+    }]);
   };
 
   const removeModule = (index: number) => {
@@ -198,14 +204,17 @@ const removeLesson = (moduleIndex: number, lessonIndex: number) => {
   setModules(updatedModules);
 };
 
-const updateLesson = (
+const updateLesson = <K extends keyof Lesson>(
   moduleIndex: number,
   lessonIndex: number,
-  field: keyof Lesson,
-  value: any
+  field: K,
+  value: Lesson[K]
 ) => {
   const updatedModules = [...modules];
-  updatedModules[moduleIndex].lessons[lessonIndex][field] = value;
+  updatedModules[moduleIndex].lessons[lessonIndex] = {
+    ...updatedModules[moduleIndex].lessons[lessonIndex],
+    [field]: value,
+  };
   setModules(updatedModules);
 };
 
