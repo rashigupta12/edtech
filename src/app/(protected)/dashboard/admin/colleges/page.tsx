@@ -1,43 +1,57 @@
 // app/dashboard/admin/colleges/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { Plus, PlusCircle, RefreshCcw, Trash, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import AddAdminForm from "@/components/admin/Addadminform";
+import { Button } from "@/components/ui/button";
+import { Calendar, Mail, Phone, Plus, Shield, Trash, User, UserPlus } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
-interface College {
+interface CollegeAdmin {
   id: string;
   name: string;
   email: string;
-  phone?: string | null;
-  address?: string | null;
-  city?: string | null;
-  collegeCode?: string;
-  state?: string | null;
-  status: "active" | "inactive" | "pending";
+  mobile?: string | null;
+  isActive: boolean;
+  lastLoginAt?: string;
   createdAt: string;
-  updatedAt: string;
+}
+
+interface College {
+  id: string;
+  collegeName: string;
+  collegeCode: string;
   contactEmail: string;
   contactPhone: string;
-  userId?: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
+  createdAt: string;
+  updatedAt: string;
+  userId?: string; // College admin's user ID
+  createdBy?: string; // ID of person who created this college record
+  admin?: CollegeAdmin;
+  logo?: string | null;
+  websiteUrl?: string | null;
 }
 
 interface ApiCollege {
   id: string;
-  collegeName?: string;
-  collegeCode?: string;
-  contactEmail?: string;
-  contactPhone?: string;
+  collegeName: string;
+  collegeCode: string;
+  contactEmail: string;
+  contactPhone: string;
   address?: string;
   city?: string;
   state?: string;
-  status?: string;
+  status: string;
   logo?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
+  websiteUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
   userId?: string;
+  createdBy?: string;
 }
 
 export default function CollegesPage() {
@@ -51,12 +65,38 @@ export default function CollegesPage() {
   const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "active" | "inactive" | "pending"
+    "all" | "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED"
   >("all");
+
 
   useEffect(() => {
     fetchColleges();
   }, []);
+
+ const fetchUserData = async (userId: string): Promise<CollegeAdmin | null> => {
+  try {
+    const response = await fetch(`/api/users?id=${userId}`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch user data");
+    }
+    
+    // Now the response will be the user object directly
+    const user = await response.json();
+    
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      mobile: user.mobile || null,
+      isActive: user.isActive !== false,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+    };
+  } catch (err) {
+    console.error(`Failed to fetch user data for userId ${userId}:`, err);
+    return null;
+  }
+};
 
   const fetchColleges = async () => {
     try {
@@ -77,26 +117,34 @@ export default function CollegesPage() {
         collegesArray = [collegesArray];
       }
 
-      // Map API response fields to component interface
-      const mappedColleges: College[] = collegesArray.map(
-        (college: ApiCollege) => ({
-          id: college.id,
-          name: college.collegeName || "",
-          collegeCode: college.collegeCode || "",
-          email: college.contactEmail || "",
-          phone: college.contactPhone || null,
-          address: college.address || null,
-          city: college.city || null,
-          state: college.state || null,
-          status:
-            (college.status?.toLowerCase() as
-              | "active"
-              | "inactive"
-              | "pending") || "pending",
-          createdAt: college.createdAt || new Date().toISOString(),
-          updatedAt:
-            college.updatedAt || college.createdAt || new Date().toISOString(),
-          userId: college.userId || undefined, // Map the userId from API
+      // Map API response fields to component interface and fetch admin data
+      const mappedColleges: College[] = await Promise.all(
+        collegesArray.map(async (college: ApiCollege) => {
+          let adminData: CollegeAdmin | null = null;
+          
+          // If userId exists (college admin ID), fetch admin data
+          if (college.userId) {
+            adminData = await fetchUserData(college.userId);
+          }
+
+          return {
+            id: college.id,
+            collegeName: college.collegeName,
+            collegeCode: college.collegeCode,
+            contactEmail: college.contactEmail,
+            contactPhone: college.contactPhone,
+            address: college.address || null,
+            city: college.city || null,
+            state: college.state || null,
+            status: (college.status as "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED") || "PENDING",
+            createdAt: college.createdAt,
+            updatedAt: college.updatedAt || college.createdAt,
+            userId: college.userId,
+            createdBy: college.createdBy,
+            admin: adminData || undefined,
+            logo: college.logo || null,
+            websiteUrl: college.websiteUrl || null,
+          };
         })
       );
 
@@ -114,25 +162,72 @@ export default function CollegesPage() {
     setIsAdminFormOpen(true);
   };
 
-  const handleAdminCreated = () => {
-    // Refresh the colleges list or show success message
-    console.log("Admin created successfully");
-  };
+const handleAdminCreated = async (newAdminUserId: string) => {
+  try {
+    if (!selectedCollege) {
+      throw new Error("No college selected");
+    }
+
+    console.log("Updating college with admin user ID:", newAdminUserId);
+
+    // Update the college record with the new admin's user ID
+    const updateResponse = await fetch(`/api/colleges?id=${selectedCollege.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: newAdminUserId, // Set the college admin's user ID
+        status: "APPROVED" // Optionally update status to APPROVED
+      }),
+    });
+
+    if (!updateResponse.ok) {
+      const errorData = await updateResponse.json();
+      throw new Error(errorData.error || "Failed to update college with admin user");
+    }
+
+    const updateResult = await updateResponse.json();
+    console.log("College update response:", updateResult);
+
+    // Refresh the colleges list to show the newly created admin
+    await fetchColleges();
+    setIsAdminFormOpen(false);
+    setSelectedCollege(null);
+    
+    console.log("Admin created and college updated successfully");
+  } catch (err) {
+    console.error("Error updating college with admin:", err);
+    setError(
+      err instanceof Error
+        ? err.message
+        : "An error occurred while updating college with admin"
+    );
+  }
+};
 
   const getStatusBadge = (status: string) => {
     const statusClasses = {
-      active: "bg-green-100 text-green-800",
-      inactive: "bg-gray-100 text-gray-800",
-      pending: "bg-yellow-100 text-yellow-800",
+      PENDING: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+      APPROVED: "bg-green-100 text-green-800 border border-green-200",
+      REJECTED: "bg-red-100 text-red-800 border border-red-200",
+      SUSPENDED: "bg-gray-100 text-gray-800 border border-gray-200",
+    };
+
+    const statusLabels = {
+      PENDING: "Pending",
+      APPROVED: "Approved",
+      REJECTED: "Rejected",
+      SUSPENDED: "Suspended",
     };
 
     return (
       <span
-        className={`px-2 py-1 rounded-full text-xs font-medium ${
+        className={`px-3 py-1 rounded-full text-xs font-medium ${
           statusClasses[status as keyof typeof statusClasses] || "bg-gray-100"
         }`}
       >
-        {status}
+        {statusLabels[status as keyof typeof statusLabels] || status}
       </span>
     );
   };
@@ -145,7 +240,17 @@ export default function CollegesPage() {
     });
   };
 
-  // Fixed filter function with proper null checking
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Filter function
   const filteredColleges = colleges.filter((college) => {
     const searchLower = searchTerm.toLowerCase();
 
@@ -158,12 +263,15 @@ export default function CollegesPage() {
     if (!searchTerm) return true;
 
     return (
-      college.name?.toLowerCase().includes(searchLower) ||
-      college.email?.toLowerCase().includes(searchLower) ||
+      college.collegeName?.toLowerCase().includes(searchLower) ||
+      college.collegeCode?.toLowerCase().includes(searchLower) ||
+      college.contactEmail?.toLowerCase().includes(searchLower) ||
       (college.city?.toLowerCase() || "").includes(searchLower) ||
       (college.state?.toLowerCase() || "").includes(searchLower) ||
-      (college.phone?.toLowerCase() || "").includes(searchLower) ||
-      (college.address?.toLowerCase() || "").includes(searchLower)
+      (college.contactPhone?.toLowerCase() || "").includes(searchLower) ||
+      (college.address?.toLowerCase() || "").includes(searchLower) ||
+      college.admin?.name?.toLowerCase().includes(searchLower) ||
+      college.admin?.email?.toLowerCase().includes(searchLower)
     );
   });
 
@@ -196,6 +304,7 @@ export default function CollegesPage() {
       );
     }
   };
+
   // Safe value display helper
   const displaySafeValue = (
     value: string | null | undefined,
@@ -266,73 +375,67 @@ export default function CollegesPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6 flex justify-between items-center">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Colleges</h1>
-            <p className="text-gray-600 mt-2">
-              Manage all registered colleges and their information
-            </p>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Colleges Management</h1>
+          <p className="text-gray-600 mt-2">
+            Manage all registered colleges and their administrators
+          </p>
+        </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-            <div className="flex-1 w-full sm:max-w-md">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg
-                    className="h-5 w-5 text-gray-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search colleges by name, email, city, or state..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-            <div className="flex gap-3 w-full sm:w-auto">
-              <select
-                value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter(
-                    e.target.value as "all" | "active" | "inactive" | "pending"
-                  )
-                }
-                className="px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 text-sm font-medium"
-              >
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="active">Approved</option>
-                <option value="inactive">Suspended</option>
-              </select>
-              <Button
-                asChild
-                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white"
-              >
-                <Link
-                  href="/dashboard/admin/colleges/add"
-                  className="flex items-center gap-2"
+        {/* Search and Filters */}
+        <div className="mb-6 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+          <div className="w-full lg:max-w-md">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  className="h-5 w-5 text-gray-400"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
                 >
-                  <Plus className="h-4 w-4" />
-                  Add New College
-                </Link>
-              </Button>
-              {/* <button
-                onClick={fetchColleges}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
-              >
-                <RefreshCcw className="h-4 w-4" />
-              </button> */}
+                  <path
+                    fillRule="evenodd"
+                    d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Search colleges by name, code, email, city, or admin..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              />
             </div>
+          </div>
+          <div className="flex gap-3 w-full lg:w-auto">
+            <select
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(
+                  e.target.value as "all" | "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED"
+                )
+              }
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 text-sm font-medium"
+            >
+              <option value="all">All Status</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="SUSPENDED">Suspended</option>
+            </select>
+            <Button
+              asChild
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+            >
+              <Link
+                href="/dashboard/admin/colleges/add"
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add New College
+              </Link>
+            </Button>
           </div>
         </div>
 
@@ -357,8 +460,8 @@ export default function CollegesPage() {
                 No colleges found
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                {searchTerm
-                  ? "Try adjusting your search terms"
+                {searchTerm || statusFilter !== "all"
+                  ? "Try adjusting your search terms or filters"
                   : "Get started by adding a new college"}
               </p>
             </div>
@@ -367,46 +470,22 @@ export default function CollegesPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      College
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      College Details
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Contact
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contact Info
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      College Code
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Location
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Created
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      College Admin
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -414,94 +493,125 @@ export default function CollegesPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredColleges.map((college) => (
                     <tr key={college.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      {/* College Details */}
+                      <td className="px-6 py-4">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <span className="text-blue-600 font-semibold text-sm">
-                              {college.name.charAt(0).toUpperCase()}
-                            </span>
+                            {college.logo ? (
+                              <img
+                                src={college.logo}
+                                alt={college.collegeName}
+                                className="h-8 w-8 rounded"
+                              />
+                            ) : (
+                              <span className="text-blue-600 font-semibold text-sm">
+                                {college.collegeName.charAt(0).toUpperCase()}
+                              </span>
+                            )}
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {college.name}
+                            <div className="text-sm font-semibold text-gray-900">
+                              {college.collegeName}
+                            </div>
+                            <div className="text-sm text-gray-500 font-mono">
+                              {college.collegeCode}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              <Calendar className="h-3 w-3 inline mr-1" />
+                              {formatDate(college.createdAt)}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {college.email}
+
+                      {/* Contact Info */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center text-sm text-gray-900 mb-1">
+                          <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                          {college.contactEmail}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {displaySafeValue(college.phone)}
+                        <div className="flex items-center text-sm text-gray-500">
+                          <Phone className="h-4 w-4 text-gray-400 mr-2" />
+                          {displaySafeValue(college.contactPhone)}
                         </div>
                       </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {displaySafeValue(college.collegeCode)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      {/* Location */}
+                      <td className="px-6 py-4">
                         <div className="text-sm text-gray-900">
                           {college.city && college.state
                             ? `${college.city}, ${college.state}`
-                            : displaySafeValue(college.city) ||
-                              displaySafeValue(college.state)}
+                            : displaySafeValue(college.city) || displaySafeValue(college.state)}
                         </div>
                         <div className="text-sm text-gray-500 truncate max-w-xs">
                           {displaySafeValue(college.address)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+
+                      {/* Status */}
+                      <td className="px-6 py-4">
                         {getStatusBadge(college.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(college.createdAt)}
+
+                      {/* College Admin */}
+                      <td className="px-6 py-4">
+                        {college.admin ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center">
+                              <User className="h-4 w-4 text-green-500 mr-2" />
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {college.admin.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {college.admin.email}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              <Shield className={`h-3 w-3 inline mr-1 ${college.admin.isActive ? 'text-green-500' : 'text-gray-400'}`} />
+                              {college.admin.isActive ? 'Active' : 'Inactive'}
+                              {college.admin.lastLoginAt && (
+                                <div className="mt-1">
+                                  Last login: {formatDateTime(college.admin.lastLoginAt)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleAddAdmin(college.id, college.collegeName)}
+                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                          >
+                            <UserPlus className="h-4 w-4 mr-1" />
+                            Add Admin
+                          </button>
+                        )}
                       </td>
+
+                      {/* Actions */}
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           <Link
                             href={`/dashboard/admin/colleges/${college.id}`}
-                            className="text-blue-600 hover:text-blue-900 px-2 py-1 rounded text-sm"
+                            className="text-blue-600 hover:text-blue-900 px-3 py-1 rounded text-sm font-medium transition-colors"
                           >
                             View
                           </Link>
                           <Link
                             href={`/dashboard/admin/colleges/${college.id}/edit`}
-                            className="text-green-600 hover:text-green-900 px-2 py-1 rounded text-sm"
+                            className="text-green-600 hover:text-green-900 px-3 py-1 rounded text-sm font-medium transition-colors"
                           >
                             Edit
                           </Link>
                           <button
-                            onClick={() =>
-                              deleteCollege(college.id, college.name)
-                            }
-                            className="text-red-600 hover:text-red-900 px-2 py-1 rounded text-sm"
+                            onClick={() => deleteCollege(college.id, college.collegeName)}
+                            className="text-red-600 hover:text-red-900 px-3 py-1 rounded text-sm font-medium transition-colors"
+                            title="Delete College"
                           >
-                            <Trash className="h-4 w-4 inline" />
+                            <Trash className="h-4 w-4" />
                           </button>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {college.userId ? (
-                          <div className="text-gray-600">
-                            <span className="font-medium">User ID:</span>
-                            <div className="text-xs font-mono bg-gray-100 px-2 py-1 rounded mt-1">
-                              {college.userId}
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() =>
-                              handleAddAdmin(college.id, college.name)
-                            }
-                            className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                          >
-                            <UserPlus className="h-3 w-3 mr-1" />
-                            Add Admin
-                          </button>
-                        )}
                       </td>
                     </tr>
                   ))}
@@ -510,38 +620,44 @@ export default function CollegesPage() {
             </div>
           )}
         </div>
-        <AddAdminForm
-          collegeId={selectedCollege?.id || ""}
-          collegeName={selectedCollege?.name || ""}
-          isOpen={isAdminFormOpen}
-          onClose={() => setIsAdminFormOpen(false)}
-          onSuccess={handleAdminCreated}
-        />
-      </div>
 
-      {/* Footer Info */}
-      <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
-        <div>
-          Showing {filteredColleges.length} of {colleges.length} colleges
-          {statusFilter !== "all" && (
-            <span className="ml-2">
-              (filtered by{" "}
-              <span className="font-medium capitalize">{statusFilter}</span>)
-            </span>
+        {/* Footer Info */}
+        <div className="mt-6 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-500">
+          <div>
+            Showing <span className="font-semibold">{filteredColleges.length}</span> of{" "}
+            <span className="font-semibold">{colleges.length}</span> colleges
+            {statusFilter !== "all" && (
+              <span className="ml-2">
+                (filtered by{" "}
+                <span className="font-medium capitalize">{statusFilter.toLowerCase()}</span>)
+              </span>
+            )}
+          </div>
+          {(searchTerm || statusFilter !== "all") && (
+            <button
+              onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("all");
+              }}
+              className="text-blue-600 hover:text-blue-800 font-medium mt-2 sm:mt-0"
+            >
+              Clear all filters
+            </button>
           )}
         </div>
-        {(searchTerm || statusFilter !== "all") && (
-          <button
-            onClick={() => {
-              setSearchTerm("");
-              setStatusFilter("all");
-            }}
-            className="text-blue-600 hover:text-blue-800"
-          >
-            Clear all filters
-          </button>
-        )}
       </div>
+
+      {/* Add Admin Form Modal */}
+      <AddAdminForm
+        collegeId={selectedCollege?.id || ""}
+        collegeName={selectedCollege?.name || ""}
+        isOpen={isAdminFormOpen}
+        onClose={() => {
+          setIsAdminFormOpen(false);
+          setSelectedCollege(null);
+        }}
+        onSuccess={handleAdminCreated}
+      />
     </div>
   );
 }

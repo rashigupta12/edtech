@@ -320,13 +320,49 @@ async function sendEmailDirectly(to: string, subject: string, html: string) {
 // 1. ADMIN - JYOTISHI MANAGEMENT
 // =====================================================
 
-// GET - List all Jyotishi
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const isActiveParam = searchParams.get("isActive");
+    const userId = searchParams.get("id"); // Changed from userId to id for consistency
 
-    // Build conditions array
+    // If specific user ID is provided, fetch that single user
+    if (userId) {
+      const user = await db
+        .select({
+          id: UsersTable.id,
+          name: UsersTable.name,
+          email: UsersTable.email,
+          mobile: UsersTable.mobile,
+          isActive: UsersTable.isActive,
+          lastLoginAt: UsersTable.lastLoginAt,
+          createdAt: UsersTable.createdAt,
+          role: UsersTable.role,
+        })
+        .from(UsersTable)
+        .where(
+          and(
+            eq(UsersTable.id, userId),
+            eq(UsersTable.role, "COLLEGE") // Ensure it's a college admin
+          )
+        )
+        .limit(1);
+
+      if (!user[0]) {
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json(
+        user[0], // Return the single user object directly
+        { status: 200 }
+      );
+    }
+
+    // If no specific ID, fetch all college users with optional filters
     const conditions = [eq(UsersTable.role, "COLLEGE")];
 
     if (isActiveParam !== null) {
@@ -334,28 +370,27 @@ export async function GET(req: NextRequest) {
       conditions.push(eq(UsersTable.isActive, isActive));
     }
 
-    // Single query with all conditions
-    const jyotishis = await db
+    const users = await db
       .select({
         id: UsersTable.id,
         name: UsersTable.name,
         email: UsersTable.email,
         mobile: UsersTable.mobile,
         isActive: UsersTable.isActive,
+        lastLoginAt: UsersTable.lastLoginAt,
         createdAt: UsersTable.createdAt,
       })
       .from(UsersTable)
       .where(and(...conditions));
 
-   
     return NextResponse.json(
-      { jyotishis},
+      { users },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error fetching jyotishis:", error);
+    console.error("Error fetching users:", error);
     return NextResponse.json(
-      { error: "Failed to fetch jyotishis" },
+      { error: "Failed to fetch users" },
       { status: 500 }
     );
   }

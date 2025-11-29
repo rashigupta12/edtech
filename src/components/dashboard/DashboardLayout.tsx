@@ -84,80 +84,80 @@ const navConfigs = {
       ],
     },
     {
-      title: "Blogs",
+      title: "Assignment",
       icon: FileText,
       children: [
-        { title: "All Blogs", href: "/dashboard/admin/blogs", icon: List },
-        { title: "Add Blog", href: "/dashboard/admin/blogs/add", icon: Plus },
+        { title: "All Assignments", href: "/dashboard/admin/assignments", icon: List },
+        { title: "Add Assignment", href: "/dashboard/admin/assignments/create", icon: Plus },
       ],
     },
-    {
-      title: "Astrologer ",
-      icon: Users,
-      children: [
-        { title: "All Astrologer", href: "/dashboard/admin/agent", icon: List },
-        {
-          title: "Add Astrologer",
-          href: "/dashboard/admin/agent/add",
-          icon: Plus,
-        },
-      ],
-    },
-    {
-      title: "Coupons",
-      icon: Tag,
-      children: [
-        {
-          title: "Coupon Types",
-          href: "/dashboard/admin/coupons-types",
-          icon: List,
-        },
-        {
-          title: "Add Type",
-          href: "/dashboard/admin/coupons-types/add",
-          icon: Plus,
-        },
-        { title: "All Coupons", href: "/dashboard/admin/coupons", icon: List },
-        {
-          title: "Add Coupon",
-          href: "/dashboard/admin/coupons/add",
-          icon: Plus,
-        },
-      ],
-    },
-    {
-      title: "Users",
-      icon: Users,
-      children: [
-        { title: "All Users", href: "/dashboard/admin/users", icon: List },
-        {
-          title: "Enrollments",
-          href: "/dashboard/admin/enrollments",
-          icon: Users,
-        },
-        {
-          title: "Revenue",
-          href: "/dashboard/admin/payments",
-          icon: CreditCard,
-        },
-      ],
-    },
-    {
-      title: "Certificates",
-      icon: Award,
-      children: [
-        {
-          title: "Pending Requests",
-          href: "/dashboard/admin/certificates/requests",
-          icon: List,
-        },
-        {
-          title: "All Certificates",
-          href: "/dashboard/admin/certificates",
-          icon: Award,
-        },
-      ],
-    },
+    // {
+    //   title: "Astrologer ",
+    //   icon: Users,
+    //   children: [
+    //     { title: "All Astrologer", href: "/dashboard/admin/agent", icon: List },
+    //     {
+    //       title: "Add Astrologer",
+    //       href: "/dashboard/admin/agent/add",
+    //       icon: Plus,
+    //     },
+    //   ],
+    // },
+    // {
+    //   title: "Coupons",
+    //   icon: Tag,
+    //   children: [
+    //     {
+    //       title: "Coupon Types",
+    //       href: "/dashboard/admin/coupons-types",
+    //       icon: List,
+    //     },
+    //     {
+    //       title: "Add Type",
+    //       href: "/dashboard/admin/coupons-types/add",
+    //       icon: Plus,
+    //     },
+    //     { title: "All Coupons", href: "/dashboard/admin/coupons", icon: List },
+    //     {
+    //       title: "Add Coupon",
+    //       href: "/dashboard/admin/coupons/add",
+    //       icon: Plus,
+    //     },
+    //   ],
+    // },
+    // {
+    //   title: "Users",
+    //   icon: Users,
+    //   children: [
+    //     { title: "All Users", href: "/dashboard/admin/users", icon: List },
+    //     {
+    //       title: "Enrollments",
+    //       href: "/dashboard/admin/enrollments",
+    //       icon: Users,
+    //     },
+    //     {
+    //       title: "Revenue",
+    //       href: "/dashboard/admin/payments",
+    //       icon: CreditCard,
+    //     },
+    //   ],
+    // },
+    // {
+    //   title: "Certificates",
+    //   icon: Award,
+    //   children: [
+    //     {
+    //       title: "Pending Requests",
+    //       href: "/dashboard/admin/certificates/requests",
+    //       icon: List,
+    //     },
+    //     {
+    //       title: "All Certificates",
+    //       href: "/dashboard/admin/certificates",
+    //       icon: Award,
+    //     },
+    //   ],
+    // },
   ] as const,
 
   agent: [

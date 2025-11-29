@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
 // components/AddAdminForm.tsx
 'use client';
 
@@ -24,7 +25,7 @@ interface AddAdminFormProps {
   collegeName: string;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newAdminUserId: string) => void; // Updated to accept user ID
 }
 
 export default function AddAdminForm({ collegeId, collegeName, isOpen, onClose, onSuccess }: AddAdminFormProps) {
@@ -103,15 +104,27 @@ export default function AddAdminForm({ collegeId, collegeName, isOpen, onClose, 
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          role: 'COLLEGE', // Ensure role is set to COLLEGE
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create admin user');
+        throw new Error(errorData.error || errorData.message || 'Failed to create admin user');
       }
 
-      // Reset form and close on success
+      const result = await response.json();
+      
+      // Extract the new admin user ID from the response
+      const newAdminUserId = result.jyotishi?.id || result.user?.id || result.id;
+      
+      if (!newAdminUserId) {
+        throw new Error('No user ID returned from API');
+      }
+
+      // Reset form
       setFormData({
         name: '',
         email: '',
@@ -119,8 +132,9 @@ export default function AddAdminForm({ collegeId, collegeName, isOpen, onClose, 
         mobile: '',
         collegeId: collegeId,
       });
-      onSuccess();
-      onClose();
+      
+      // Pass the new admin user ID to the success callback
+      onSuccess(newAdminUserId);
       
     } catch (err: any) {
       setError(err.message || 'Something went wrong while creating the admin user');
