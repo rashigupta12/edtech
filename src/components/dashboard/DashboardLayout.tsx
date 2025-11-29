@@ -161,15 +161,15 @@ const navConfigs = {
   ] as const,
 
   agent: [
-    { title: "Dashboard", href: "/dashboard/agent", icon: Home },
+    { title: "Dashboard", href: "/dashboard/college", icon: Home },
     {
-      title: "My Coupons",
+      title: " Courses",
       icon: Tag,
       children: [
-        { title: "All Coupons", href: "/dashboard/agent/coupons", icon: List },
+        { title: "All Courses", href: "/dashboard/college/courses", icon: List },
         {
-          title: "Coupon Types",
-          href: "/dashboard/agent/coupon-types",
+          title: "Add course",
+          href: "/dashboard/college/create",
           icon: Ticket,
         },
       ],
