@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, Plus, X } from "lucide-react";
+import { ArrowLeft, Save, Plus, X, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
@@ -27,6 +27,24 @@ type College = {
 type Category = {
   id: string;
   name: string;
+};
+
+type Outcome = {
+  id: string;
+  outcome: string;
+  sortOrder: number;
+};
+
+type Requirement = {
+  id: string;
+  requirement: string;
+  sortOrder: number;
+};
+type Module = {
+  id: string;
+  title: string;
+  description: string | null;
+  sortOrder: number;
 };
 
 type Course = {
@@ -48,6 +66,8 @@ type Course = {
   discountPrice: number | null;
   maxStudents: number | null;
   status: string;
+  outcomes: Outcome[];
+  requirements: Requirement[];
 };
 
 export default function EditCoursePage() {
@@ -76,11 +96,34 @@ export default function EditCoursePage() {
     price: "",
     discountPrice: "",
     maxStudents: "",
+    status: "DRAFT",
   });
 
-  // New outcomes/requirements to add
-  const [newOutcomes, setNewOutcomes] = useState<string[]>([]);
-  const [newRequirements, setNewRequirements] = useState<string[]>([]);
+  // Outcomes and requirements (both existing and new)
+  const [outcomes, setOutcomes] = useState<
+    (Outcome | { id: string; outcome: string; isNew: true })[]
+  >([]);
+  const [requirements, setRequirements] = useState<
+    (Requirement | { id: string; requirement: string; isNew: true })[]
+  >([]);
+  const [modules, setModules] = useState<
+    (Module | { id: string; title: string; description: string; isNew: true })[]
+  >([]);
+  const [editingModule, setEditingModule] = useState<{
+    id: string;
+    title: string;
+    description: string;
+  } | null>(null);
+
+  // Editing states
+  const [editingOutcome, setEditingOutcome] = useState<{
+    id: string;
+    value: string;
+  } | null>(null);
+  const [editingRequirement, setEditingRequirement] = useState<{
+    id: string;
+    value: string;
+  } | null>(null);
 
   // Fetch course data
   useEffect(() => {
@@ -116,15 +159,30 @@ export default function EditCoursePage() {
           prerequisites: course.prerequisites || "",
           isFree: course.isFree,
           price: course.price ? String(course.price) : "",
-          discountPrice: course.discountPrice ? String(course.discountPrice) : "",
+          discountPrice: course.discountPrice
+            ? String(course.discountPrice)
+            : "",
           maxStudents: course.maxStudents ? String(course.maxStudents) : "",
+          status: course.status,
         });
+
+        // Set outcomes and requirements from API
+        setOutcomes(courseData.data.outcomes || []);
+        setRequirements(courseData.data.requirements || []);
 
         // Fetch colleges
         const collegesRes = await fetch("/api/colleges");
         const collegesData = await collegesRes.json();
         if (collegesData.success) {
           setColleges(collegesData.data);
+        }
+        // Fetch modules
+        const modulesRes = await fetch(
+          `/api/courses?id=${params.id}&modules=true`
+        );
+        const modulesData = await modulesRes.json();
+        if (modulesData.success) {
+          setModules(modulesData.data || []);
         }
 
         // Fetch categories
@@ -155,32 +213,123 @@ export default function EditCoursePage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Outcome functions
   const addNewOutcome = () => {
-    setNewOutcomes([...newOutcomes, ""]);
+    const newId = `new-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+    setOutcomes((prev) => [...prev, { id: newId, outcome: "", isNew: true }]);
   };
 
-  const removeNewOutcome = (index: number) => {
-    setNewOutcomes(newOutcomes.filter((_, i) => i !== index));
+  const removeOutcome = (id: string) => {
+    setOutcomes((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const updateNewOutcome = (index: number, value: string) => {
-    const updated = [...newOutcomes];
-    updated[index] = value;
-    setNewOutcomes(updated);
+  const updateOutcome = (id: string, value: string) => {
+    setOutcomes((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, outcome: value } : item))
+    );
   };
 
+  const startEditOutcome = (id: string, currentValue: string) => {
+    setEditingOutcome({ id, value: currentValue });
+  };
+
+  const cancelEditOutcome = () => {
+    setEditingOutcome(null);
+  };
+
+  const saveEditOutcome = () => {
+    if (!editingOutcome || !editingOutcome.value.trim()) return;
+
+    updateOutcome(editingOutcome.id, editingOutcome.value);
+    setEditingOutcome(null);
+  };
+
+  // Requirement functions
   const addNewRequirement = () => {
-    setNewRequirements([...newRequirements, ""]);
+    const newId = `new-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+    setRequirements((prev) => [
+      ...prev,
+      { id: newId, requirement: "", isNew: true },
+    ]);
   };
 
-  const removeNewRequirement = (index: number) => {
-    setNewRequirements(newRequirements.filter((_, i) => i !== index));
+  const removeRequirement = (id: string) => {
+    setRequirements((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const updateNewRequirement = (index: number, value: string) => {
-    const updated = [...newRequirements];
-    updated[index] = value;
-    setNewRequirements(updated);
+  const updateRequirement = (id: string, value: string) => {
+    setRequirements((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, requirement: value } : item
+      )
+    );
+  };
+
+  const startEditRequirement = (id: string, currentValue: string) => {
+    setEditingRequirement({ id, value: currentValue });
+  };
+
+  const cancelEditRequirement = () => {
+    setEditingRequirement(null);
+  };
+
+  const saveEditRequirement = () => {
+    if (!editingRequirement || !editingRequirement.value.trim()) return;
+
+    updateRequirement(editingRequirement.id, editingRequirement.value);
+    setEditingRequirement(null);
+  };
+  // Module functions
+  const addNewModule = () => {
+    const newId = `new-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+    setModules((prev) => [
+      ...prev,
+      { id: newId, title: "", description: "", isNew: true },
+    ]);
+  };
+
+  const removeModule = (id: string) => {
+    setModules((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const updateModule = (
+    id: string,
+    field: "title" | "description",
+    value: string
+  ) => {
+    setModules((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const startEditModule = (
+    id: string,
+    currentTitle: string,
+    currentDescription: string
+  ) => {
+    setEditingModule({
+      id,
+      title: currentTitle,
+      description: currentDescription,
+    });
+  };
+
+  const cancelEditModule = () => {
+    setEditingModule(null);
+  };
+
+  const saveEditModule = () => {
+    if (!editingModule || !editingModule.title.trim()) return;
+
+    updateModule(editingModule.id, "title", editingModule.title);
+    updateModule(editingModule.id, "description", editingModule.description);
+    setEditingModule(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -206,7 +355,9 @@ export default function EditCoursePage() {
       prerequisites: formData.prerequisites || null,
       duration: formData.duration || null,
       price: formData.price ? Number(formData.price) : null,
-      discountPrice: formData.discountPrice ? Number(formData.discountPrice) : null,
+      discountPrice: formData.discountPrice
+        ? Number(formData.discountPrice)
+        : null,
       maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
     };
 
@@ -221,24 +372,80 @@ export default function EditCoursePage() {
       const response = await res.json();
 
       if (response.success) {
-        // Add new learning outcomes
-        for (const outcome of newOutcomes.filter((o) => o.trim())) {
-          await fetch(`/api/courses?id=${params.id}&outcomes=true`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ outcome }),
-          });
+        // Process outcomes - update existing and create new ones
+        for (const outcome of outcomes) {
+          if ("isNew" in outcome) {
+            // Create new outcome
+            if (outcome.outcome.trim()) {
+              await fetch(`/api/courses?id=${params.id}&outcomes=true`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ outcome: outcome.outcome }),
+              });
+            }
+          } else {
+            // Update existing outcome
+            await fetch(`/api/courses?id=${outcome.id}&updateOutcome=true`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ outcome: outcome.outcome }),
+            });
+          }
         }
 
-        // Add new requirements
-        for (const requirement of newRequirements.filter((r) => r.trim())) {
-          await fetch(`/api/courses?id=${params.id}&requirements=true`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ requirement }),
-          });
+        // Process requirements - update existing and create new ones
+        for (const requirement of requirements) {
+          if ("isNew" in requirement) {
+            // Create new requirement
+            if (requirement.requirement.trim()) {
+              await fetch(`/api/courses?id=${params.id}&requirements=true`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ requirement: requirement.requirement }),
+              });
+            }
+          } else {
+            // Update existing requirement
+            await fetch(
+              `/api/courses?id=${requirement.id}&updateRequirement=true`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ requirement: requirement.requirement }),
+              }
+            );
+          }
         }
 
+        // Process modules - update existing and create new ones
+        for (let i = 0; i < modules.length; i++) {
+          const module = modules[i];
+          if ("isNew" in module) {
+            // Create new module
+            if (module.title.trim()) {
+              await fetch(`/api/courses?id=${params.id}&modules=true`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title: module.title,
+                  description: module.description,
+                  sortOrder: i,
+                }),
+              });
+            }
+          } else {
+            // Update existing module
+            await fetch(`/api/courses?id=${module.id}&updateModule=true`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: module.title,
+                description: module.description,
+                sortOrder: i,
+              }),
+            });
+          }
+        }
         Swal.fire({
           icon: "success",
           title: "Course Updated!",
@@ -294,8 +501,12 @@ export default function EditCoursePage() {
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Course</h1>
-              <p className="text-gray-600">Update course details and content.</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Edit Course
+              </h1>
+              <p className="text-gray-600">
+                Update course details and content.
+              </p>
             </div>
           </div>
         </div>
@@ -304,7 +515,9 @@ export default function EditCoursePage() {
           {/* Basic Information */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50 border-b">
-              <CardTitle className="text-xl text-gray-900">Basic Information</CardTitle>
+              <CardTitle className="text-xl text-gray-900">
+                Basic Information
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -335,7 +548,9 @@ export default function EditCoursePage() {
                   <Textarea
                     id="shortDescription"
                     value={formData.shortDescription}
-                    onChange={(e) => handleFieldChange("shortDescription", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("shortDescription", e.target.value)
+                    }
                     placeholder="A brief summary of the course..."
                     rows={2}
                   />
@@ -346,7 +561,9 @@ export default function EditCoursePage() {
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => handleFieldChange("description", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("description", e.target.value)
+                    }
                     placeholder="Detailed course description..."
                     rows={6}
                   />
@@ -356,7 +573,9 @@ export default function EditCoursePage() {
                   <Label htmlFor="categoryId">Category *</Label>
                   <Select
                     value={formData.categoryId}
-                    onValueChange={(value) => handleFieldChange("categoryId", value)}
+                    onValueChange={(value) =>
+                      handleFieldChange("categoryId", value)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
@@ -376,7 +595,10 @@ export default function EditCoursePage() {
                   <Select
                     value={formData.collegeId || "NONE"}
                     onValueChange={(value) =>
-                      handleFieldChange("collegeId", value === "NONE" ? "" : value)
+                      handleFieldChange(
+                        "collegeId",
+                        value === "NONE" ? "" : value
+                      )
                     }
                   >
                     <SelectTrigger>
@@ -415,17 +637,40 @@ export default function EditCoursePage() {
                   <Input
                     id="language"
                     value={formData.language}
-                    onChange={(e) => handleFieldChange("language", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("language", e.target.value)
+                    }
                     placeholder="English"
                   />
                 </div>
+                <div>
+  <Label htmlFor="status">Status</Label>
+  <Select
+    value={formData.status}
+    onValueChange={(value) => handleFieldChange("status", value)}
+  >
+    <SelectTrigger>
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="DRAFT">Draft</SelectItem>
+      <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
+      <SelectItem value="APPROVED">Approved</SelectItem>
+      <SelectItem value="REJECTED">Rejected</SelectItem>
+      <SelectItem value="PUBLISHED">Published</SelectItem>
+      <SelectItem value="ARCHIVED">Archived</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
 
                 <div>
                   <Label htmlFor="duration">Duration</Label>
                   <Input
                     id="duration"
                     value={formData.duration}
-                    onChange={(e) => handleFieldChange("duration", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("duration", e.target.value)
+                    }
                     placeholder="40 hours"
                   />
                 </div>
@@ -436,7 +681,9 @@ export default function EditCoursePage() {
                     id="maxStudents"
                     type="number"
                     value={formData.maxStudents}
-                    onChange={(e) => handleFieldChange("maxStudents", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("maxStudents", e.target.value)
+                    }
                     placeholder="50"
                   />
                 </div>
@@ -456,7 +703,9 @@ export default function EditCoursePage() {
                   id="thumbnailUrl"
                   type="url"
                   value={formData.thumbnailUrl}
-                  onChange={(e) => handleFieldChange("thumbnailUrl", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("thumbnailUrl", e.target.value)
+                  }
                   placeholder="https://example.com/thumbnail.jpg"
                 />
               </div>
@@ -467,7 +716,9 @@ export default function EditCoursePage() {
                   id="previewVideoUrl"
                   type="url"
                   value={formData.previewVideoUrl}
-                  onChange={(e) => handleFieldChange("previewVideoUrl", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("previewVideoUrl", e.target.value)
+                  }
                   placeholder="https://youtube.com/..."
                 />
               </div>
@@ -485,7 +736,9 @@ export default function EditCoursePage() {
                   type="checkbox"
                   id="isFree"
                   checked={formData.isFree}
-                  onChange={(e) => handleFieldChange("isFree", e.target.checked)}
+                  onChange={(e) =>
+                    handleFieldChange("isFree", e.target.checked)
+                  }
                   className="rounded"
                 />
                 <Label htmlFor="isFree">This course is free</Label>
@@ -500,7 +753,9 @@ export default function EditCoursePage() {
                       type="number"
                       step="0.01"
                       value={formData.price}
-                      onChange={(e) => handleFieldChange("price", e.target.value)}
+                      onChange={(e) =>
+                        handleFieldChange("price", e.target.value)
+                      }
                       placeholder="99.00"
                     />
                   </div>
@@ -512,7 +767,9 @@ export default function EditCoursePage() {
                       type="number"
                       step="0.01"
                       value={formData.discountPrice}
-                      onChange={(e) => handleFieldChange("discountPrice", e.target.value)}
+                      onChange={(e) =>
+                        handleFieldChange("discountPrice", e.target.value)
+                      }
                       placeholder="79.00"
                     />
                   </div>
@@ -521,96 +778,373 @@ export default function EditCoursePage() {
             </CardContent>
           </Card>
 
-          {/* Add Learning Outcomes */}
+          {/* Learning Outcomes */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50 border-b">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl text-gray-900">Add Learning Outcomes</CardTitle>
+                  <CardTitle className="text-xl text-gray-900">
+                    Learning Outcomes
+                  </CardTitle>
                   <p className="text-sm text-gray-500 mt-1">
-                    Add new learning outcomes to this course
+                    What students will learn in this course
                   </p>
                 </div>
-                <Button type="button" onClick={addNewOutcome} size="sm" variant="outline">
+                <Button
+                  type="button"
+                  onClick={addNewOutcome}
+                  size="sm"
+                  variant="outline"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Outcome
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {newOutcomes.map((outcome, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={outcome}
-                    onChange={(e) => updateNewOutcome(index, e.target.value)}
-                    placeholder="What students will learn..."
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeNewOutcome(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+              {outcomes.map((item) => (
+                <div key={item.id} className="flex gap-2 items-center">
+                  {editingOutcome?.id === item.id ? (
+                    <>
+                      <Input
+                        value={editingOutcome.value}
+                        onChange={(e) =>
+                          setEditingOutcome({
+                            ...editingOutcome,
+                            value: e.target.value,
+                          })
+                        }
+                        placeholder="What students will learn..."
+                        className="flex-1"
+                      />
+                      <Button type="button" size="sm" onClick={saveEditOutcome}>
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={cancelEditOutcome}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        value={item.outcome}
+                        onChange={(e) => updateOutcome(item.id, e.target.value)}
+                        placeholder="What students will learn..."
+                        className="flex-1"
+                        readOnly={"isNew" in item ? false : true}
+                      />
+                      {"isNew" in item ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeOutcome(item.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              startEditOutcome(item.id, item.outcome)
+                            }
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeOutcome(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               ))}
 
-              {newOutcomes.length === 0 && (
+              {outcomes.length === 0 && (
                 <p className="text-sm text-gray-500 text-center py-4">
-                  No new outcomes to add. Click &quot;Add Outcome&quot; to add one.
+                  No learning outcomes added yet. Click &quot;Add Outcome&quot;
+                  to add one.
                 </p>
               )}
             </CardContent>
           </Card>
 
-          {/* Add Requirements */}
+          {/* Requirements */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50 border-b">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl text-gray-900">Add Requirements</CardTitle>
+                  <CardTitle className="text-xl text-gray-900">
+                    Requirements
+                  </CardTitle>
                   <p className="text-sm text-gray-500 mt-1">
-                    Add new requirements to this course
+                    Prerequisites for this course
                   </p>
                 </div>
-                <Button type="button" onClick={addNewRequirement} size="sm" variant="outline">
+                <Button
+                  type="button"
+                  onClick={addNewRequirement}
+                  size="sm"
+                  variant="outline"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Requirement
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {newRequirements.map((requirement, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={requirement}
-                    onChange={(e) => updateNewRequirement(index, e.target.value)}
-                    placeholder="Prerequisites for the course..."
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeNewRequirement(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+              {requirements.map((item) => (
+                <div key={item.id} className="flex gap-2 items-center">
+                  {editingRequirement?.id === item.id ? (
+                    <>
+                      <Input
+                        value={editingRequirement.value}
+                        onChange={(e) =>
+                          setEditingRequirement({
+                            ...editingRequirement,
+                            value: e.target.value,
+                          })
+                        }
+                        placeholder="Prerequisites for the course..."
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={saveEditRequirement}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={cancelEditRequirement}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        value={item.requirement}
+                        onChange={(e) =>
+                          updateRequirement(item.id, e.target.value)
+                        }
+                        placeholder="Prerequisites for the course..."
+                        className="flex-1"
+                        readOnly={"isNew" in item ? false : true}
+                      />
+                      {"isNew" in item ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeRequirement(item.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              startEditRequirement(item.id, item.requirement)
+                            }
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeRequirement(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               ))}
 
-              {newRequirements.length === 0 && (
+              {requirements.length === 0 && (
                 <p className="text-sm text-gray-500 text-center py-4">
-                  No new requirements to add. Click &quot;Add Requirement&quot; to add one.
+                  No requirements added yet. Click &quot;Add Requirement&quot;
+                  to add one.
                 </p>
               )}
             </CardContent>
           </Card>
 
+          {/* Course Modules */}
+          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
+            <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-50 border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl text-gray-900">
+                    Course Modules
+                  </CardTitle>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Structure your course content into modules
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={addNewModule}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Module
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {modules.map((item, index) => (
+                <div key={item.id} className="border rounded-lg p-4 space-y-3">
+                  {editingModule?.id === item.id ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">
+                          Module {index + 1}
+                        </Label>
+                      </div>
+                      <Input
+                        value={editingModule.title}
+                        onChange={(e) =>
+                          setEditingModule({
+                            ...editingModule,
+                            title: e.target.value,
+                          })
+                        }
+                        placeholder="Module title..."
+                      />
+                      <Textarea
+                        value={editingModule.description}
+                        onChange={(e) =>
+                          setEditingModule({
+                            ...editingModule,
+                            description: e.target.value,
+                          })
+                        }
+                        placeholder="Module description (optional)..."
+                        rows={2}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={saveEditModule}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={cancelEditModule}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">
+                          Module {index + 1}
+                        </Label>
+                        <div className="flex gap-2">
+                          {"isNew" in item ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeModule(item.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  startEditModule(
+                                    item.id,
+                                    item.title,
+                                    item.description || ""
+                                  )
+                                }
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeModule(item.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <Input
+                        value={item.title}
+                        onChange={(e) =>
+                          updateModule(item.id, "title", e.target.value)
+                        }
+                        placeholder="Module title..."
+                        readOnly={"isNew" in item ? false : true}
+                      />
+                      <Textarea
+                        value={item.description || ""}
+                        onChange={(e) =>
+                          updateModule(item.id, "description", e.target.value)
+                        }
+                        placeholder="Module description (optional)..."
+                        rows={2}
+                        readOnly={"isNew" in item ? false : true}
+                      />
+                    </>
+                  )}
+                </div>
+              ))}
+
+              {modules.length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No modules added yet. Click &quot;Add Module&quot; to add one.
+                </p>
+              )}
+            </CardContent>
+          </Card>
           {/* Additional Info */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-50 border-b">
-              <CardTitle className="text-xl text-gray-900">Additional Information</CardTitle>
+              <CardTitle className="text-xl text-gray-900">
+                Additional Information
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div>
@@ -618,7 +1152,9 @@ export default function EditCoursePage() {
                 <Textarea
                   id="prerequisites"
                   value={formData.prerequisites}
-                  onChange={(e) => handleFieldChange("prerequisites", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("prerequisites", e.target.value)
+                  }
                   placeholder="List any prerequisites for this course..."
                   rows={4}
                 />
