@@ -24,28 +24,42 @@ import { Session } from "next-auth";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useState, useTransition, useRef, useEffect } from "react";
-import useSWR, { mutate } from "swr";
+import useSWR from "swr";
 import { FuturetekLogo } from "./FutureTekLogo";
 
 type Course = {
   id: string;
   title: string;
   slug: string;
+  status?: string;
 };
 
+// Fixed fetcher to handle your API response structure
 const fetcher = (url: string) =>
-  fetch(url)
+  fetch(url, { next: { revalidate: 300 } })
     .then((res) => {
-      if (!res.ok) throw new Error("Failed to fetch");
+      if (!res.ok) throw new Error("Failed to fetch courses");
       return res.json();
     })
     .then((data) => {
-      // Normalize: always return array
+      console.log("API Response:", data); // Debug log
+      
+      // Handle your API structure: { success: true, data: [...] }
+      if (data.success && Array.isArray(data.data)) {
+        // Filter only PUBLISHED courses for the dropdown
+        return data.data.filter((course: Course) => course.status === "PUBLISHED");
+      }
+      
+      // Fallback for other formats
       if (Array.isArray(data)) return data;
-      if (data && Array.isArray(data.courses)) return data.courses;
+      if (data?.courses && Array.isArray(data.courses)) return data.courses;
+      
       return [];
     })
-    .catch(() => []);
+    .catch((err) => {
+      console.error("Courses fetch error:", err);
+      return [];
+    });
 
 function NavLink({
   href,
@@ -70,37 +84,32 @@ function NavLink({
 function CoursesDropdown({ courses, loading }: { courses: Course[]; loading: boolean }) {
   const [open, setOpen] = useState(false);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
   const handleClick = (e: React.MouseEvent) => {
     if (isMobile) {
-      // Mobile behavior: toggle dropdown on click
       e.preventDefault();
-      setOpen(!open);
+      setOpen((prev) => !prev);
       return;
     }
 
-    // Desktop behavior: handle single/double click
+    // Desktop: single click = open dropdown, double click = go to /courses
     if (clickTimeoutRef.current) {
-      // This is a double click
       clearTimeout(clickTimeoutRef.current);
       clickTimeoutRef.current = null;
       window.location.href = "/courses";
     } else {
-      // This is a single click
       e.preventDefault();
       clickTimeoutRef.current = setTimeout(() => {
-        setOpen(!open);
+        setOpen((prev) => !prev);
         clickTimeoutRef.current = null;
-      }, 300); // 300ms delay to detect double click
+      }, 250);
     }
   };
 
   useEffect(() => {
     return () => {
-      if (clickTimeoutRef.current) {
-        clearTimeout(clickTimeoutRef.current);
-      }
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
     };
   }, []);
 
@@ -110,7 +119,7 @@ function CoursesDropdown({ courses, loading }: { courses: Course[]; loading: boo
       onMouseEnter={() => !isMobile && setOpen(true)}
       onMouseLeave={() => !isMobile && setOpen(false)}
     >
-      <button 
+      <button
         className="flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
         onClick={handleClick}
       >
@@ -121,24 +130,30 @@ function CoursesDropdown({ courses, loading }: { courses: Course[]; loading: boo
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full pt-1 z-50">
-          <div className="w-56 bg-white border border-slate-200 rounded-lg shadow-lg p-2">
+        <div className="absolute left-0 top-full pt-2 z-50 w-64">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
             {loading ? (
-              <div className="px-4 py-2 text-sm text-slate-500">Loading...</div>
+              <div className="px-4 py-3 text-sm text-slate-500">Loading courses...</div>
             ) : courses.length === 0 ? (
-              <div className="px-4 py-2 text-sm text-slate-500">No courses</div>
+              <div className="px-4 py-3 text-sm text-slate-500">No courses available</div>
             ) : (
-              courses.map((course) => (
-                <NavLink
-                  key={course.id}
-                  href={`/courses/${course.slug}`}
-                  className="block px-4 py-2.5 hover:bg-blue-50 rounded-md text-sm text-slate-700 hover:text-blue-700"
-                
-                >
-                  {course.title}
-                </NavLink>
-              ))
+              <div className="max-h-96 overflow-y-auto">
+                {courses.map((course) => (
+                  <NavLink
+                    key={course.id}
+                    href={`/courses/${course.slug}`}
+                    className="block px-4 py-3 hover:bg-blue-50 text-sm text-slate-700 hover:text-blue-700 transition-colors"
+                  >
+                    {course.title}
+                  </NavLink>
+                ))}
+              </div>
             )}
+            <div className="border-t border-slate-100 bg-slate-50 px-4 py-2">
+              <NavLink href="/courses" className="text-xs font-medium text-blue-600 hover:text-blue-800">
+                View all courses →
+              </NavLink>
+            </div>
           </div>
         </div>
       )}
@@ -168,136 +183,109 @@ function Sidebar({
 
   const handleCoursesClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    
     if (clickTimeoutRef.current) {
-      // This is a double click
       clearTimeout(clickTimeoutRef.current);
       clickTimeoutRef.current = null;
       setIsOpen(false);
       window.location.href = "/courses";
     } else {
-      // This is a single click
       clickTimeoutRef.current = setTimeout(() => {
-        setCoursesOpen(!coursesOpen);
+        setCoursesOpen((prev) => !prev);
         clickTimeoutRef.current = null;
-      }, 300);
+      }, 250);
     }
   };
 
   useEffect(() => {
     return () => {
-      if (clickTimeoutRef.current) {
-        clearTimeout(clickTimeoutRef.current);
-      }
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
     };
   }, []);
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden border border-slate-300 size-9 shrink-0 hover:bg-blue-50 hover:text-blue-700"
-        >
-          <Menu className="size-5" />
-          <span className="sr-only">Open menu</span>
+        <Button variant="ghost" size="icon" className="md:hidden">
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Menu</span>
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="left" className="w-80 p-0  flex flex-col">
-        <div className="px-6 pt-4">
+      <SheetContent side="left" className="w-80 p-0 flex flex-col">
+        <div className="p-6 border-b">
           <Link href="/" onClick={() => setIsOpen(false)}>
-            <FuturetekLogo width={180} height={100} />
+            <FuturetekLogo width={180} height={60} />
           </Link>
         </div>
 
-        <Separator />
-
         {session && (
-          <>
-            <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100/50">
-              <p className="text-sm text-slate-600">Welcome back,</p>
-              <p className="font-semibold text-blue-900">{session.user.name}</p>
-            </div>
-            <Separator />
-          </>
+          <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <p className="text-sm text-slate-600">Welcome back,</p>
+            <p className="font-semibold text-blue-900 truncate">{session.user?.name}</p>
+          </div>
         )}
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <div className="space-y-1">
+        <nav className="flex-1 overflow-y-auto py-4">
+          <div className="space-y-1 px-3">
             {session && (
               <>
-                <Button
-                  asChild
-                  variant="ghost"
-                  className="w-full justify-start gap-3 h-11 hover:bg-blue-50 hover:text-blue-700"
-                  onClick={() => setIsOpen(false)}
-                >
+                <Button asChild variant="ghost" className="w-full justify-start gap-3" onClick={() => setIsOpen(false)}>
                   <Link href="/dashboard">
-                    <LayoutDashboard className="h-5 w-5" />
-                    <span className="font-medium">Dashboard</span>
+                    <LayoutDashboard className="h-5 w-5" /> Dashboard
                   </Link>
                 </Button>
-                <Separator className="my-2" />
+                <Separator />
               </>
             )}
 
-            {/* Courses with double-click behavior */}
             <Button
               variant="ghost"
-              className="w-full justify-between gap-3 h-11 hover:bg-blue-50 hover:text-blue-700"
+              className="w-full justify-between"
               onClick={handleCoursesClick}
             >
-              <div className="flex items-center gap-3">
-                <BookOpen className="h-5 w-5" />
-                <span className="font-medium">Courses</span>
-              </div>
-              <ChevronDown
-                className={`h-4 w-4 transition-transform duration-200 ${coursesOpen ? "rotate-180" : ""}`}
-              />
+              <span className="flex items-center gap-3">
+                <BookOpen className="h-5 w-5" /> Courses
+              </span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${coursesOpen ? "rotate-180" : ""}`} />
             </Button>
 
-           {coursesOpen && (
-              <div className="pl-4 space-y-1 border-l-2 border-blue-100 ml-5">
-                {courses.map((course) => (
-                  <Button
-                    key={course.id}
-                    asChild
-                    variant="ghost"
-                    className="w-full justify-start h-auto min-h-10 text-sm hover:bg-blue-50 hover:text-blue-700 whitespace-normal text-left py-2"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Link href={`/courses/${course.slug}`} className="break-words">{course.title}</Link>
-                  </Button>
-                ))}
+            {coursesOpen && (
+              <div className="pl-8 space-y-1 border-l-2 border-blue-200">
+                {courses.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-2">No published courses</p>
+                ) : (
+                  courses.map((course) => (
+                    <Button
+                      key={course.id}
+                      asChild
+                      variant="ghost"
+                      className="w-full justify-start text-sm py-2"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <Link href={`/courses/${course.slug}`}>{course.title}</Link>
+                    </Button>
+                  ))
+                )}
               </div>
             )}
 
-            {/* Other menu items */}
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Button
-                  key={item.href}
-                  asChild
-                  variant="ghost"
-                  className="w-full justify-start gap-3 h-11 hover:bg-blue-50 hover:text-blue-700"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Link href={item.href}>
-                    <Icon className="h-5 w-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
-                </Button>
-              );
-            })}
+            {menuItems.map(({ href, label, icon: Icon }) => (
+              <Button
+                key={href}
+                asChild
+                variant="ghost"
+                className="w-full justify-start gap-3"
+                onClick={() => setIsOpen(false)}
+              >
+                <Link href={href}>
+                  <Icon className="h-5 w-5" /> {label}
+                </Link>
+              </Button>
+            ))}
           </div>
         </nav>
 
-        <Separator />
-
-        <div className="p-3 space-y-2">
+        <div className="border-t p-4 space-y-2">
           {session ? (
             <Button
               onClick={() => {
@@ -305,32 +293,20 @@ function Sidebar({
                 setIsOpen(false);
               }}
               variant="outline"
-              className="w-full justify-start gap-3 h-11 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              className="w-full justify-start gap-3 text-red-600 border-red-200 hover:bg-red-50"
             >
-              <LogOut className="h-5 w-5" />
-              <span className="font-medium">Logout</span>
+              <LogOut className="h-5 w-5" /> Logout
             </Button>
           ) : (
             <>
-              <Button
-                asChild
-                variant="outline"
-                className="w-full justify-start gap-3 h-11 border-slate-300 hover:bg-blue-50 hover:text-blue-700"
-                onClick={() => setIsOpen(false)}
-              >
+              <Button asChild variant="outline" className="w-full justify-start gap-3" onClick={() => setIsOpen(false)}>
                 <Link href="/auth/login">
-                  <LogIn className="h-5 w-5" />
-                  <span className="font-medium">Login</span>
+                  <LogIn className="h-5 w-5" /> Login
                 </Link>
               </Button>
-              <Button
-                asChild
-                className="w-full justify-start gap-3 h-11 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
-                onClick={() => setIsOpen(false)}
-              >
+              <Button asChild className="w-full justify-start gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white" onClick={() => setIsOpen(false)}>
                 <Link href="/auth/register">
-                  <UserPlus className="h-5 w-5" />
-                  <span className="font-medium">Sign Up</span>
+                  <UserPlus className="h-5 w-5" /> Sign Up
                 </Link>
               </Button>
             </>
@@ -345,48 +321,35 @@ export function SiteHeader() {
   const { data: session } = useSession();
   const [isPending, startTransition] = useTransition();
 
-  // SWR + Safe Normalization
- const { data: courses = [], isLoading } = useSWR<Course[]>(
-  "/api/admin/courses",
-  fetcher,
-  {
-    dedupingInterval: 300_000,
-    revalidateOnFocus: false,
-    revalidateOnReconnect: true, // Add this
-    fallbackData: [],
-  }
-);
-// Add a manual refresh function
-// const refreshCourses = () => {
-//   mutate("/api/admin/courses");
-// };
-const handleLogout = async () => {
-  startTransition(async () => {
-    // Clear SWR cache before logout
-    await mutate(() => true, undefined, { revalidate: false });
-    
-    // Sign out with proper redirect
-    await signOut({ 
-      callbackUrl: "/auth/login",
-      redirect: true 
+  // Fetch courses with corrected response handling
+  const { data: courses = [], isLoading } = useSWR<Course[]>(
+    "/api/courses",
+    fetcher,
+    {
+      dedupingInterval: 60_000,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      fallbackData: [],
+    }
+  );
+
+  const handleLogout = () => {
+    startTransition(async () => {
+      await signOut({ callbackUrl: "/" });
     });
-  });
-};
+  };
+
   return (
-    <header className="bg-white sticky top-0 z-50 border-b border-slate-200 shadow-sm">
-      <div className="mx-auto flex h-16 max-w-screen-xl items-center gap-4 px-4">
-        <div className="mr-10 flex items-center gap-2">
-          <Sidebar
-            session={session ?? null}
-            handleLogout={handleLogout}
-            courses={courses}
-          />
-          <Link href="/" prefetch={true}>
+    <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
+      <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4 lg:px-8">
+        <div className="flex items-center gap-8">
+          <Sidebar session={session ?? null} handleLogout={handleLogout} courses={courses} />
+          <Link href="/" className="flex items-center">
             <FuturetekLogo width={180} height={54} />
           </Link>
         </div>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+        <nav className="hidden lg:flex items-center gap-8 text-sm font-medium">
           <CoursesDropdown courses={courses} loading={isLoading} />
           <NavLink href="/about">About</NavLink>
           <NavLink href="/career">Career</NavLink>
@@ -394,28 +357,27 @@ const handleLogout = async () => {
           <NavLink href="/contact">Contact Us</NavLink>
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {session ? (
             <>
-              <span className="hidden md:inline text-sm text-slate-700">
-                Hi, {session.user.name}
-              </span>
-              <Button asChild variant="ghost" className="hidden md:flex hover:bg-blue-50 hover:text-blue-700">
-                <Link href="/dashboard" prefetch={true}>Dashboard</Link>
+              <span className="hidden md:block text-sm text-slate-700">Hi, {session.user?.name}</span>
+              <Button asChild variant="ghost" className="hidden md:flex">
+                <Link href="/dashboard">Dashboard</Link>
               </Button>
               <Button
                 onClick={handleLogout}
-                variant="outline"
                 disabled={isPending}
-                className="hidden md:flex border-slate-300 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                variant="outline"
+                className="hidden md:flex border-red-200 text-red-600 hover:bg-red-50"
               >
                 {isPending ? "Logging out..." : "Logout"}
               </Button>
 
+              {/* Mobile icons */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button asChild variant="ghost" size="icon" className="md:hidden hover:bg-blue-50 hover:text-blue-700">
-                    <Link href="/dashboard" prefetch={true}>
+                  <Button asChild variant="ghost" size="icon" className="md:hidden">
+                    <Link href="/dashboard">
                       <LayoutDashboard className="h-5 w-5" />
                     </Link>
                   </Button>
@@ -430,7 +392,7 @@ const handleLogout = async () => {
                     variant="ghost"
                     size="icon"
                     disabled={isPending}
-                    className="md:hidden hover:bg-red-50 hover:text-red-700"
+                    className="md:hidden text-red-600"
                   >
                     <LogOut className="h-5 w-5" />
                   </Button>
@@ -440,17 +402,17 @@ const handleLogout = async () => {
             </>
           ) : (
             <>
-              <Button asChild variant="ghost" className="hidden md:flex hover:bg-blue-50 hover:text-blue-700">
-                <Link href="/auth/login" prefetch={true}>Login</Link>
+              <Button asChild variant="ghost" className="hidden md:flex">
+                <Link href="/auth/login">Login</Link>
               </Button>
-              <Button asChild className="hidden md:flex bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
-                <Link href="/auth/register" prefetch={true}>Sign Up</Link>
+              <Button asChild className="hidden md:flex bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+                <Link href="/auth/register">Sign Up</Link>
               </Button>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button asChild variant="ghost" size="icon" className="md:hidden hover:bg-blue-50 hover:text-blue-700">
-                    <Link href="/auth/login" prefetch={true}>
+                  <Button asChild variant="ghost" size="icon" className="md:hidden">
+                    <Link href="/auth/login">
                       <LogIn className="h-5 w-5" />
                     </Link>
                   </Button>
@@ -460,8 +422,8 @@ const handleLogout = async () => {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button asChild variant="default" size="icon" className="md:hidden bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
-                    <Link href="/auth/register" prefetch={true}>
+                  <Button asChild size="icon" className="md:hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+                    <Link href="/auth/register">
                       <UserPlus className="h-5 w-5" />
                     </Link>
                   </Button>

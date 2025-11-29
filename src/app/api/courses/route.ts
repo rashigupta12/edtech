@@ -151,6 +151,48 @@ const getCourseById = async (id: string) => {
   return successResponse(course);
 };
 
+
+// GET COURSE BY SLUG (NEW!)
+const getCourseBySlug = async (slug: string) => {
+  const [course] = await db
+    .select({
+      id: CoursesTable.id,
+      slug: CoursesTable.slug,
+      title: CoursesTable.title,
+      shortDescription: CoursesTable.shortDescription,
+      description: CoursesTable.description,
+      thumbnailUrl: CoursesTable.thumbnailUrl,
+      previewVideoUrl: CoursesTable.previewVideoUrl,
+      duration: CoursesTable.duration,
+      level: CoursesTable.level,
+      language: CoursesTable.language,
+      prerequisites: CoursesTable.prerequisites,
+      status: CoursesTable.status,
+      isFeatured: CoursesTable.isFeatured,
+      maxStudents: CoursesTable.maxStudents,
+      currentEnrollments: CoursesTable.currentEnrollments,
+      isFree: CoursesTable.isFree,
+      price: CoursesTable.price,
+      discountPrice: CoursesTable.discountPrice,
+      createdAt: CoursesTable.createdAt,
+      publishedAt: CoursesTable.publishedAt,
+      collegeName: CollegesTable.collegeName,
+      collegeId: CollegesTable.id,
+      categoryName: CategoriesTable.name,
+      categoryId: CategoriesTable.id,
+    })
+    .from(CoursesTable)
+    .leftJoin(CollegesTable, eq(CoursesTable.collegeId, CollegesTable.id))
+    .leftJoin(CategoriesTable, eq(CoursesTable.categoryId, CategoriesTable.id))
+    .where(eq(CoursesTable.slug, slug))
+    .limit(1);
+
+  if (!course) {
+    return errorResponse('Course not found', 'NOT_FOUND', 404);
+  }
+
+  return successResponse(course);
+};
 // GET COURSE CURRICULUM (Full structure with modules)
 const getCourseCurriculum = async (id: string) => {
   const [course] = await db
@@ -619,44 +661,42 @@ const addRequirement = async (id: string, request: NextRequest) => {
 // MAIN ROUTE HANDLERS
 // ===========================
 
-// GET Handler
+// GET Handler – NOW SUPPORTS ?slug=... AND ?id=...
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const params: SearchParams = {
-      id: searchParams.get('id') || undefined,
-      curriculum: searchParams.get('curriculum') || undefined,
-      modules: searchParams.get('modules') || undefined,
-    };
+    const id = searchParams.get('id');
+    const slug = searchParams.get('slug'); // ← NEW
+    const curriculum = searchParams.get('curriculum');
+    const modules = searchParams.get('modules');
 
-    // Route: GET /api/courses?id=123&curriculum=true
-    if (params.id && parseBoolean(params.curriculum)) {
-      const validation = validateId(params.id);
-      if (!validation.valid) {
-        return errorResponse(validation.error!);
-      }
-      return await getCourseCurriculum(params.id);
+    // 1. GET /api/courses?slug=python-programming
+    if (slug) {
+      return await getCourseBySlug(slug);
     }
 
-    // Route: GET /api/courses?id=123&modules=true
-    if (params.id && parseBoolean(params.modules)) {
-      const validation = validateId(params.id);
-      if (!validation.valid) {
-        return errorResponse(validation.error!);
-      }
-      return await getCourseModules(params.id);
+    // 2. GET /api/courses?id=123&curriculum=true
+    if (id && parseBoolean(curriculum)) {
+      const validation = validateId(id);
+      if (!validation.valid) return errorResponse(validation.error!);
+      return await getCourseCurriculum(id);
     }
 
-    // Route: GET /api/courses?id=123
-    if (params.id) {
-      const validation = validateId(params.id);
-      if (!validation.valid) {
-        return errorResponse(validation.error!);
-      }
-      return await getCourseById(params.id);
+    // 3. GET /api/courses?id=123&modules=true
+    if (id && parseBoolean(modules)) {
+      const validation = validateId(id);
+      if (!validation.valid) return errorResponse(validation.error!);
+      return await getCourseModules(id);
     }
 
-    // Route: GET /api/courses (list all)
+    // 4. GET /api/courses?id=123
+    if (id) {
+      const validation = validateId(id);
+      if (!validation.valid) return errorResponse(validation.error!);
+      return await getCourseById(id);
+    }
+
+    // 5. GET /api/courses → list all
     return await listCourses();
   } catch (error: any) {
     return errorResponse(error.message || 'Internal server error', 'INTERNAL_ERROR', 500);

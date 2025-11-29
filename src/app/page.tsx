@@ -370,7 +370,7 @@ export default function Page() {
           </section>
 
           <FAQs />
-          <Blogs />
+          {/* <Blogs /> */}
           <Testimonials />
 
           {/* CTA Section */}

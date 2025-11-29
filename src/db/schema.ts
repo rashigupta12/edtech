@@ -244,52 +244,7 @@ export const PasswordResetTokenTable = pgTable(
   ]
 );
 
-export const UsersRelations = relations(UsersTable, ({ many, one }) => ({
-  college: one(CollegesTable, {
-    fields: [UsersTable.id],
-    references: [CollegesTable.userId],
-  }),
-  studentProfile: one(StudentProfilesTable, {
-    fields: [UsersTable.id],
-    references: [StudentProfilesTable.id],
-  }),
-  facultyProfile: one(FacultyProfilesTable, {
-    fields: [UsersTable.id],
-    references: [FacultyProfilesTable.id],
-  }),
-  facultyMemberships: many(FacultyTable),
-  coursesCreated: many(CoursesTable),
-  bootcampsCreated: many(BootcampsTable),
-  enrollments: many(EnrollmentsTable),
-  bootcampEnrollments: many(BootcampEnrollmentsTable),
-  assignments: many(AssignmentSubmissionsTable),
-  assessments: many(AssessmentAttemptsTable),
-  certificates: many(CertificatesTable),
-  sessionsCreated: many(SessionsTable),
-  announcements: many(AnnouncementsTable),
-  forumPosts: many(ForumPostsTable),
-  batchEnrollments: many(BatchEnrollmentsTable),
-  activityLogs: many(ActivityLogsTable),
-  notifications: many(NotificationsTable),
-  createdReports: many(ReportsTable),
-  gradedAssignments: many(AssignmentSubmissionsTable, {
-    relationName: "graded_assignments"
-  }),
-}));
 
-export const StudentProfilesRelations = relations(StudentProfilesTable, ({ one }) => ({
-  user: one(UsersTable, {
-    fields: [StudentProfilesTable.id],
-    references: [UsersTable.id],
-  }),
-}));
-
-export const FacultyProfilesRelations = relations(FacultyProfilesTable, ({ one }) => ({
-  user: one(UsersTable, {
-    fields: [FacultyProfilesTable.id],
-    references: [UsersTable.id],
-  }),
-}));
 
 // =====================
 // College Tables
@@ -418,55 +373,6 @@ export const FacultyTable = pgTable(
   ]
 );
 
-export const CollegesRelations = relations(CollegesTable, ({ one, many }) => ({
-  user: one(UsersTable, {
-    fields: [CollegesTable.userId],
-    references: [UsersTable.id],
-  }),
-  courses: many(CoursesTable),
-  bootcamps: many(BootcampsTable),
-  approvedByUser: one(UsersTable, {
-    fields: [CollegesTable.approvedBy],
-    references: [UsersTable.id],
-  }),
-  departments: many(DepartmentsTable),
-  faculty: many(FacultyTable),
-  batches: many(BatchesTable),
-  questionBanks: many(QuestionBanksTable),
-  payouts: many(PayoutsTable),
-}));
-
-export const DepartmentsRelations = relations(DepartmentsTable, ({ one, many }) => ({
-  college: one(CollegesTable, {
-    fields: [DepartmentsTable.collegeId],
-    references: [CollegesTable.id],
-  }),
-  headOfDepartment: one(UsersTable, {
-    fields: [DepartmentsTable.headOfDepartment],
-    references: [UsersTable.id],
-  }),
-  faculty: many(FacultyTable),
-  courses: many(CoursesTable),
-}));
-
-export const FacultyRelations = relations(FacultyTable, ({ one, many }) => ({
-  college: one(CollegesTable, {
-    fields: [FacultyTable.collegeId],
-    references: [CollegesTable.id],
-  }),
-  user: one(UsersTable, {
-    fields: [FacultyTable.userId],
-    references: [UsersTable.id],
-  }),
-  department: one(DepartmentsTable, {
-    fields: [FacultyTable.departmentId],
-    references: [DepartmentsTable.id],
-  }),
-  courseAssignments: many(CourseFacultyTable),
-  createdSessions: many(SessionsTable),
-  gradedAssignments: many(AssignmentSubmissionsTable),
-}));
-
 // =====================
 // Category Tables
 // =====================
@@ -493,9 +399,7 @@ export const CategoriesTable = pgTable(
   ]
 );
 
-export const CategoriesRelations = relations(CategoriesTable, ({ many }) => ({
-  courses: many(CoursesTable),
-}));
+
 
 // =====================
 // Course Tables
@@ -2051,3 +1955,102 @@ export const PayoutsTable = pgTable(
     index("payouts_status_idx").on(table.status),
   ]
 );
+
+export const UsersRelations = relations(UsersTable, ({ many, one }) => ({
+  college: one(CollegesTable, {
+    fields: [UsersTable.id],
+    references: [CollegesTable.userId],
+  }),
+  studentProfile: one(StudentProfilesTable, {
+    fields: [UsersTable.id],
+    references: [StudentProfilesTable.id],
+  }),
+  facultyProfile: one(FacultyProfilesTable, {
+    fields: [UsersTable.id],
+    references: [FacultyProfilesTable.id],
+  }),
+  facultyMemberships: many(FacultyTable),
+  coursesCreated: many(CoursesTable),
+  bootcampsCreated: many(BootcampsTable),
+  enrollments: many(EnrollmentsTable),
+  bootcampEnrollments: many(BootcampEnrollmentsTable),
+  assignments: many(AssignmentSubmissionsTable),
+  assessments: many(AssessmentAttemptsTable),
+  certificates: many(CertificatesTable),
+  sessionsCreated: many(SessionsTable),
+  announcements: many(AnnouncementsTable),
+  forumPosts: many(ForumPostsTable),
+  batchEnrollments: many(BatchEnrollmentsTable),
+  activityLogs: many(ActivityLogsTable),
+  notifications: many(NotificationsTable),
+  createdReports: many(ReportsTable),
+  gradedAssignments: many(AssignmentSubmissionsTable, {
+    relationName: "graded_assignments"
+  }),
+}));
+
+export const StudentProfilesRelations = relations(StudentProfilesTable, ({ one }) => ({
+  user: one(UsersTable, {
+    fields: [StudentProfilesTable.id],
+    references: [UsersTable.id],
+  }),
+}));
+
+export const FacultyProfilesRelations = relations(FacultyProfilesTable, ({ one }) => ({
+  user: one(UsersTable, {
+    fields: [FacultyProfilesTable.id],
+    references: [UsersTable.id],
+  }),
+}));
+
+export const CollegesRelations = relations(CollegesTable, ({ one, many }) => ({
+  user: one(UsersTable, {
+    fields: [CollegesTable.userId],
+    references: [UsersTable.id],
+  }),
+  courses: many(CoursesTable),
+  bootcamps: many(BootcampsTable),
+  approvedByUser: one(UsersTable, {
+    fields: [CollegesTable.approvedBy],
+    references: [UsersTable.id],
+  }),
+  departments: many(DepartmentsTable),
+  faculty: many(FacultyTable),
+  batches: many(BatchesTable),
+  questionBanks: many(QuestionBanksTable),
+  payouts: many(PayoutsTable),
+}));
+
+export const DepartmentsRelations = relations(DepartmentsTable, ({ one, many }) => ({
+  college: one(CollegesTable, {
+    fields: [DepartmentsTable.collegeId],
+    references: [CollegesTable.id],
+  }),
+  headOfDepartment: one(UsersTable, {
+    fields: [DepartmentsTable.headOfDepartment],
+    references: [UsersTable.id],
+  }),
+  faculty: many(FacultyTable),
+  courses: many(CoursesTable),
+}));
+
+export const FacultyRelations = relations(FacultyTable, ({ one, many }) => ({
+  college: one(CollegesTable, {
+    fields: [FacultyTable.collegeId],
+    references: [CollegesTable.id],
+  }),
+  user: one(UsersTable, {
+    fields: [FacultyTable.userId],
+    references: [UsersTable.id],
+  }),
+  department: one(DepartmentsTable, {
+    fields: [FacultyTable.departmentId],
+    references: [DepartmentsTable.id],
+  }),
+  courseAssignments: many(CourseFacultyTable),
+  createdSessions: many(SessionsTable),
+  gradedAssignments: many(AssignmentSubmissionsTable),
+}));
+export const CategoriesRelations = relations(CategoriesTable, ({ many }) => ({
+  courses: many(CoursesTable),
+}));
