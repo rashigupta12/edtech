@@ -85,6 +85,7 @@ type Lesson = {
   articleContent: string | null;
   isFree: boolean;
   sortOrder: number;
+  quizUrl: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -379,37 +380,37 @@ export default function ViewCoursePage() {
     setShowModuleForm(true);
   };
 
- const handleSaveModule = async () => {
-  if (!moduleForm.title.trim()) {
-    Swal.fire("Error", "Module title is required", "error");
-    return;
-  }
-
-  try {
-    const res = await fetch(`/api/courses?id=${params.id}&modules=true`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(moduleForm),
-    });
-
-    const response = await res.json();
-
-    if (response.success) {
-      Swal.fire({
-        icon: "success",
-        title: "Module Added!",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-      setShowModuleForm(false);
-      setModuleForm({ title: "", description: "" });
-      fetchCurriculum(); // Change this from fetchModules() to fetchCurriculum()
+  const handleSaveModule = async () => {
+    if (!moduleForm.title.trim()) {
+      Swal.fire("Error", "Module title is required", "error");
+      return;
     }
-  } catch (err) {
-    console.error(err);
-    Swal.fire("Error", "Failed to add module", "error");
-  }
-};
+
+    try {
+      const res = await fetch(`/api/courses?id=${params.id}&modules=true`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(moduleForm),
+      });
+
+      const response = await res.json();
+
+      if (response.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Module Added!",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        setShowModuleForm(false);
+        setModuleForm({ title: "", description: "" });
+        fetchCurriculum(); // Change this from fetchModules() to fetchCurriculum()
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "Failed to add module", "error");
+    }
+  };
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -589,95 +590,116 @@ export default function ViewCoursePage() {
               </Card>
             )}
 
-           {/* Curriculum */}
-<Card>
-  <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-50">
-    <div className="flex items-center justify-between">
-      <div>
-        <CardTitle>Course Curriculum</CardTitle>
-        <CardDescription>
-          {modules?.length || 0} modules • {modules?.reduce((total, module) => total + (module.lessons?.length || 0), 0) || 0} lessons
-        </CardDescription>
-      </div>
-      <Button onClick={handleAddModule} size="sm">
-        <Plus className="h-4 w-4 mr-2" />
-        Add Module
-      </Button>
-    </div>
-  </CardHeader>
-  <CardContent className="p-6">
-    {showModuleForm && (
-      <Card className="mb-4 border-2 border-blue-200">
-        <CardContent className="p-4 space-y-4">
-          <div>
-            <Label>Module Title *</Label>
-            <Input
-              value={moduleForm.title}
-              onChange={(e) =>
-                setModuleForm({ ...moduleForm, title: e.target.value })
-              }
-              placeholder="Introduction to Web Development"
-            />
-          </div>
-          <div>
-            <Label>Description</Label>
-            <Textarea
-              value={moduleForm.description}
-              onChange={(e) =>
-                setModuleForm({ ...moduleForm, description: e.target.value })
-              }
-              placeholder="Module description..."
-              rows={3}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={handleSaveModule} size="sm">
-              <Save className="h-4 w-4 mr-2" />
-              Save Module
-            </Button>
-            <Button
-              onClick={() => setShowModuleForm(false)}
-              variant="outline"
-              size="sm"
-            >
-              <X className="h-4 w-4 mr-2" />
-              Cancel
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )}
-
-    {!modules || modules.length === 0 ? (
-      <div className="text-center py-8 text-gray-500">
-        <ListTree className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-        <p>No modules added yet.</p>
-        <p className="text-sm mt-2">Add modules to structure your course content.</p>
-      </div>
-    ) : (
-      <div className="space-y-3">
-        {modules.map((module, index) => (
-          <div
-            key={module.id}
-            className="border rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            {/* Module Header */}
-            <div className="flex items-start gap-3 p-4 cursor-pointer" onClick={() => toggleModule(module.id)}>
-              <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold text-sm mt-1">
-                {index + 1}
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-gray-900">{module.title}</h4>
-                {module.description && (
-                  <p className="text-sm text-gray-600 mt-1">{module.description}</p>
-                )}
-                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                  <span>{module.lessons?.length || 0} lessons</span>
-                  <span>•</span>
-                  <span>Sort order: {module.sortOrder}</span>
+            {/* Curriculum */}
+            <Card>
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Course Curriculum</CardTitle>
+                    <CardDescription>
+                      {modules?.length || 0} modules •{" "}
+                      {modules?.reduce(
+                        (total, module) =>
+                          total + (module.lessons?.length || 0),
+                        0
+                      ) || 0}{" "}
+                      lessons
+                    </CardDescription>
+                  </div>
+                  <Button onClick={handleAddModule} size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Module
+                  </Button>
                 </div>
-              </div>
-              {/* <Button
+              </CardHeader>
+              <CardContent className="p-6">
+                {showModuleForm && (
+                  <Card className="mb-4 border-2 border-blue-200">
+                    <CardContent className="p-4 space-y-4">
+                      <div>
+                        <Label>Module Title *</Label>
+                        <Input
+                          value={moduleForm.title}
+                          onChange={(e) =>
+                            setModuleForm({
+                              ...moduleForm,
+                              title: e.target.value,
+                            })
+                          }
+                          placeholder="Introduction to Web Development"
+                        />
+                      </div>
+                      <div>
+                        <Label>Description</Label>
+                        <Textarea
+                          value={moduleForm.description}
+                          onChange={(e) =>
+                            setModuleForm({
+                              ...moduleForm,
+                              description: e.target.value,
+                            })
+                          }
+                          placeholder="Module description..."
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={handleSaveModule} size="sm">
+                          <Save className="h-4 w-4 mr-2" />
+                          Save Module
+                        </Button>
+                        <Button
+                          onClick={() => setShowModuleForm(false)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {!modules || modules.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <ListTree className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <p>No modules added yet.</p>
+                    <p className="text-sm mt-2">
+                      Add modules to structure your course content.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {modules.map((module, index) => (
+                      <div
+                        key={module.id}
+                        className="border rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        {/* Module Header */}
+                        <div
+                          className="flex items-start gap-3 p-4 cursor-pointer"
+                          onClick={() => toggleModule(module.id)}
+                        >
+                          <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold text-sm mt-1">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-900">
+                              {module.title}
+                            </h4>
+                            {module.description && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                {module.description}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                              <span>{module.lessons?.length || 0} lessons</span>
+                              <span>•</span>
+                              <span>Sort order: {module.sortOrder}</span>
+                            </div>
+                          </div>
+                          {/* <Button
                 variant="ghost"
                 size="icon"
                 onClick={(e) => {
@@ -687,86 +709,130 @@ export default function ViewCoursePage() {
               >
                 <Edit className="h-4 w-4" />
               </Button> */}
-              <ChevronDown
-                className={`h-5 w-5 text-gray-400 transition-transform ${
-                  expandedModules.includes(module.id) ? 'rotate-180' : ''
-                }`} 
-              />
-            </div>
+                          <ChevronDown
+                            className={`h-5 w-5 text-gray-400 transition-transform ${
+                              expandedModules.includes(module.id)
+                                ? "rotate-180"
+                                : ""
+                            }`}
+                          />
+                        </div>
 
-            {/* Lessons Section */}
-            {expandedModules.includes(module.id) && (
-              <div className="border-t bg-gray-50">
-                {!module.lessons || module.lessons.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500 text-sm">
-                    No lessons in this module yet.
-                  </div>
-                ) : (
-                  <div className="space-y-2 p-4">
-                    {module.lessons.map((lesson, lessonIndex) => (
-                      <div
-                        key={lesson.id}
-                        className="flex items-start gap-3 p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow"
-                      >
-                        <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-semibold mt-1">
-                          {lessonIndex + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h5 className="font-medium text-gray-900 text-sm">
-                                {lesson.title}
-                              </h5>
-                              {lesson.description && (
-                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                                  {lesson.description}
-                                </p>
-                              )}
-                            </div>
-                            {lesson.isFree && (
-                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-                                Free
-                              </Badge>
+                        {/* Lessons Section */}
+                        {expandedModules.includes(module.id) && (
+                          <div className="border-t bg-gray-50">
+                            {!module.lessons || module.lessons.length === 0 ? (
+                              <div className="p-4 text-center text-gray-500 text-sm">
+                                No lessons in this module yet.
+                              </div>
+                            ) : (
+                              <div className="space-y-2 p-4">
+                                {module.lessons.map((lesson, lessonIndex) => (
+                                  <div
+                                    key={lesson.id}
+                                    className="flex items-start gap-3 p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow"
+                                  >
+                                    <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-semibold mt-1">
+                                      {lessonIndex + 1}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-start justify-between">
+                                        <div>
+                                          <h5 className="font-medium text-gray-900 text-sm">
+                                            {lesson.title}
+                                          </h5>
+                                          {lesson.description && (
+                                            <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                              {lesson.description}
+                                            </p>
+                                          )}
+                                        </div>
+                                        {lesson.isFree && (
+                                          <Badge
+                                            variant="outline"
+                                            className="text-xs bg-green-50 text-green-700"
+                                          >
+                                            Free
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs"
+                                        >
+                                          {lesson.contentType}
+                                        </Badge>
+                                        {lesson.videoDuration && (
+                                          <>
+                                            <span>•</span>
+                                            <span>
+                                              {Math.floor(
+                                                lesson.videoDuration / 60
+                                              )}
+                                              m {lesson.videoDuration % 60}s
+                                            </span>
+                                          </>
+                                        )}
+                                        <span>•</span>
+                                        <span>Sort: {lesson.sortOrder}</span>
+                                      </div>
+                                      {/* Show Video Link */}
+                                      {lesson.contentType === "VIDEO" &&
+                                        lesson.videoUrl && (
+                                          <div className="mt-2">
+                                            <a
+                                              href={lesson.videoUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                            >
+                                              📹 Video Link
+                                            </a>
+                                          </div>
+                                        )}
+
+                                      {/* Show Quiz Link */}
+                                      {lesson.contentType === "QUIZ" &&
+                                        lesson.quizUrl && (
+                                          <div className="mt-2">
+                                            <a
+                                              href={lesson.quizUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs text-purple-600 hover:text-purple-800 hover:underline"
+                                            >
+                                              📝 Quiz Link
+                                            </a>
+                                          </div>
+                                        )}
+
+                                      {/* Show Article Preview */}
+                                      {lesson.contentType === "ARTICLE" &&
+                                        lesson.articleContent && (
+                                          <div className="mt-2">
+                                            <p className="text-xs text-gray-600 line-clamp-3">
+                                              {lesson.articleContent.substring(
+                                                0,
+                                                100
+                                              )}
+                                              ...
+                                            </p>
+                                          </div>
+                                        )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                            <Badge variant="outline" className="text-xs">
-                              {lesson.contentType}
-                            </Badge>
-                            {lesson.videoDuration && (
-                              <>
-                                <span>•</span>
-                                <span>{Math.floor(lesson.videoDuration / 60)}m {lesson.videoDuration % 60}s</span>
-                              </>
-                            )}
-                            <span>•</span>
-                            <span>Sort: {lesson.sortOrder}</span>
-                          </div>
-                          {lesson.contentType === "VIDEO" && lesson.videoUrl && (
-                            <div className="mt-2">
-                              <a 
-                                href={lesson.videoUrl} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                              >
-                                📹 Video Link
-                              </a>
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    )}
-  </CardContent>
-</Card>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Sidebar */}

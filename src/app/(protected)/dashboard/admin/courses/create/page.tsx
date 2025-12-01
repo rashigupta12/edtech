@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { useCurrentUser } from "@/hooks/auth";
+import { FileUpload } from "@/components/Videoupload";
 
 type College = {
   id: string;
@@ -39,6 +40,7 @@ type Lesson = {
   contentType: "VIDEO" | "ARTICLE" | "QUIZ";
   videoUrl?: string;
   articleContent?: string;
+  quizUrl?: string;
   videoDuration?: number;
   isFree: boolean;
   sortOrder: number;
@@ -57,14 +59,17 @@ export default function CreateCoursePage() {
   const [colleges, setColleges] = useState<College[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const user = useCurrentUser();
- const [modules, setModules] = useState<Module[]>([
-  { 
-    title: "", 
-    description: "", 
-    sortOrder: 0,
-    lessons: []
-  }
-]);
+  const [uploadedVideoUrls, setUploadedVideoUrls] = useState<
+    Record<string, string>
+  >({});
+  const [modules, setModules] = useState<Module[]>([
+    {
+      title: "",
+      description: "",
+      sortOrder: 0,
+      lessons: [],
+    },
+  ]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -130,6 +135,22 @@ export default function CreateCoursePage() {
     }
   }, [formData.title]);
 
+  const handleVideoUploadComplete = (
+    moduleIndex: number,
+    lessonIndex: number,
+    url: string
+  ) => {
+    // Update the lesson with the uploaded video URL
+    updateLesson(moduleIndex, lessonIndex, "videoUrl", url);
+
+    // Track the uploaded URL for reference
+    const key = `${moduleIndex}-${lessonIndex}`;
+    setUploadedVideoUrls((prev) => ({
+      ...prev,
+      [key]: url,
+    }));
+  };
+
   const handleFieldChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -162,7 +183,6 @@ export default function CreateCoursePage() {
     setRequirements(updated);
   };
 
-  
   const addModule = () => {
     setModules([
       ...modules,
@@ -189,168 +209,179 @@ export default function CreateCoursePage() {
     setModules(updated);
   };
   const addLesson = (moduleIndex: number) => {
-  const updatedModules = [...modules];
-  updatedModules[moduleIndex].lessons.push({
-    title: "",
-    description: "",
-    contentType: "VIDEO",
-    isFree: false,
-    sortOrder: updatedModules[moduleIndex].lessons.length
-  });
-  setModules(updatedModules);
-};
-
-const removeLesson = (moduleIndex: number, lessonIndex: number) => {
-  const updatedModules = [...modules];
-  updatedModules[moduleIndex].lessons = updatedModules[moduleIndex].lessons.filter(
-    (_, i) => i !== lessonIndex
-  );
-  setModules(updatedModules);
-};
-
-const updateLesson = (
-  moduleIndex: number,
-  lessonIndex: number,
-  field: keyof Lesson,
-  value: any
-) => {
-  const updatedModules = [...modules];
-  (updatedModules[moduleIndex].lessons[lessonIndex] as any)[field] = value;
-  setModules(updatedModules);
-};
-
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  // Validation
-  if (!formData.title || !formData.categoryId) {
-    Swal.fire({
-      icon: "warning",
-      title: "Missing Required Fields",
-      text: "Please fill in title and category",
+    const updatedModules = [...modules];
+    updatedModules[moduleIndex].lessons.push({
+      title: "",
+      description: "",
+      contentType: "VIDEO",
+      isFree: false,
+      sortOrder: updatedModules[moduleIndex].lessons.length,
     });
-    return;
-  }
-
-  setLoading(true);
-
-  const createdBy = user?.id;
-
-  const payload = {
-    ...formData,
-    createdBy,
-    status: formData.status,
-    collegeId: formData.collegeId || null,
-    thumbnailUrl: formData.thumbnailUrl || null,
-    previewVideoUrl: formData.previewVideoUrl || null,
-    prerequisites: formData.prerequisites || null,
-    price: formData.price ? Number(formData.price) : null,
-    discountPrice: formData.discountPrice
-      ? Number(formData.discountPrice)
-      : null,
-    maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
+    setModules(updatedModules);
   };
 
-  try {
-    const res = await fetch("/api/courses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+  const removeLesson = (moduleIndex: number, lessonIndex: number) => {
+    const updatedModules = [...modules];
+    updatedModules[moduleIndex].lessons = updatedModules[
+      moduleIndex
+    ].lessons.filter((_, i) => i !== lessonIndex);
+    setModules(updatedModules);
+  };
 
-    const response = await res.json();
+  const updateLesson = (
+    moduleIndex: number,
+    lessonIndex: number,
+    field: keyof Lesson,
+    value: any
+  ) => {
+    const updatedModules = [...modules];
+    (updatedModules[moduleIndex].lessons[lessonIndex] as any)[field] = value;
+    setModules(updatedModules);
+  };
 
-    if (response.success) {
-      const courseId = response.data.id;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-      // Add learning outcomes
-      for (const outcome of learningOutcomes.filter((o) => o.trim())) {
-        await fetch(`/api/courses?id=${courseId}&outcomes=true`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ outcome }),
-        });
-      }
+    // Validation
+    if (!formData.title || !formData.categoryId) {
+      Swal.fire({
+        icon: "warning",
+        title: "Missing Required Fields",
+        text: "Please fill in title and category",
+      });
+      return;
+    }
 
-      // Add requirements
-      for (const requirement of requirements.filter((r) => r.trim())) {
-        await fetch(`/api/courses?id=${courseId}&requirements=true`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requirement }),
-        });
-      }
+    setLoading(true);
 
-      // Add modules and lessons
-      for (let i = 0; i < modules.length; i++) {
-        const module = modules[i];
-        if (module.title.trim()) {
-          // Create module
-          const moduleRes = await fetch(`/api/courses?id=${courseId}&modules=true`, {
+    const createdBy = user?.id;
+
+    const payload = {
+      ...formData,
+      createdBy,
+      status: formData.status,
+      collegeId: formData.collegeId || null,
+      thumbnailUrl: formData.thumbnailUrl || null,
+      previewVideoUrl: formData.previewVideoUrl || null,
+      prerequisites: formData.prerequisites || null,
+      price: formData.price ? Number(formData.price) : null,
+      discountPrice: formData.discountPrice
+        ? Number(formData.discountPrice)
+        : null,
+      maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
+    };
+
+    try {
+      const res = await fetch("/api/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const response = await res.json();
+
+      if (response.success) {
+        const courseId = response.data.id;
+
+        // Add learning outcomes
+        for (const outcome of learningOutcomes.filter((o) => o.trim())) {
+          await fetch(`/api/courses?id=${courseId}&outcomes=true`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: module.title,
-              description: module.description,
-              sortOrder: i,
-            }),
+            body: JSON.stringify({ outcome }),
           });
-          
-          const moduleData = await moduleRes.json();
-          
-          if (moduleData.success) {
-            // Add lessons for this module
-            for (let j = 0; j < module.lessons.length; j++) {
-              const lesson = module.lessons[j];
-              if (lesson.title.trim()) {
-                await fetch(`/api/courses?id=${courseId}&lessons=true&moduleId=${moduleData.data.id}`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    ...lesson,
-                    sortOrder: j,
-                  }),
-                });
+        }
+
+        // Add requirements
+        for (const requirement of requirements.filter((r) => r.trim())) {
+          await fetch(`/api/courses?id=${courseId}&requirements=true`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ requirement }),
+          });
+        }
+
+        // Add modules and lessons
+        for (let i = 0; i < modules.length; i++) {
+          const module = modules[i];
+          if (module.title.trim()) {
+            // Create module
+            const moduleRes = await fetch(
+              `/api/courses?id=${courseId}&modules=true`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title: module.title,
+                  description: module.description,
+                  sortOrder: i,
+                }),
+              }
+            );
+
+            const moduleData = await moduleRes.json();
+
+            if (moduleData.success) {
+              // Add lessons for this module
+              for (let j = 0; j < module.lessons.length; j++) {
+                const lesson = module.lessons[j];
+                if (lesson.title.trim()) {
+                  await fetch(
+                    `/api/courses?id=${courseId}&lessons=true&moduleId=${moduleData.data.id}`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        title: lesson.title,
+                        description: lesson.description,
+                        contentType: lesson.contentType,
+                        videoUrl: lesson.videoUrl || null,
+                        articleContent: lesson.articleContent || null,
+                        quizUrl: lesson.quizUrl || null,
+                        videoDuration: lesson.videoDuration || null,
+                        isFree: lesson.isFree,
+                        sortOrder: j,
+                      }),
+                    }
+                  );
+                }
               }
             }
           }
         }
-      }
 
-      Swal.fire({
-        icon: "success",
-        title: "Course Created!",
-        text: "Course has been created successfully",
-        timer: 2000,
-        showConfirmButton: false,
-      }).then(() => {
-        router.push("/dashboard/admin/courses");
-      });
-    } else {
+        Swal.fire({
+          icon: "success",
+          title: "Course Created!",
+          text: "Course has been created successfully",
+          timer: 2000,
+          showConfirmButton: false,
+        }).then(() => {
+          router.push("/dashboard/admin/courses");
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: response.error?.message || "Failed to create course",
+        });
+      }
+    } catch (err) {
+      console.error(err);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: response.error?.message || "Failed to create course",
+        text: "An unexpected error occurred",
       });
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error(err);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "An unexpected error occurred",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
-const toggleModule = (index: number) => {
-  setExpandedModules(prev =>
-    prev.includes(index) 
-      ? prev.filter(i => i !== index)
-      : [...prev, index]
-  );
-};
+  };
+  const toggleModule = (index: number) => {
+    setExpandedModules((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    );
+  };
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -735,193 +766,312 @@ const toggleModule = (index: number) => {
           </Card>
 
           {/* Course Modules */}
-         <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-  <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-50 border-b">
-    <div className="flex items-center justify-between">
-      <CardTitle className="text-xl text-gray-900">
-        Course Modules
-      </CardTitle>
-      <Button
-        type="button"
-        onClick={addModule}
-        size="sm"
-        variant="outline"
-      >
-        <Plus className="h-4 w-4 mr-2" />
-        Add Module
-      </Button>
-    </div>
-  </CardHeader>
-  <CardContent className="p-6 space-y-4">
-    {modules.map((module, moduleIndex) => (
-      <div key={moduleIndex} className="border rounded-lg p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => toggleModule(moduleIndex)}
-            >
-              <ChevronDown className={`h-4 w-4 transition-transform ${
-                expandedModules.includes(moduleIndex) ? 'rotate-180' : ''
-              }`} />
-            </Button>
-            <Label className="text-sm font-medium">
-              Module {moduleIndex + 1}
-            </Label>
-          </div>
-          {modules.length > 1 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => removeModule(moduleIndex)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
+            <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-50 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl text-gray-900">
+                  Course Modules
+                </CardTitle>
+                <Button
+                  type="button"
+                  onClick={addModule}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Module
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {modules.map((module, moduleIndex) => (
+                <div
+                  key={moduleIndex}
+                  className="border rounded-lg p-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => toggleModule(moduleIndex)}
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform ${
+                            expandedModules.includes(moduleIndex)
+                              ? "rotate-180"
+                              : ""
+                          }`}
+                        />
+                      </Button>
+                      <Label className="text-sm font-medium">
+                        Module {moduleIndex + 1}
+                      </Label>
+                    </div>
+                    {modules.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeModule(moduleIndex)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
 
-        <Input
-          value={module.title}
-          onChange={(e) =>
-            updateModule(moduleIndex, "title", e.target.value)
-          }
-          placeholder="Module title..."
-        />
-        <Textarea
-          value={module.description}
-          onChange={(e) =>
-            updateModule(moduleIndex, "description", e.target.value)
-          }
-          placeholder="Module description (optional)..."
-          rows={2}
-        />
+                  <Input
+                    value={module.title}
+                    onChange={(e) =>
+                      updateModule(moduleIndex, "title", e.target.value)
+                    }
+                    placeholder="Module title..."
+                  />
+                  <Textarea
+                    value={module.description}
+                    onChange={(e) =>
+                      updateModule(moduleIndex, "description", e.target.value)
+                    }
+                    placeholder="Module description (optional)..."
+                    rows={2}
+                  />
 
-        {/* Lessons Section */}
-        {expandedModules.includes(moduleIndex) && (
-          <div className="ml-6 border-l-2 border-gray-200 pl-4 space-y-4">
-            <div className="flex items-center justify-between pt-2">
-              <Label className="text-sm font-medium text-gray-700">
-                Lessons ({module.lessons.length})
-              </Label>
-              <Button
-                type="button"
-                onClick={() => addLesson(moduleIndex)}
-                size="sm"
-                variant="outline"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add Lesson
-              </Button>
-            </div>
+                  {/* Lessons Section */}
+                  {expandedModules.includes(moduleIndex) && (
+                    <div className="ml-6 border-l-2 border-gray-200 pl-4 space-y-4">
+                      <div className="flex items-center justify-between pt-2">
+                        <Label className="text-sm font-medium text-gray-700">
+                          Lessons ({module.lessons.length})
+                        </Label>
+                        <Button
+                          type="button"
+                          onClick={() => addLesson(moduleIndex)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Lesson
+                        </Button>
+                      </div>
 
-            {module.lessons.map((lesson, lessonIndex) => (
-              <div key={lessonIndex} className="border rounded p-3 space-y-3 bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">
-                    Lesson {lessonIndex + 1}
-                  </Label>
-                  {module.lessons.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeLesson(moduleIndex, lessonIndex)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
+                      {module.lessons.map((lesson, lessonIndex) => (
+                        <div
+                          key={lessonIndex}
+                          className="border rounded p-3 space-y-3 bg-gray-50"
+                        >
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium">
+                              Lesson {lessonIndex + 1}
+                            </Label>
+                            {module.lessons.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  removeLesson(moduleIndex, lessonIndex)
+                                }
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+
+                          <Input
+                            value={lesson.title}
+                            onChange={(e) =>
+                              updateLesson(
+                                moduleIndex,
+                                lessonIndex,
+                                "title",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Lesson title..."
+                            className="text-sm"
+                          />
+
+                          <Textarea
+                            value={lesson.description}
+                            onChange={(e) =>
+                              updateLesson(
+                                moduleIndex,
+                                lessonIndex,
+                                "description",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Lesson description..."
+                            rows={2}
+                            className="text-sm"
+                          />
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <Label
+                                htmlFor={`content-type-${moduleIndex}-${lessonIndex}`}
+                                className="text-xs"
+                              >
+                                Content Type
+                              </Label>
+                              <Select
+                                value={lesson.contentType}
+                                onValueChange={(
+                                  value: "VIDEO" | "ARTICLE" | "QUIZ"
+                                ) =>
+                                  updateLesson(
+                                    moduleIndex,
+                                    lessonIndex,
+                                    "contentType",
+                                    value
+                                  )
+                                }
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="VIDEO">Video</SelectItem>
+                                  <SelectItem value="ARTICLE">
+                                    Article
+                                  </SelectItem>
+                                  <SelectItem value="QUIZ">Quiz</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-6">
+                              <input
+                                type="checkbox"
+                                id={`is-free-${moduleIndex}-${lessonIndex}`}
+                                checked={lesson.isFree}
+                                onChange={(e) =>
+                                  updateLesson(
+                                    moduleIndex,
+                                    lessonIndex,
+                                    "isFree",
+                                    e.target.checked
+                                  )
+                                }
+                                className="rounded"
+                              />
+                              <Label
+                                htmlFor={`is-free-${moduleIndex}-${lessonIndex}`}
+                                className="text-xs"
+                              >
+                                Free Lesson
+                              </Label>
+                            </div>
+                          </div>
+
+                          {lesson.contentType === "VIDEO" && (
+                            <div className="space-y-3">
+                              <Label className="text-xs">Video Content</Label>
+
+                              {/* URL Input (for external videos like YouTube) */}
+                              <Input
+                                value={lesson.videoUrl || ""}
+                                onChange={(e) =>
+                                  updateLesson(
+                                    moduleIndex,
+                                    lessonIndex,
+                                    "videoUrl",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="YouTube URL or leave empty for upload..."
+                                className="text-sm"
+                              />
+
+                              <div className="text-xs text-gray-500">
+                                - OR -
+                              </div>
+
+                              {/* File Upload Component */}
+                              <FileUpload
+                                onUploadComplete={(url) =>
+                                  handleVideoUploadComplete(
+                                    moduleIndex,
+                                    lessonIndex,
+                                    url
+                                  )
+                                }
+                                accept="video/*"
+                                maxSize={200}
+                                label="Upload Video File"
+                                value={lesson.videoUrl || ""}
+                              />
+
+                              {/* Duration input for uploaded videos */}
+                              {lesson.videoUrl &&
+                                lesson.videoUrl.includes(
+                                  "s3.amazonaws.com"
+                                ) && (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                      <Label className="text-xs">
+                                        Video Duration (minutes)
+                                      </Label>
+                                      <Input
+                                        type="number"
+                                        value={lesson.videoDuration || ""}
+                                        onChange={(e) =>
+                                          updateLesson(
+                                            moduleIndex,
+                                            lessonIndex,
+                                            "videoDuration",
+                                            parseInt(e.target.value) || 0
+                                          )
+                                        }
+                                        placeholder="e.g., 45"
+                                        className="text-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                          )}
+
+                          {lesson.contentType === "ARTICLE" && (
+                            <Textarea
+                              value={lesson.articleContent || ""}
+                              onChange={(e) =>
+                                updateLesson(
+                                  moduleIndex,
+                                  lessonIndex,
+                                  "articleContent",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Article content..."
+                              rows={4}
+                              className="text-sm"
+                            />
+                          )}
+                          {lesson.contentType === "QUIZ" && (
+                            <Input
+                              value={lesson.quizUrl || ""}
+                              onChange={(e) =>
+                                updateLesson(
+                                  moduleIndex,
+                                  lessonIndex,
+                                  "quizUrl",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Quiz URL..."
+                              className="text-sm"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-
-                <Input
-                  value={lesson.title}
-                  onChange={(e) =>
-                    updateLesson(moduleIndex, lessonIndex, "title", e.target.value)
-                  }
-                  placeholder="Lesson title..."
-                  className="text-sm"
-                />
-
-                <Textarea
-                  value={lesson.description}
-                  onChange={(e) =>
-                    updateLesson(moduleIndex, lessonIndex, "description", e.target.value)
-                  }
-                  placeholder="Lesson description..."
-                  rows={2}
-                  className="text-sm"
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor={`content-type-${moduleIndex}-${lessonIndex}`} className="text-xs">
-                      Content Type
-                    </Label>
-                    <Select
-                      value={lesson.contentType}
-                      onValueChange={(value: "VIDEO" | "ARTICLE" | "QUIZ") =>
-                        updateLesson(moduleIndex, lessonIndex, "contentType", value)
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="VIDEO">Video</SelectItem>
-                        <SelectItem value="ARTICLE">Article</SelectItem>
-                        <SelectItem value="QUIZ">Quiz</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-6">
-                    <input
-                      type="checkbox"
-                      id={`is-free-${moduleIndex}-${lessonIndex}`}
-                      checked={lesson.isFree}
-                      onChange={(e) =>
-                        updateLesson(moduleIndex, lessonIndex, "isFree", e.target.checked)
-                      }
-                      className="rounded"
-                    />
-                    <Label htmlFor={`is-free-${moduleIndex}-${lessonIndex}`} className="text-xs">
-                      Free Lesson
-                    </Label>
-                  </div>
-                </div>
-
-                {lesson.contentType === "VIDEO" && (
-                  <Input
-                    value={lesson.videoUrl || ""}
-                    onChange={(e) =>
-                      updateLesson(moduleIndex, lessonIndex, "videoUrl", e.target.value)
-                    }
-                    placeholder="Video URL..."
-                    className="text-sm"
-                  />
-                )}
-
-                {lesson.contentType === "ARTICLE" && (
-                  <Textarea
-                    value={lesson.articleContent || ""}
-                    onChange={(e) =>
-                      updateLesson(moduleIndex, lessonIndex, "articleContent", e.target.value)
-                    }
-                    placeholder="Article content..."
-                    rows={4}
-                    className="text-sm"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    ))}
-  </CardContent>
-</Card>
+              ))}
+            </CardContent>
+          </Card>
           {/* Additional Info */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-50 border-b">

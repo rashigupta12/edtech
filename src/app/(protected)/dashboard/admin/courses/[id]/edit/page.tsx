@@ -15,7 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, Plus, X, Edit, Trash2, ChevronDown } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  Plus,
+  X,
+  Edit,
+  Trash2,
+  ChevronDown,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
@@ -53,6 +61,7 @@ type Lesson = {
   articleContent: string | null;
   isFree: boolean;
   sortOrder: number;
+  quizUrl: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -124,10 +133,8 @@ export default function EditCoursePage() {
   const [requirements, setRequirements] = useState<
     (Requirement | { id: string; requirement: string; isNew: true })[]
   >([]);
- 
-  const [modules, setModules] = useState<
-    (Module & { isNew?: true })[]
-  >([]);
+
+  const [modules, setModules] = useState<(Module & { isNew?: true })[]>([]);
   const [editingModule, setEditingModule] = useState<{
     id: string;
     title: string;
@@ -139,6 +146,7 @@ export default function EditCoursePage() {
     title: string;
     description: string;
     contentType: string;
+    quizUrl: string;
     videoUrl: string;
     articleContent: string;
     isFree: boolean;
@@ -209,7 +217,9 @@ export default function EditCoursePage() {
         }
 
         // Fetch curriculum with lessons
-        const curriculumRes = await fetch(`/api/courses?id=${params.id}&curriculum=true`);
+        const curriculumRes = await fetch(
+          `/api/courses?id=${params.id}&curriculum=true`
+        );
         const curriculumData = await curriculumRes.json();
         if (curriculumData.success) {
           setModules(curriculumData.data.modules || []);
@@ -321,13 +331,13 @@ export default function EditCoursePage() {
       .substr(2, 9)}`;
     setModules((prev) => [
       ...prev,
-      { 
-        id: newId, 
-        title: "", 
-        description: "", 
+      {
+        id: newId,
+        title: "",
+        description: "",
         sortOrder: prev.length,
         lessons: [],
-        isNew: true 
+        isNew: true,
       },
     ]);
   };
@@ -372,9 +382,11 @@ export default function EditCoursePage() {
 
   // Lesson functions
   const addNewLesson = (moduleId: string) => {
-    const newId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    setModules(prev =>
-      prev.map(module =>
+    const newId = `new-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+    setModules((prev) =>
+      prev.map((module) =>
         module.id === moduleId
           ? {
               ...module,
@@ -387,13 +399,14 @@ export default function EditCoursePage() {
                   contentType: "VIDEO",
                   videoUrl: "",
                   videoDuration: null,
+                  quizUrl: "",
                   articleContent: "",
                   isFree: false,
                   sortOrder: module.lessons.length,
                   createdAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
-                }
-              ]
+                },
+              ],
             }
           : module
       )
@@ -401,27 +414,34 @@ export default function EditCoursePage() {
   };
 
   const removeLesson = (moduleId: string, lessonId: string) => {
-    setModules(prev =>
-      prev.map(module =>
+    setModules((prev) =>
+      prev.map((module) =>
         module.id === moduleId
           ? {
               ...module,
-              lessons: module.lessons.filter(lesson => lesson.id !== lessonId)
+              lessons: module.lessons.filter(
+                (lesson) => lesson.id !== lessonId
+              ),
             }
           : module
       )
     );
   };
 
-  const updateLesson = (moduleId: string, lessonId: string, field: keyof Lesson, value: any) => {
-    setModules(prev =>
-      prev.map(module =>
+  const updateLesson = (
+    moduleId: string,
+    lessonId: string,
+    field: keyof Lesson,
+    value: any
+  ) => {
+    setModules((prev) =>
+      prev.map((module) =>
         module.id === moduleId
           ? {
               ...module,
-              lessons: module.lessons.map(lesson =>
+              lessons: module.lessons.map((lesson) =>
                 lesson.id === lessonId ? { ...lesson, [field]: value } : lesson
-              )
+              ),
             }
           : module
       )
@@ -436,9 +456,10 @@ export default function EditCoursePage() {
       description: lesson.description || "",
       contentType: lesson.contentType,
       videoUrl: lesson.videoUrl || "",
+      quizUrl: lesson.quizUrl || "",
       articleContent: lesson.articleContent || "",
       isFree: lesson.isFree,
-      sortOrder: lesson.sortOrder
+      sortOrder: lesson.sortOrder,
     });
   };
 
@@ -450,29 +471,27 @@ export default function EditCoursePage() {
     if (!editingLesson || !editingLesson.title.trim()) return;
 
     const { moduleId, id, ...lessonData } = editingLesson;
-    
-    setModules(prev =>
-      prev.map(module =>
+
+    setModules((prev) =>
+      prev.map((module) =>
         module.id === moduleId
           ? {
               ...module,
-              lessons: module.lessons.map(lesson =>
-                lesson.id === id
-                  ? { ...lesson, ...lessonData }
-                  : lesson
-              )
+              lessons: module.lessons.map((lesson) =>
+                lesson.id === id ? { ...lesson, ...lessonData } : lesson
+              ),
             }
           : module
       )
     );
-    
+
     setEditingLesson(null);
   };
 
   const toggleModule = (moduleId: string) => {
-    setExpandedModules(prev =>
-      prev.includes(moduleId) 
-        ? prev.filter(id => id !== moduleId)
+    setExpandedModules((prev) =>
+      prev.includes(moduleId)
+        ? prev.filter((id) => id !== moduleId)
         : [...prev, moduleId]
     );
   };
@@ -500,6 +519,7 @@ export default function EditCoursePage() {
       prerequisites: formData.prerequisites || null,
       duration: formData.duration || null,
       price: formData.price ? Number(formData.price) : null,
+
       discountPrice: formData.discountPrice
         ? Number(formData.discountPrice)
         : null,
@@ -565,40 +585,47 @@ export default function EditCoursePage() {
         // Process modules and lessons
         for (let i = 0; i < modules.length; i++) {
           const module = modules[i];
-          
+
           if (module.isNew) {
             // Create new module
             if (module.title.trim()) {
-              const moduleRes = await fetch(`/api/courses?id=${params.id}&modules=true`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: module.title,
-                  description: module.description,
-                  sortOrder: i,
-                }),
-              });
-              
+              const moduleRes = await fetch(
+                `/api/courses?id=${params.id}&modules=true`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    title: module.title,
+                    description: module.description,
+                    sortOrder: i,
+                  }),
+                }
+              );
+
               const moduleData = await moduleRes.json();
-              
+
               if (moduleData.success) {
                 // Create lessons for new module
                 for (let j = 0; j < module.lessons.length; j++) {
                   const lesson = module.lessons[j];
                   if (lesson.title.trim()) {
-                    await fetch(`/api/courses?id=${params.id}&lessons=true&moduleId=${moduleData.data.id}`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        title: lesson.title,
-                        description: lesson.description,
-                        contentType: lesson.contentType,
-                        videoUrl: lesson.videoUrl,
-                        articleContent: lesson.articleContent,
-                        isFree: lesson.isFree,
-                        sortOrder: j,
-                      }),
-                    });
+                    await fetch(
+                      `/api/courses?id=${params.id}&lessons=true&moduleId=${moduleData.data.id}`,
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          title: lesson.title,
+                          description: lesson.description,
+                          contentType: lesson.contentType,
+                          videoUrl: lesson.videoUrl,
+                          quizUrl: lesson.quizUrl,
+                          articleContent: lesson.articleContent,
+                          isFree: lesson.isFree,
+                          sortOrder: j,
+                        }),
+                      }
+                    );
                   }
                 }
               }
@@ -618,26 +645,30 @@ export default function EditCoursePage() {
             // Process lessons for existing module
             for (let j = 0; j < module.lessons.length; j++) {
               const lesson = module.lessons[j];
-              
+
               // Check if lesson is new (has no proper UUID format)
-              const isNewLesson = lesson.id.startsWith('new-');
-              
+              const isNewLesson = lesson.id.startsWith("new-");
+
               if (isNewLesson) {
                 // Create new lesson
                 if (lesson.title.trim()) {
-                  await fetch(`/api/courses?id=${params.id}&lessons=true&moduleId=${module.id}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      title: lesson.title,
-                      description: lesson.description,
-                      contentType: lesson.contentType,
-                      videoUrl: lesson.videoUrl,
-                      articleContent: lesson.articleContent,
-                      isFree: lesson.isFree,
-                      sortOrder: j,
-                    }),
-                  });
+                  await fetch(
+                    `/api/courses?id=${params.id}&lessons=true&moduleId=${module.id}`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        title: lesson.title,
+                        description: lesson.description,
+                        contentType: lesson.contentType,
+                        videoUrl: lesson.videoUrl,
+                        quizUrl: lesson.quizUrl,
+                        articleContent: lesson.articleContent,
+                        isFree: lesson.isFree,
+                        sortOrder: j,
+                      }),
+                    }
+                  );
                 }
               } else {
                 // Update existing lesson
@@ -1236,9 +1267,15 @@ export default function EditCoursePage() {
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               {modules.map((module, index) => (
-                <div key={module.id} className="border rounded-lg hover:bg-gray-50 transition-colors">
+                <div
+                  key={module.id}
+                  className="border rounded-lg hover:bg-gray-50 transition-colors"
+                >
                   {/* Module Header */}
-                  <div className="flex items-start gap-3 p-4 cursor-pointer" onClick={() => toggleModule(module.id)}>
+                  <div
+                    className="flex items-start gap-3 p-4 cursor-pointer"
+                    onClick={() => toggleModule(module.id)}
+                  >
                     <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold text-sm mt-1">
                       {index + 1}
                     </div>
@@ -1246,32 +1283,84 @@ export default function EditCoursePage() {
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           {editingModule?.id === module.id ? (
+                            // Editing existing module
                             <div className="space-y-2">
                               <Input
                                 value={editingModule.title}
-                                onChange={(e) => setEditingModule({...editingModule, title: e.target.value})}
+                                onChange={(e) =>
+                                  setEditingModule({
+                                    ...editingModule,
+                                    title: e.target.value,
+                                  })
+                                }
                                 placeholder="Module title..."
                               />
                               <Textarea
                                 value={editingModule.description}
-                                onChange={(e) => setEditingModule({...editingModule, description: e.target.value})}
+                                onChange={(e) =>
+                                  setEditingModule({
+                                    ...editingModule,
+                                    description: e.target.value,
+                                  })
+                                }
                                 placeholder="Module description..."
                                 rows={2}
                               />
                               <div className="flex gap-2">
-                                <Button type="button" size="sm" onClick={saveEditModule}>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={saveEditModule}
+                                >
                                   Save
                                 </Button>
-                                <Button type="button" variant="outline" size="sm" onClick={cancelEditModule}>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={cancelEditModule}
+                                >
                                   Cancel
                                 </Button>
                               </div>
                             </div>
+                          ) : module.isNew ? (
+                            // NEW MODULE - directly editable
+                            <div className="space-y-2">
+                              <Input
+                                value={module.title}
+                                onChange={(e) =>
+                                  updateModule(
+                                    module.id,
+                                    "title",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="Module title..."
+                              />
+                              <Textarea
+                                value={module.description || ""}
+                                onChange={(e) =>
+                                  updateModule(
+                                    module.id,
+                                    "description",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="Module description..."
+                                rows={2}
+                              />
+                            </div>
                           ) : (
+                            // Existing module - show as text
                             <div>
-                              <h4 className="font-semibold text-gray-900">{module.title}</h4>
+                              <h4 className="font-semibold text-gray-900">
+                                {module.title}
+                              </h4>
                               {module.description && (
-                                <p className="text-sm text-gray-600 mt-1">{module.description}</p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {module.description}
+                                </p>
                               )}
                             </div>
                           )}
@@ -1279,8 +1368,10 @@ export default function EditCoursePage() {
                         <div className="flex gap-2">
                           <ChevronDown
                             className={`h-5 w-5 text-gray-400 transition-transform ${
-                              expandedModules.includes(module.id) ? 'rotate-180' : ''
-                            }`} 
+                              expandedModules.includes(module.id)
+                                ? "rotate-180"
+                                : ""
+                            }`}
                           />
                           {editingModule?.id === module.id ? null : (
                             <>
@@ -1354,7 +1445,7 @@ export default function EditCoursePage() {
                         </Button>
                       </div>
 
-                      {(!module.lessons || module.lessons.length === 0) ? (
+                      {!module.lessons || module.lessons.length === 0 ? (
                         <div className="p-4 text-center text-gray-500 text-sm">
                           No lessons in this module yet.
                         </div>
@@ -1369,37 +1460,61 @@ export default function EditCoursePage() {
                                 {lessonIndex + 1}
                               </div>
                               <div className="flex-1 min-w-0">
-                                {editingLesson?.id === lesson.id && editingLesson.moduleId === module.id ? (
+                                {editingLesson?.id === lesson.id &&
+                                editingLesson.moduleId === module.id ? (
                                   <div className="space-y-3">
                                     <div className="flex items-start justify-between">
                                       <div className="flex-1 space-y-3">
                                         <Input
                                           value={editingLesson.title}
-                                          onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })}
+                                          onChange={(e) =>
+                                            setEditingLesson({
+                                              ...editingLesson,
+                                              title: e.target.value,
+                                            })
+                                          }
                                           placeholder="Lesson title..."
                                           className="text-sm"
                                         />
                                         <Textarea
                                           value={editingLesson.description}
-                                          onChange={(e) => setEditingLesson({ ...editingLesson, description: e.target.value })}
+                                          onChange={(e) =>
+                                            setEditingLesson({
+                                              ...editingLesson,
+                                              description: e.target.value,
+                                            })
+                                          }
                                           placeholder="Lesson description..."
                                           rows={2}
                                           className="text-sm"
                                         />
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                           <div>
-                                            <Label className="text-xs">Content Type</Label>
+                                            <Label className="text-xs">
+                                              Content Type
+                                            </Label>
                                             <Select
                                               value={editingLesson.contentType}
-                                              onValueChange={(value) => setEditingLesson({ ...editingLesson, contentType: value })}
+                                              onValueChange={(value) =>
+                                                setEditingLesson({
+                                                  ...editingLesson,
+                                                  contentType: value,
+                                                })
+                                              }
                                             >
                                               <SelectTrigger className="h-8 text-sm">
                                                 <SelectValue />
                                               </SelectTrigger>
                                               <SelectContent>
-                                                <SelectItem value="VIDEO">Video</SelectItem>
-                                                <SelectItem value="ARTICLE">Article</SelectItem>
-                                                <SelectItem value="QUIZ">Quiz</SelectItem>
+                                                <SelectItem value="VIDEO">
+                                                  Video
+                                                </SelectItem>
+                                                <SelectItem value="ARTICLE">
+                                                  Article
+                                                </SelectItem>
+                                                <SelectItem value="QUIZ">
+                                                  Quiz
+                                                </SelectItem>
                                               </SelectContent>
                                             </Select>
                                           </div>
@@ -1407,33 +1522,85 @@ export default function EditCoursePage() {
                                             <input
                                               type="checkbox"
                                               checked={editingLesson.isFree}
-                                              onChange={(e) => setEditingLesson({ ...editingLesson, isFree: e.target.checked })}
+                                              onChange={(e) =>
+                                                setEditingLesson({
+                                                  ...editingLesson,
+                                                  isFree: e.target.checked,
+                                                })
+                                              }
                                               className="rounded"
                                             />
-                                            <Label className="text-xs">Free Lesson</Label>
+                                            <Label className="text-xs">
+                                              Free Lesson
+                                            </Label>
                                           </div>
                                         </div>
-                                        {editingLesson.contentType === "VIDEO" && (
+                                        {editingLesson.contentType ===
+                                          "VIDEO" && (
                                           <Input
                                             value={editingLesson.videoUrl}
-                                            onChange={(e) => setEditingLesson({ ...editingLesson, videoUrl: e.target.value })}
+                                            onChange={(e) =>
+                                              setEditingLesson({
+                                                ...editingLesson,
+                                                videoUrl: e.target.value,
+                                              })
+                                            }
                                             placeholder="Video URL..."
                                             className="text-sm"
                                           />
                                         )}
-                                        {editingLesson.contentType === "ARTICLE" && (
+                                        {editingLesson.contentType ===
+                                          "ARTICLE" && (
                                           <Textarea
                                             value={editingLesson.articleContent}
-                                            onChange={(e) => setEditingLesson({ ...editingLesson, articleContent: e.target.value })}
+                                            onChange={(e) =>
+                                              setEditingLesson({
+                                                ...editingLesson,
+                                                articleContent: e.target.value,
+                                              })
+                                            }
                                             placeholder="Article content..."
                                             rows={4}
+                                            className="text-sm"
+                                          />
+                                        )}
+                                        {editingLesson.contentType ===
+                                          "ARTICLE" && (
+                                          <Textarea
+                                            value={editingLesson.articleContent}
+                                            onChange={(e) =>
+                                              setEditingLesson({
+                                                ...editingLesson,
+                                                articleContent: e.target.value,
+                                              })
+                                            }
+                                            placeholder="Article content..."
+                                            rows={4}
+                                            className="text-sm"
+                                          />
+                                        )}
+                                        {editingLesson.contentType ===
+                                          "QUIZ" && (
+                                          <Input
+                                            value={editingLesson.quizUrl}
+                                            onChange={(e) =>
+                                              setEditingLesson({
+                                                ...editingLesson,
+                                                quizUrl: e.target.value,
+                                              })
+                                            }
+                                            placeholder="Quiz URL..."
                                             className="text-sm"
                                           />
                                         )}
                                       </div>
                                     </div>
                                     <div className="flex gap-2">
-                                      <Button type="button" size="sm" onClick={saveEditLesson}>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={saveEditLesson}
+                                      >
                                         Save
                                       </Button>
                                       <Button
@@ -1466,34 +1633,57 @@ export default function EditCoursePage() {
                                       )}
                                     </div>
                                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                      <span className="bg-gray-100 px-2 py-1 rounded">{lesson.contentType}</span>
+                                      <span className="bg-gray-100 px-2 py-1 rounded">
+                                        {lesson.contentType}
+                                      </span>
                                       {lesson.videoDuration && (
                                         <>
                                           <span>•</span>
-                                          <span>{Math.floor(lesson.videoDuration / 60)}m {lesson.videoDuration % 60}s</span>
+                                          <span>
+                                            {Math.floor(
+                                              lesson.videoDuration / 60
+                                            )}
+                                            m {lesson.videoDuration % 60}s
+                                          </span>
                                         </>
                                       )}
                                       <span>•</span>
                                       <span>Sort: {lesson.sortOrder}</span>
                                     </div>
-                                    {lesson.contentType === "VIDEO" && lesson.videoUrl && (
-                                      <div className="mt-2">
-                                        <a 
-                                          href={lesson.videoUrl} 
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
-                                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                                        >
-                                          📹 Video Link
-                                        </a>
-                                      </div>
-                                    )}
+                                    {lesson.contentType === "VIDEO" &&
+                                      lesson.videoUrl && (
+                                        <div className="mt-2">
+                                          <a
+                                            href={lesson.videoUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                          >
+                                            📹 Video Link
+                                          </a>
+                                        </div>
+                                      )}
+                                    {lesson.contentType === "QUIZ" &&
+                                      lesson.quizUrl && (
+                                        <div className="mt-2">
+                                          <a
+                                            href={lesson.quizUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                          >
+                                            📝 Quiz Link
+                                          </a>
+                                        </div>
+                                      )}
                                     <div className="flex gap-2 mt-2">
                                       <Button
                                         type="button"
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => startEditLesson(module.id, lesson)}
+                                        onClick={() =>
+                                          startEditLesson(module.id, lesson)
+                                        }
                                       >
                                         <Edit className="h-3 w-3 mr-1" />
                                         Edit
@@ -1502,7 +1692,9 @@ export default function EditCoursePage() {
                                         type="button"
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => removeLesson(module.id, lesson.id)}
+                                        onClick={() =>
+                                          removeLesson(module.id, lesson.id)
+                                        }
                                       >
                                         <Trash2 className="h-3 w-3 mr-1" />
                                         Remove

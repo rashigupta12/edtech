@@ -648,6 +648,7 @@ export const CourseLessonsTable = pgTable(
     videoUrl: text("video_url"),
     videoDuration: integer("video_duration"),
     articleContent: text("article_content"),
+     quizUrl: text("quiz_url"), 
     
     // Downloadable Resources
     resources: jsonb("resources"),

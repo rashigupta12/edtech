@@ -808,6 +808,7 @@ const createLesson = async (id: string, request: NextRequest) => {
         contentType: body.contentType || 'VIDEO',
         videoUrl: body.videoUrl || null,
         videoDuration: body.videoDuration || null,
+        quizUrl: body.quizUrl || null,
         articleContent: body.articleContent || null,
         resources: body.resources || null,
         isFree: body.isFree || false,
@@ -845,6 +846,7 @@ const updateLesson = async (id: string, request: NextRequest) => {
         videoUrl: body.videoUrl,
         videoDuration: body.videoDuration,
         articleContent: body.articleContent,
+        quizUrl: body.quizUrl,
         resources: body.resources,
         isFree: body.isFree,
         sortOrder: body.sortOrder,
@@ -903,11 +905,27 @@ const getCourseCurriculumWithLessons = async (id: string) => {
   // Get lessons for each module
   const modulesWithLessons = await Promise.all(
     modules.map(async (module) => {
-      const lessons = await db
-        .select()
-        .from(CourseLessonsTable)
-        .where(eq(CourseLessonsTable.moduleId, module.id))
-        .orderBy(CourseLessonsTable.sortOrder);
+     const lessons = await db
+  .select({
+    id: CourseLessonsTable.id,
+    moduleId: CourseLessonsTable.moduleId,
+    courseId: CourseLessonsTable.courseId,
+    title: CourseLessonsTable.title,
+    description: CourseLessonsTable.description,
+    contentType: CourseLessonsTable.contentType,
+    videoUrl: CourseLessonsTable.videoUrl,
+    videoDuration: CourseLessonsTable.videoDuration,
+    articleContent: CourseLessonsTable.articleContent,
+    quizUrl: CourseLessonsTable.quizUrl,
+    resources: CourseLessonsTable.resources,
+    sortOrder: CourseLessonsTable.sortOrder,
+    isFree: CourseLessonsTable.isFree,
+    createdAt: CourseLessonsTable.createdAt,
+    updatedAt: CourseLessonsTable.updatedAt,
+  })
+  .from(CourseLessonsTable)
+  .where(eq(CourseLessonsTable.moduleId, module.id))
+  .orderBy(CourseLessonsTable.sortOrder);
 
       return {
         ...module,
