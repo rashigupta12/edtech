@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 
 "use client";
 
@@ -50,7 +50,7 @@ const RegisterFormSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters")
     .max(128, "Password must not exceed 128 characters"),
-  role: z.enum(["ADMIN", "COLLEGE", "STUDENT"]).optional(),
+  role: z.enum(["ADMIN", "COLLEGE", "STUDENT" ,"FACULTY"]).optional(),
 });
 
 type RegisterFormProps = {

@@ -2,7 +2,7 @@
 // src/app/api/enrollments/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { EnrollmentsTable, BootcampEnrollmentsTable, CoursesTable, BootcampsTable } from '@/db/schema';
+import { EnrollmentsTable, BootcampEnrollmentsTable, CoursesTable, BootcampsTable, CourseLessonsTable, LessonProgressTable } from '@/db/schema';
 import { eq, and, desc, count } from 'drizzle-orm';
 
 // ===========================
@@ -38,6 +38,7 @@ const errorResponse = (message: string, code = 'ERROR', status = 400): NextRespo
 // ===========================
 
 // LIST USER'S ENROLLMENTS
+// LIST USER'S ENROLLMENTS
 const listUserEnrollments = async (userId: string) => {
   const enrollments = await db
     .select({
@@ -55,7 +56,50 @@ const listUserEnrollments = async (userId: string) => {
     .where(eq(EnrollmentsTable.userId, userId))
     .orderBy(desc(EnrollmentsTable.lastAccessedAt));
 
-  return successResponse(enrollments);
+  // For each enrollment, calculate actual progress based on completed lessons
+  const enrollmentsWithProgress = await Promise.all(
+    enrollments.map(async (enrollment) => {
+      // Get total lessons in course
+      const [totalLessons] = await db
+        .select({ count: count() })
+        .from(CourseLessonsTable)
+        .where(eq(CourseLessonsTable.courseId, enrollment.courseId));
+
+      // Get completed lessons for this user in this course
+      const [completedLessons] = await db
+        .select({ count: count() })
+        .from(LessonProgressTable)
+        .innerJoin(CourseLessonsTable, eq(LessonProgressTable.lessonId, CourseLessonsTable.id))
+        .where(
+          and(
+            eq(LessonProgressTable.userId, userId),
+            eq(LessonProgressTable.isCompleted, true),
+            eq(CourseLessonsTable.courseId, enrollment.courseId)
+          )
+        );
+
+      // Calculate percentage
+      let actualProgress = enrollment.progress;
+      if (totalLessons.count > 0) {
+        actualProgress = Math.round((completedLessons.count / totalLessons.count) * 100);
+        
+        // Update enrollment progress in database if different
+        if (actualProgress !== enrollment.progress) {
+          await db
+            .update(EnrollmentsTable)
+            .set({ progress: actualProgress })
+            .where(eq(EnrollmentsTable.id, enrollment.id));
+        }
+      }
+
+      return {
+        ...enrollment,
+        progress: actualProgress,
+      };
+    })
+  );
+
+  return successResponse(enrollmentsWithProgress);
 };
 
 // GET ENROLLMENT BY ID

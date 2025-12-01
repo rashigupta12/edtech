@@ -1,4 +1,3 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
 /*eslint-disable @typescript-eslint/no-unused-vars */
 // app/dashboard/admin/cms/[id]/page.tsx
 'use client';

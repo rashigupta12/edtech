@@ -1,4 +1,4 @@
-// src/app/(protected)/dashboard/admin/courses/page.tsx
+// src/app/(protected)/dashboard/college/courses/page.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -400,7 +400,7 @@ export default function CoursesPage() {
             variant="outline"
             className="border-purple-300 text-purple-700 hover:bg-purple-50"
           >
-            <Link href="/dashboard/admin/categories" className="flex items-center gap-2">
+            <Link href="/dashboard/college/categories" className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
               Categories
             </Link>
@@ -410,7 +410,7 @@ export default function CoursesPage() {
             asChild
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
           >
-            <Link href="/dashboard/admin/courses/create" className="flex items-center gap-2">
+            <Link href="/dashboard/college/courses/create" className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Add Course
             </Link>
@@ -644,7 +644,7 @@ export default function CoursesPage() {
                         {course.isFree ? (
                           <span className="text-green-600">Free</span>
                         ) : (
-                          `$${course.price}`
+                          `${course.price}`
                         )}
                       </div>
                     </td>
@@ -661,7 +661,7 @@ export default function CoursesPage() {
                     <td className="px-6 py-2 text-center">
                       <div className="flex items-center justify-end gap-1">
                         {/* View */}
-                        <Link href={`/dashboard/admin/courses/${course.id}`}>
+                        <Link href={`/dashboard/college/courses/${course.id}`}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -672,7 +672,7 @@ export default function CoursesPage() {
                         </Link>
 
                         {/* Edit */}
-                        <Link href={`/dashboard/admin/courses/${course.id}/edit`}>
+                        <Link href={`/dashboard/college/courses/${course.id}/edit`}>
                           <Button
                             variant="ghost"
                             size="icon"

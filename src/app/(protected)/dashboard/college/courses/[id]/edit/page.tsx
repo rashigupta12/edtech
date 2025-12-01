@@ -1,4 +1,4 @@
-// src/app/(protected)/dashboard/admin/courses/[id]/edit/page.tsx
+// src/app/(protected)/dashboard/college/courses/[id]/edit/page.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, Plus, X, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, X, Edit, Trash2, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
@@ -40,11 +40,27 @@ type Requirement = {
   requirement: string;
   sortOrder: number;
 };
+
+type Lesson = {
+  id: string;
+  title: string;
+  description: string | null;
+  contentType: string;
+  videoUrl: string | null;
+  videoDuration: number | null;
+  articleContent: string | null;
+  isFree: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type Module = {
   id: string;
   title: string;
   description: string | null;
   sortOrder: number;
+  lessons: Lesson[];
 };
 
 type Course = {
@@ -106,14 +122,27 @@ export default function EditCoursePage() {
   const [requirements, setRequirements] = useState<
     (Requirement | { id: string; requirement: string; isNew: true })[]
   >([]);
+ 
   const [modules, setModules] = useState<
-    (Module | { id: string; title: string; description: string; isNew: true })[]
+    (Module & { isNew?: true })[]
   >([]);
   const [editingModule, setEditingModule] = useState<{
     id: string;
     title: string;
     description: string;
   } | null>(null);
+  const [editingLesson, setEditingLesson] = useState<{
+    id: string;
+    moduleId: string;
+    title: string;
+    description: string;
+    contentType: string;
+    videoUrl: string;
+    articleContent: string;
+    isFree: boolean;
+    sortOrder: number;
+  } | null>(null);
+  const [expandedModules, setExpandedModules] = useState<string[]>([]);
 
   // Editing states
   const [editingOutcome, setEditingOutcome] = useState<{
@@ -176,13 +205,12 @@ export default function EditCoursePage() {
         if (collegesData.success) {
           setColleges(collegesData.data);
         }
-        // Fetch modules
-        const modulesRes = await fetch(
-          `/api/courses?id=${params.id}&modules=true`
-        );
-        const modulesData = await modulesRes.json();
-        if (modulesData.success) {
-          setModules(modulesData.data || []);
+
+        // Fetch curriculum with lessons
+        const curriculumRes = await fetch(`/api/courses?id=${params.id}&curriculum=true`);
+        const curriculumData = await curriculumRes.json();
+        if (curriculumData.success) {
+          setModules(curriculumData.data.modules || []);
         }
 
         // Fetch categories
@@ -198,7 +226,7 @@ export default function EditCoursePage() {
           title: "Error",
           text: "Failed to load course data",
         });
-        router.push("/dashboard/admin/courses");
+        router.push("/dashboard/college/courses");
       } finally {
         setLoading(false);
       }
@@ -283,6 +311,7 @@ export default function EditCoursePage() {
     updateRequirement(editingRequirement.id, editingRequirement.value);
     setEditingRequirement(null);
   };
+
   // Module functions
   const addNewModule = () => {
     const newId = `new-${Date.now()}-${Math.random()
@@ -290,7 +319,14 @@ export default function EditCoursePage() {
       .substr(2, 9)}`;
     setModules((prev) => [
       ...prev,
-      { id: newId, title: "", description: "", isNew: true },
+      { 
+        id: newId, 
+        title: "", 
+        description: "", 
+        sortOrder: prev.length,
+        lessons: [],
+        isNew: true 
+      },
     ]);
   };
 
@@ -330,6 +366,113 @@ export default function EditCoursePage() {
     updateModule(editingModule.id, "title", editingModule.title);
     updateModule(editingModule.id, "description", editingModule.description);
     setEditingModule(null);
+  };
+
+  // Lesson functions
+  const addNewLesson = (moduleId: string) => {
+    const newId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    setModules(prev =>
+      prev.map(module =>
+        module.id === moduleId
+          ? {
+              ...module,
+              lessons: [
+                ...module.lessons,
+                {
+                  id: newId,
+                  title: "",
+                  description: "",
+                  contentType: "VIDEO",
+                  videoUrl: "",
+                  videoDuration: null,
+                  articleContent: "",
+                  isFree: false,
+                  sortOrder: module.lessons.length,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                }
+              ]
+            }
+          : module
+      )
+    );
+  };
+
+  const removeLesson = (moduleId: string, lessonId: string) => {
+    setModules(prev =>
+      prev.map(module =>
+        module.id === moduleId
+          ? {
+              ...module,
+              lessons: module.lessons.filter(lesson => lesson.id !== lessonId)
+            }
+          : module
+      )
+    );
+  };
+
+  // const updateLesson = (moduleId: string, lessonId: string, field: keyof Lesson, value: any) => {
+  //   setModules(prev =>
+  //     prev.map(module =>
+  //       module.id === moduleId
+  //         ? {
+  //             ...module,
+  //             lessons: module.lessons.map(lesson =>
+  //               lesson.id === lessonId ? { ...lesson, [field]: value } : lesson
+  //             )
+  //           }
+  //         : module
+  //     )
+  //   );
+  // };
+
+  const startEditLesson = (moduleId: string, lesson: Lesson) => {
+    setEditingLesson({
+      id: lesson.id,
+      moduleId,
+      title: lesson.title,
+      description: lesson.description || "",
+      contentType: lesson.contentType,
+      videoUrl: lesson.videoUrl || "",
+      articleContent: lesson.articleContent || "",
+      isFree: lesson.isFree,
+      sortOrder: lesson.sortOrder
+    });
+  };
+
+  const cancelEditLesson = () => {
+    setEditingLesson(null);
+  };
+
+  const saveEditLesson = () => {
+    if (!editingLesson || !editingLesson.title.trim()) return;
+
+    const { moduleId, id, ...lessonData } = editingLesson;
+    
+    setModules(prev =>
+      prev.map(module =>
+        module.id === moduleId
+          ? {
+              ...module,
+              lessons: module.lessons.map(lesson =>
+                lesson.id === id
+                  ? { ...lesson, ...lessonData }
+                  : lesson
+              )
+            }
+          : module
+      )
+    );
+    
+    setEditingLesson(null);
+  };
+
+  const toggleModule = (moduleId: string) => {
+    setExpandedModules(prev =>
+      prev.includes(moduleId) 
+        ? prev.filter(id => id !== moduleId)
+        : [...prev, moduleId]
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -417,35 +560,97 @@ export default function EditCoursePage() {
           }
         }
 
-        // Process modules - update existing and create new ones
-        for (let i = 0; i < modules.length; i++) {
-          const module = modules[i];
-          if ("isNew" in module) {
-            // Create new module
-            if (module.title.trim()) {
-              await fetch(`/api/courses?id=${params.id}&modules=true`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: module.title,
-                  description: module.description,
-                  sortOrder: i,
-                }),
-              });
-            }
-          } else {
-            // Update existing module
-            await fetch(`/api/courses?id=${module.id}&updateModule=true`, {
-              method: "PUT",
+        // Process modules and lessons
+       for (let i = 0; i < modules.length; i++) {
+  const mod = modules[i];  // ← Renamed from "module" to "mod"
+
+  if (mod.isNew) {
+    // Create new module
+    if (mod.title.trim()) {
+      const moduleRes = await fetch(`/api/courses?id=${params.id}&modules=true`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: mod.title,
+          description: mod.description,
+          sortOrder: i,
+        }),
+      });
+
+      const moduleData = await moduleRes.json();
+
+      if (moduleData.success) {
+        for (let j = 0; j < mod.lessons.length; j++) {
+          const lesson = mod.lessons[j];
+          if (lesson.title.trim()) {
+            await fetch(`/api/courses?id=${params.id}&lessons=true&moduleId=${moduleData.data.id}`, {
+              method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                title: module.title,
-                description: module.description,
-                sortOrder: i,
+                title: lesson.title,
+                description: lesson.description,
+                contentType: lesson.contentType,
+                videoUrl: lesson.videoUrl,
+                articleContent: lesson.articleContent,
+                isFree: lesson.isFree,
+                sortOrder: j,
               }),
             });
           }
         }
+      }
+    }
+  } else {
+    // Update existing module
+    await fetch(`/api/courses?id=${mod.id}&updateModule=true`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: mod.title,
+        description: mod.description,
+        sortOrder: i,
+      }),
+    });
+
+    // Process lessons...
+    for (let j = 0; j < mod.lessons.length; j++) {
+      const lesson = mod.lessons[j];
+      const isNewLesson = lesson.id.startsWith('new-');
+
+      if (isNewLesson) {
+        if (lesson.title.trim()) {
+          await fetch(`/api/courses?id=${params.id}&lessons=true&moduleId=${mod.id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: lesson.title,
+              description: lesson.description,
+              contentType: lesson.contentType,
+              videoUrl: lesson.videoUrl,
+              articleContent: lesson.articleContent,
+              isFree: lesson.isFree,
+              sortOrder: j,
+            }),
+          });
+        }
+      } else {
+        await fetch(`/api/courses?id=${lesson.id}&updateLesson=true`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: lesson.title,
+            description: lesson.description,
+            contentType: lesson.contentType,
+            videoUrl: lesson.videoUrl,
+            articleContent: lesson.articleContent,
+            isFree: lesson.isFree,
+            sortOrder: j,
+          }),
+        });
+      }
+    }
+  }
+}
         Swal.fire({
           icon: "success",
           title: "Course Updated!",
@@ -453,7 +658,7 @@ export default function EditCoursePage() {
           timer: 2000,
           showConfirmButton: false,
         }).then(() => {
-          router.push("/dashboard/admin/courses");
+          router.push("/dashboard/college/courses");
           router.refresh();
         });
       } else {
@@ -492,7 +697,7 @@ export default function EditCoursePage() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/dashboard/admin/courses"
+            href="/dashboard/college/courses"
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -644,24 +849,28 @@ export default function EditCoursePage() {
                   />
                 </div>
                 <div>
-  <Label htmlFor="status">Status</Label>
-  <Select
-    value={formData.status}
-    onValueChange={(value) => handleFieldChange("status", value)}
-  >
-    <SelectTrigger>
-      <SelectValue />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="DRAFT">Draft</SelectItem>
-      <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
-      <SelectItem value="APPROVED">Approved</SelectItem>
-      <SelectItem value="REJECTED">Rejected</SelectItem>
-      <SelectItem value="PUBLISHED">Published</SelectItem>
-      <SelectItem value="ARCHIVED">Archived</SelectItem>
-    </SelectContent>
-  </Select>
-</div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      handleFieldChange("status", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DRAFT">Draft</SelectItem>
+                      <SelectItem value="PENDING_APPROVAL">
+                        Pending Approval
+                      </SelectItem>
+                      <SelectItem value="APPROVED">Approved</SelectItem>
+                      <SelectItem value="REJECTED">Rejected</SelectItem>
+                      <SelectItem value="PUBLISHED">Published</SelectItem>
+                      <SelectItem value="ARCHIVED">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <div>
                   <Label htmlFor="duration">Duration</Label>
@@ -994,16 +1203,16 @@ export default function EditCoursePage() {
             </CardContent>
           </Card>
 
-          {/* Course Modules */}
+          {/* Course Modules with Lessons */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-50 border-b">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-xl text-gray-900">
-                    Course Modules
+                    Course Modules & Lessons
                   </CardTitle>
                   <p className="text-sm text-gray-500 mt-1">
-                    Structure your course content into modules
+                    Structure your course content into modules and lessons
                   </p>
                 </div>
                 <Button
@@ -1018,116 +1227,287 @@ export default function EditCoursePage() {
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {modules.map((item, index) => (
-                <div key={item.id} className="border rounded-lg p-4 space-y-3">
-                  {editingModule?.id === item.id ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium">
-                          Module {index + 1}
-                        </Label>
-                      </div>
-                      <Input
-                        value={editingModule.title}
-                        onChange={(e) =>
-                          setEditingModule({
-                            ...editingModule,
-                            title: e.target.value,
-                          })
-                        }
-                        placeholder="Module title..."
-                      />
-                      <Textarea
-                        value={editingModule.description}
-                        onChange={(e) =>
-                          setEditingModule({
-                            ...editingModule,
-                            description: e.target.value,
-                          })
-                        }
-                        placeholder="Module description (optional)..."
-                        rows={2}
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={saveEditModule}
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={cancelEditModule}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
+              {modules.map((module, index) => (
+                <div key={module.id} className="border rounded-lg hover:bg-gray-50 transition-colors">
+                  {/* Module Header */}
+                  <div className="flex items-start gap-3 p-4 cursor-pointer" onClick={() => toggleModule(module.id)}>
+                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold text-sm mt-1">
+                      {index + 1}
                     </div>
-                  ) : (
-                    <>
+                    <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium">
-                          Module {index + 1}
-                        </Label>
-                        <div className="flex gap-2">
-                          {"isNew" in item ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeModule(item.id)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                        <div className="flex-1">
+                          {editingModule?.id === module.id ? (
+                            <div className="space-y-2">
+                              <Input
+                                value={editingModule.title}
+                                onChange={(e) => setEditingModule({...editingModule, title: e.target.value})}
+                                placeholder="Module title..."
+                              />
+                              <Textarea
+                                value={editingModule.description}
+                                onChange={(e) => setEditingModule({...editingModule, description: e.target.value})}
+                                placeholder="Module description..."
+                                rows={2}
+                              />
+                              <div className="flex gap-2">
+                                <Button type="button" size="sm" onClick={saveEditModule}>
+                                  Save
+                                </Button>
+                                <Button type="button" variant="outline" size="sm" onClick={cancelEditModule}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
                           ) : (
+                            <div>
+                              <h4 className="font-semibold text-gray-900">{module.title}</h4>
+                              {module.description && (
+                                <p className="text-sm text-gray-600 mt-1">{module.description}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <ChevronDown
+                            className={`h-5 w-5 text-gray-400 transition-transform ${
+                              expandedModules.includes(module.id) ? 'rotate-180' : ''
+                            }`} 
+                          />
+                          {editingModule?.id === module.id ? null : (
                             <>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() =>
-                                  startEditModule(
-                                    item.id,
-                                    item.title,
-                                    item.description || ""
-                                  )
-                                }
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeModule(item.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              {module.isNew ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeModule(module.id);
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              ) : (
+                                <>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startEditModule(
+                                        module.id,
+                                        module.title,
+                                        module.description || ""
+                                      );
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeModule(module.id);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
                             </>
                           )}
                         </div>
                       </div>
-                      <Input
-                        value={item.title}
-                        onChange={(e) =>
-                          updateModule(item.id, "title", e.target.value)
-                        }
-                        placeholder="Module title..."
-                        readOnly={"isNew" in item ? false : true}
-                      />
-                      <Textarea
-                        value={item.description || ""}
-                        onChange={(e) =>
-                          updateModule(item.id, "description", e.target.value)
-                        }
-                        placeholder="Module description (optional)..."
-                        rows={2}
-                        readOnly={"isNew" in item ? false : true}
-                      />
-                    </>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        <span>{module.lessons?.length || 0} lessons</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lessons Section */}
+                  {expandedModules.includes(module.id) && (
+                    <div className="border-t bg-gray-50">
+                      <div className="flex items-center justify-between p-4">
+                        <Label className="text-sm font-medium text-gray-700">
+                          Lessons ({module.lessons?.length || 0})
+                        </Label>
+                        <Button
+                          type="button"
+                          onClick={() => addNewLesson(module.id)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Lesson
+                        </Button>
+                      </div>
+
+                      {(!module.lessons || module.lessons.length === 0) ? (
+                        <div className="p-4 text-center text-gray-500 text-sm">
+                          No lessons in this module yet.
+                        </div>
+                      ) : (
+                        <div className="space-y-2 p-4">
+                          {module.lessons.map((lesson, lessonIndex) => (
+                            <div
+                              key={lesson.id}
+                              className="flex items-start gap-3 p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow"
+                            >
+                              <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-semibold mt-1">
+                                {lessonIndex + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                {editingLesson?.id === lesson.id && editingLesson.moduleId === module.id ? (
+                                  <div className="space-y-3">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1 space-y-3">
+                                        <Input
+                                          value={editingLesson.title}
+                                          onChange={(e) => setEditingLesson({ ...editingLesson, title: e.target.value })}
+                                          placeholder="Lesson title..."
+                                          className="text-sm"
+                                        />
+                                        <Textarea
+                                          value={editingLesson.description}
+                                          onChange={(e) => setEditingLesson({ ...editingLesson, description: e.target.value })}
+                                          placeholder="Lesson description..."
+                                          rows={2}
+                                          className="text-sm"
+                                        />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                          <div>
+                                            <Label className="text-xs">Content Type</Label>
+                                            <Select
+                                              value={editingLesson.contentType}
+                                              onValueChange={(value) => setEditingLesson({ ...editingLesson, contentType: value })}
+                                            >
+                                              <SelectTrigger className="h-8 text-sm">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="VIDEO">Video</SelectItem>
+                                                <SelectItem value="ARTICLE">Article</SelectItem>
+                                                <SelectItem value="QUIZ">Quiz</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div className="flex items-center gap-2 pt-6">
+                                            <input
+                                              type="checkbox"
+                                              checked={editingLesson.isFree}
+                                              onChange={(e) => setEditingLesson({ ...editingLesson, isFree: e.target.checked })}
+                                              className="rounded"
+                                            />
+                                            <Label className="text-xs">Free Lesson</Label>
+                                          </div>
+                                        </div>
+                                        {editingLesson.contentType === "VIDEO" && (
+                                          <Input
+                                            value={editingLesson.videoUrl}
+                                            onChange={(e) => setEditingLesson({ ...editingLesson, videoUrl: e.target.value })}
+                                            placeholder="Video URL..."
+                                            className="text-sm"
+                                          />
+                                        )}
+                                        {editingLesson.contentType === "ARTICLE" && (
+                                          <Textarea
+                                            value={editingLesson.articleContent}
+                                            onChange={(e) => setEditingLesson({ ...editingLesson, articleContent: e.target.value })}
+                                            placeholder="Article content..."
+                                            rows={4}
+                                            className="text-sm"
+                                          />
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button type="button" size="sm" onClick={saveEditLesson}>
+                                        Save
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={cancelEditLesson}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="flex items-start justify-between">
+                                      <div>
+                                        <h5 className="font-medium text-gray-900 text-sm">
+                                          {lesson.title}
+                                        </h5>
+                                        {lesson.description && (
+                                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                            {lesson.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                      {lesson.isFree && (
+                                        <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded">
+                                          Free
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                      <span className="bg-gray-100 px-2 py-1 rounded">{lesson.contentType}</span>
+                                      {lesson.videoDuration && (
+                                        <>
+                                          <span>•</span>
+                                          <span>{Math.floor(lesson.videoDuration / 60)}m {lesson.videoDuration % 60}s</span>
+                                        </>
+                                      )}
+                                      <span>•</span>
+                                      <span>Sort: {lesson.sortOrder}</span>
+                                    </div>
+                                    {lesson.contentType === "VIDEO" && lesson.videoUrl && (
+                                      <div className="mt-2">
+                                        <a 
+                                          href={lesson.videoUrl} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                        >
+                                          📹 Video Link
+                                        </a>
+                                      </div>
+                                    )}
+                                    <div className="flex gap-2 mt-2">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => startEditLesson(module.id, lesson)}
+                                      >
+                                        <Edit className="h-3 w-3 mr-1" />
+                                        Edit
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => removeLesson(module.id, lesson.id)}
+                                      >
+                                        <Trash2 className="h-3 w-3 mr-1" />
+                                        Remove
+                                      </Button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
@@ -1139,6 +1519,7 @@ export default function EditCoursePage() {
               )}
             </CardContent>
           </Card>
+
           {/* Additional Info */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-50 border-b">
@@ -1165,7 +1546,7 @@ export default function EditCoursePage() {
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-6 pb-8">
             <Button type="button" variant="outline" asChild>
-              <Link href="/dashboard/admin/courses">Cancel</Link>
+              <Link href="/dashboard/college/courses">Cancel</Link>
             </Button>
             <Button
               type="submit"

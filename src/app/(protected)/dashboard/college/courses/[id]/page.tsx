@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// src/app/(protected)/dashboard/admin/courses/[id]/page.tsx
+// src/app/(protected)/dashboard/college/courses/[id]/page.tsx
 "use client";
 
 import { Badge } from "@/components/ui/badge";
@@ -225,7 +225,7 @@ export default function ViewCoursePage() {
           timer: 2000,
           showConfirmButton: false,
         });
-        router.push("/dashboard/admin/courses");
+        router.push("/dashboard/college/courses");
       } else {
         Swal.fire({
           icon: "error",
@@ -438,7 +438,7 @@ export default function ViewCoursePage() {
           <div className="max-w-7xl">
             <div className="flex items-center justify-between mb-6">
               <Link
-                href="/dashboard/admin/courses"
+                href="/dashboard/college/courses"
                 className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -676,7 +676,7 @@ export default function ViewCoursePage() {
                   <span>Sort order: {module.sortOrder}</span>
                 </div>
               </div>
-              <Button
+              {/* <Button
                 variant="ghost"
                 size="icon"
                 onClick={(e) => {
@@ -685,7 +685,7 @@ export default function ViewCoursePage() {
                 }}
               >
                 <Edit className="h-4 w-4" />
-              </Button>
+              </Button> */}
               <ChevronDown
                 className={`h-5 w-5 text-gray-400 transition-transform ${
                   expandedModules.includes(module.id) ? 'rotate-180' : ''
@@ -818,7 +818,7 @@ export default function ViewCoursePage() {
                     asChild
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    <Link href={`/dashboard/admin/courses/${course.id}/edit`}>
+                    <Link href={`/dashboard/college/courses/${course.id}/edit`}>
                       <Edit className="h-4 w-4 mr-2" />
                       Edit Course
                     </Link>
