@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/question-banks/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
@@ -280,7 +281,7 @@ export async function POST_QUESTION(request: NextRequest) {
       correctAnswer,
       points,
       explanation,
-      tags,
+      // tags,
     } = body;
 
     if (!questionBankId || !questionText || !correctAnswer) {

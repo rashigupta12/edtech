@@ -2,10 +2,8 @@
 "use client";
 
 import {
-  Award,
   BookOpen,
   ChevronDown,
-  CreditCard,
   DollarSign,
   FileText,
   Home,
@@ -15,7 +13,7 @@ import {
   Ticket,
   TrendingUp,
   Users,
-  Wallet,
+  Wallet
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -174,6 +172,8 @@ const navConfigs = {
         },
       ],
     },
+
+    
     {
       title: "Earnings",
       icon: TrendingUp,

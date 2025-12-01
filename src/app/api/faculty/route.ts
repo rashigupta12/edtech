@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/faculty/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";

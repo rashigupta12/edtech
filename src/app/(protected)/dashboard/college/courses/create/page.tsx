@@ -1,4 +1,4 @@
-// src/app/(protected)/dashboard/admin/courses/create/page.tsx
+// src/app/(protected)/dashboard/college/courses/create/page.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -162,7 +162,15 @@ export default function CreateCoursePage() {
 
   
   const addModule = () => {
-    setModules([...modules, { title: "", description: "" }]);
+    setModules([
+      ...modules,
+      {
+        title: "",
+        description: "",
+        sortOrder: modules.length,
+        lessons: [],
+      },
+    ]);
   };
 
   const removeModule = (index: number) => {
@@ -205,7 +213,7 @@ const updateLesson = (
   value: any
 ) => {
   const updatedModules = [...modules];
-  updatedModules[moduleIndex].lessons[lessonIndex][field] = value;
+  (updatedModules[moduleIndex].lessons[lessonIndex] as any)[field] = value;
   setModules(updatedModules);
 };
 
@@ -314,7 +322,7 @@ const updateLesson = (
         timer: 2000,
         showConfirmButton: false,
       }).then(() => {
-        router.push("/dashboard/admin/courses");
+        router.push("/dashboard/college/courses");
       });
     } else {
       Swal.fire({
@@ -347,7 +355,7 @@ const toggleModule = (index: number) => {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/dashboard/admin/courses"
+            href="/dashboard/college/courses"
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -938,7 +946,7 @@ const toggleModule = (index: number) => {
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-6 pb-8">
             <Button type="button" variant="outline" asChild>
-              <Link href="/dashboard/admin/courses">Cancel</Link>
+              <Link href="/dashboard/college/courses">Cancel</Link>
             </Button>
             <Button
               type="submit"
