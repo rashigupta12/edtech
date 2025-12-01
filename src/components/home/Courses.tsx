@@ -151,7 +151,7 @@ export default function FeaturedCourses() {
 
         {/* Courses Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((course, index) => (
+          {courses.map((course) => (
             <div 
               key={course.id} 
               className="group bg-green-50 rounded-2xl overflow-hidden border border-slate-100 hover:border-emerald-300 hover:shadow-xl transition-all duration-300 cursor-pointer"

@@ -19,13 +19,15 @@ import {
   Mail,
   Menu,
   UserPlus,
+  Leaf,
+  GraduationCap,
+  Sparkles,
 } from "lucide-react";
 import { Session } from "next-auth";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useState, useTransition, useRef, useEffect } from "react";
 import useSWR from "swr";
-import { FuturetekLogo } from "./FutureTekLogo";
 
 type Course = {
   id: string;
@@ -74,7 +76,7 @@ function NavLink({
     <Link
       href={href}
       prefetch={true}
-      className={`transition-colors hover:text-blue-600 ${className}`}
+      className={`transition-colors hover:text-emerald-700 ${className}`}
     >
       {children}
     </Link>
@@ -120,9 +122,10 @@ function CoursesDropdown({ courses, loading }: { courses: Course[]; loading: boo
       onMouseLeave={() => !isMobile && setOpen(false)}
     >
       <button
-        className="flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+        className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-emerald-800 transition-colors"
         onClick={handleClick}
       >
+        <BookOpen className="h-4 w-4 mr-1" />
         Courses
         <ChevronDown
           className={`h-4 w-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
@@ -131,27 +134,38 @@ function CoursesDropdown({ courses, loading }: { courses: Course[]; loading: boo
 
       {open && (
         <div className="absolute left-0 top-full pt-2 z-50 w-64">
-          <div className="bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+          <div className="bg-white border border-emerald-100 rounded-xl shadow-xl overflow-hidden">
+            
+            
             {loading ? (
-              <div className="px-4 py-3 text-sm text-slate-500">Loading courses...</div>
+              <div className="px-4 py-3 text-sm text-gray-500 flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                Loading courses...
+              </div>
             ) : courses.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-slate-500">No courses available</div>
+              <div className="px-4 py-3 text-sm text-gray-500 flex items-center gap-2">
+                <Leaf className="h-4 w-4 text-emerald-400" />
+                No courses available
+              </div>
             ) : (
               <div className="max-h-96 overflow-y-auto">
                 {courses.map((course) => (
                   <NavLink
                     key={course.id}
                     href={`/courses/${course.slug}`}
-                    className="block px-4 py-3 hover:bg-blue-50 text-sm text-slate-700 hover:text-blue-700 transition-colors"
+                    className="block px-4 py-3 hover:bg-emerald-50 text-sm text-gray-700 hover:text-emerald-800 transition-colors border-b border-gray-100 last:border-b-0"
                   >
-                    {course.title}
+                    <div className="flex items-center gap-2">
+                      {course.title}
+                    </div>
                   </NavLink>
                 ))}
               </div>
             )}
-            <div className="border-t border-slate-100 bg-slate-50 px-4 py-2">
-              <NavLink href="/courses" className="text-xs font-medium text-blue-600 hover:text-blue-800">
-                View all courses →
+            <div className="border-t border-emerald-100 bg-gradient-to-r from-emerald-50 to-green-50 px-4 py-3">
+              <NavLink href="/courses" className="text-xs font-medium text-emerald-700 hover:text-emerald-900 flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
+                Explore all courses →
               </NavLink>
             </div>
           </div>
@@ -205,23 +219,31 @@ function Sidebar({
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden">
+        <Button variant="ghost" size="icon" className="md:hidden hover:bg-emerald-50 hover:text-emerald-700">
           <Menu className="h-5 w-5" />
           <span className="sr-only">Menu</span>
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="left" className="w-80 p-0 flex flex-col">
-        <div className="p-6 border-b">
-          <Link href="/" onClick={() => setIsOpen(false)}>
-            <FuturetekLogo width={180} height={60} />
+      <SheetContent side="left" className="w-80 p-0 flex flex-col border-emerald-100">
+        <div className="p-8 border-b border-emerald-100 bg-gradient-to-r from-emerald-50/50 to-green-50/50">
+          <Link href="/" onClick={() => setIsOpen(false)} className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl">
+              <GraduationCap className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <div className="text-xl font-bold bg-gradient-to-r from-emerald-700 to-green-800 bg-clip-text text-transparent">
+                EduTech
+              </div>
+              <div className="text-xs text-emerald-600 font-medium">Learn & Grow</div>
+            </div>
           </Link>
         </div>
 
         {session && (
-          <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50">
-            <p className="text-sm text-slate-600">Welcome back,</p>
-            <p className="font-semibold text-blue-900 truncate">{session.user?.name}</p>
+          <div className="px-6 py-4 bg-gradient-to-r from-emerald-50 to-green-50 border-b border-emerald-100">
+            <p className="text-sm text-emerald-700">Welcome back,</p>
+            <p className="font-semibold text-emerald-900 truncate">{session.user?.name}</p>
           </div>
         )}
 
@@ -229,18 +251,23 @@ function Sidebar({
           <div className="space-y-1 px-3">
             {session && (
               <>
-                <Button asChild variant="ghost" className="w-full justify-start gap-3" onClick={() => setIsOpen(false)}>
+                <Button 
+                  asChild 
+                  variant="ghost" 
+                  className="w-full justify-start gap-3 hover:bg-emerald-50 hover:text-emerald-700 text-gray-700" 
+                  onClick={() => setIsOpen(false)}
+                >
                   <Link href="/dashboard">
                     <LayoutDashboard className="h-5 w-5" /> Dashboard
                   </Link>
                 </Button>
-                <Separator />
+                <Separator className="bg-emerald-100" />
               </>
             )}
 
             <Button
               variant="ghost"
-              className="w-full justify-between"
+              className="w-full justify-between hover:bg-emerald-50 hover:text-emerald-700 text-gray-700"
               onClick={handleCoursesClick}
             >
               <span className="flex items-center gap-3">
@@ -250,19 +277,27 @@ function Sidebar({
             </Button>
 
             {coursesOpen && (
-              <div className="pl-8 space-y-1 border-l-2 border-blue-200">
+              <div className="pl-8 space-y-1 border-l-2 border-emerald-200 ml-3 my-2">
                 {courses.length === 0 ? (
-                  <p className="text-sm text-slate-500 py-2">No published courses</p>
+                  <p className="text-sm text-gray-500 py-2 flex items-center gap-2">
+                    <Leaf className="h-3 w-3" />
+                    No published courses
+                  </p>
                 ) : (
                   courses.map((course) => (
                     <Button
                       key={course.id}
                       asChild
                       variant="ghost"
-                      className="w-full justify-start text-sm py-2"
+                      className="w-full justify-start text-sm py-2 hover:bg-emerald-50 hover:text-emerald-700 text-gray-600"
                       onClick={() => setIsOpen(false)}
                     >
-                      <Link href={`/courses/${course.slug}`}>{course.title}</Link>
+                      <Link href={`/courses/${course.slug}`}>
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-1.5 rounded-full bg-emerald-400"></div>
+                          {course.title}
+                        </div>
+                      </Link>
                     </Button>
                   ))
                 )}
@@ -274,7 +309,7 @@ function Sidebar({
                 key={href}
                 asChild
                 variant="ghost"
-                className="w-full justify-start gap-3"
+                className="w-full justify-start gap-3 hover:bg-emerald-50 hover:text-emerald-700 text-gray-700"
                 onClick={() => setIsOpen(false)}
               >
                 <Link href={href}>
@@ -285,7 +320,7 @@ function Sidebar({
           </div>
         </nav>
 
-        <div className="border-t p-4 space-y-2">
+        <div className="border-t border-emerald-100 p-4 space-y-2 bg-gradient-to-r from-emerald-50/30 to-green-50/30">
           {session ? (
             <Button
               onClick={() => {
@@ -293,18 +328,27 @@ function Sidebar({
                 setIsOpen(false);
               }}
               variant="outline"
-              className="w-full justify-start gap-3 text-red-600 border-red-200 hover:bg-red-50"
+              className="w-full justify-start gap-3 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
             >
               <LogOut className="h-5 w-5" /> Logout
             </Button>
           ) : (
             <>
-              <Button asChild variant="outline" className="w-full justify-start gap-3" onClick={() => setIsOpen(false)}>
+              <Button 
+                asChild 
+                variant="outline" 
+                className="w-full justify-start gap-3 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-gray-700 border-gray-200" 
+                onClick={() => setIsOpen(false)}
+              >
                 <Link href="/auth/login">
                   <LogIn className="h-5 w-5" /> Login
                 </Link>
               </Button>
-              <Button asChild className="w-full justify-start gap-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white" onClick={() => setIsOpen(false)}>
+              <Button 
+                asChild 
+                className="w-full justify-start gap-3 bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white shadow-md hover:shadow-lg" 
+                onClick={() => setIsOpen(false)}
+              >
                 <Link href="/auth/register">
                   <UserPlus className="h-5 w-5" /> Sign Up
                 </Link>
@@ -340,12 +384,20 @@ export function SiteHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
+    <header className="sticky top-0 z-50 bg-white border-b border-emerald-100 shadow-sm p-2">
       <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4 lg:px-8">
         <div className="flex items-center gap-8">
           <Sidebar session={session ?? null} handleLogout={handleLogout} courses={courses} />
-          <Link href="/" className="flex items-center">
-            <FuturetekLogo width={180} height={54} />
+          <Link href="/" className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-sm">
+              <GraduationCap className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-700 to-green-800 bg-clip-text text-transparent">
+                EduTech
+              </h1>
+              <div className="text-xs text-emerald-600 font-medium -mt-1">Learn & Grow</div>
+            </div>
           </Link>
         </div>
 
@@ -360,15 +412,17 @@ export function SiteHeader() {
         <div className="flex items-center gap-3">
           {session ? (
             <>
-              <span className="hidden md:block text-sm text-slate-700">Hi, {session.user?.name}</span>
-              <Button asChild variant="ghost" className="hidden md:flex">
+              <span className="hidden md:block text-sm text-gray-700">
+                Hi, <span className="font-semibold text-emerald-800">{session.user?.name}</span>
+              </span>
+              <Button asChild variant="outline" className="hidden md:flex border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 text-emerald-700">
                 <Link href="/dashboard">Dashboard</Link>
               </Button>
               <Button
                 onClick={handleLogout}
                 disabled={isPending}
                 variant="outline"
-                className="hidden md:flex border-red-200 text-red-600 hover:bg-red-50"
+                className="hidden md:flex border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
               >
                 {isPending ? "Logging out..." : "Logout"}
               </Button>
@@ -376,13 +430,13 @@ export function SiteHeader() {
               {/* Mobile icons */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button asChild variant="ghost" size="icon" className="md:hidden">
+                  <Button asChild variant="ghost" size="icon" className="md:hidden hover:bg-emerald-50 hover:text-emerald-700">
                     <Link href="/dashboard">
                       <LayoutDashboard className="h-5 w-5" />
                     </Link>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Dashboard</TooltipContent>
+                <TooltipContent className="bg-emerald-900 text-white">Dashboard</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -392,43 +446,43 @@ export function SiteHeader() {
                     variant="ghost"
                     size="icon"
                     disabled={isPending}
-                    className="md:hidden text-red-600"
+                    className="md:hidden text-red-600 hover:bg-red-50"
                   >
                     <LogOut className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Logout</TooltipContent>
+                <TooltipContent className="bg-red-600 text-white">Logout</TooltipContent>
               </Tooltip>
             </>
           ) : (
             <>
-              <Button asChild variant="ghost" className="hidden md:flex">
+              <Button asChild variant="outline" className="hidden md:flex border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 text-emerald-700">
                 <Link href="/auth/login">Login</Link>
               </Button>
-              <Button asChild className="hidden md:flex bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+              <Button asChild className="hidden md:flex bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white shadow-md hover:shadow-lg">
                 <Link href="/auth/register">Sign Up</Link>
               </Button>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button asChild variant="ghost" size="icon" className="md:hidden">
+                  <Button asChild variant="ghost" size="icon" className="md:hidden hover:bg-emerald-50 hover:text-emerald-700">
                     <Link href="/auth/login">
                       <LogIn className="h-5 w-5" />
                     </Link>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Login</TooltipContent>
+                <TooltipContent className="bg-emerald-900 text-white">Login</TooltipContent>
               </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button asChild size="icon" className="md:hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+                  <Button asChild size="icon" className="md:hidden bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white shadow-md">
                     <Link href="/auth/register">
                       <UserPlus className="h-5 w-5" />
                     </Link>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Sign Up</TooltipContent>
+                <TooltipContent className="bg-emerald-900 text-white">Sign Up</TooltipContent>
               </Tooltip>
             </>
           )}

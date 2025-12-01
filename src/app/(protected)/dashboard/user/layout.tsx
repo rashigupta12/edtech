@@ -126,7 +126,7 @@ export default function UserDashboardLayout({
                 <button
                   className={`w-full flex items-center gap-3 rounded-lg p-3 transition-all duration-200 ${
                     isActive(item.href)
-                      ? "bg-indigo-50 text-indigo-700 font-medium shadow-sm"
+                      ? "bg-green-50 text-green-700 font-medium shadow-sm"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
@@ -138,7 +138,7 @@ export default function UserDashboardLayout({
           </nav>
 
           {/* Quick Stats */}
-          <div className="mt-8 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+          <div className="mt-8 p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
             <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
               Learning Summary
             </h3>
@@ -187,7 +187,7 @@ export default function UserDashboardLayout({
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 ml-64 pt-4 px-6 pb-10">
+        <main className="flex-1 ml-64 px-2 pb-10">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>

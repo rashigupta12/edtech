@@ -131,7 +131,7 @@ export default function Testimonials() {
                   <span className="ml-2 text-sm text-gray-600">({testimonial.rating}/5)</span>
                 </div>
                 
-                <p className="text-gray-700 mb-6 italic">"{testimonial.testimonial}"</p>
+                <p className="text-gray-700 mb-6 italic">&quot;{testimonial.testimonial}&quot;</p>
                 
                 <div className="flex items-center gap-3">
                   {testimonial.studentImage ? (

@@ -282,12 +282,15 @@ export default function CourseLearnPage() {
   // UI: Error state
   if (error) {
     return (
-      <div className="space-y-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+      <div className="space-y-6  min-h-screen p-6">
+        <Alert variant="destructive" className="bg-red-50 border-red-200">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
         </Alert>
-        <Button onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}>
+        <Button 
+          onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
           Back to Course
         </Button>
       </div>
@@ -297,11 +300,11 @@ export default function CourseLearnPage() {
   // UI: loading skeleton
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-12 w-64" />
+      <div className="space-y-6  min-h-screen p-6">
+        <Skeleton className="h-12 w-64 " />
         <div className="grid gap-6 md:grid-cols-3">
-          <Skeleton className="h-[600px]" />
-          <Skeleton className="h-[600px] md:col-span-2" />
+          <Skeleton className="h-[600px] " />
+          <Skeleton className="h-[600px] md:col-span-2 " />
         </div>
       </div>
     );
@@ -310,11 +313,14 @@ export default function CourseLearnPage() {
   // UI: No curriculum
   if (!curriculum || curriculum.modules.length === 0) {
     return (
-      <div className="text-center py-12">
-        <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">No content available</h3>
-        <p className="text-muted-foreground mb-6">This course doesn&apos;t have any lessons yet.</p>
-        <Button onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}>
+      <div className="text-center py-12  min-h-screen">
+        <BookOpen className="h-12 w-12 mx-auto text-emerald-600 mb-4" />
+        <h3 className="text-lg font-semibold mb-2 text-emerald-900">No content available</h3>
+        <p className="text-emerald-700 mb-6">This course doesn&apos;t have any lessons yet.</p>
+        <Button 
+          onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
           Back to Course
         </Button>
       </div>
@@ -322,23 +328,27 @@ export default function CourseLearnPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-screen p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Learning Interface</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold tracking-tight text-emerald-900">Learning Interface</h1>
+          <p className="text-emerald-700 mt-2">
             {curriculum.courseTitle} • Progress: {progress?.progressPercentage ?? 0}%
           </p>
         </div>
-        <Button variant="outline" onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}>
+        <Button 
+          variant="outline" 
+          onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}
+          className="bg-white border-emerald-300 hover:bg-emerald-50 text-emerald-900"
+        >
           Back to Course
         </Button>
       </div>
 
       {/* Progress Bar */}
       <div className="space-y-2">
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between text-sm text-emerald-900">
           <span>Overall Progress</span>
           <span>{progress?.progressPercentage ?? 0}%</span>
         </div>
@@ -347,12 +357,16 @@ export default function CourseLearnPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Left Sidebar - Curriculum */}
-        <Card className="md:col-span-1">
+        <Card className="md:col-span-1 bg-white border-emerald-200">
           <CardContent className="p-0">
             <Tabs defaultValue="curriculum" className="h-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
-                <TabsTrigger value="notes">Notes</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-emerald-50">
+                <TabsTrigger value="curriculum" className="data-[state=active]:bg-white data-[state=active]:text-emerald-900">
+                  Curriculum
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="data-[state=active]:bg-white data-[state=active]:text-emerald-900">
+                  Notes
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="curriculum" className="p-4 h-[calc(100vh-200px)] overflow-y-auto">
@@ -360,8 +374,10 @@ export default function CourseLearnPage() {
                   {curriculum.modules.map((module) => (
                     <div key={module.id} className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-semibold">{module.title}</h3>
-                        <Badge variant="outline">{module.lessons.length} lessons</Badge>
+                        <h3 className="font-semibold text-emerald-900">{module.title}</h3>
+                        <Badge variant="outline" className="border-emerald-600 text-emerald-700 bg-emerald-50">
+                          {module.lessons.length} lessons
+                        </Badge>
                       </div>
 
                       <div className="space-y-1">
@@ -373,29 +389,33 @@ export default function CourseLearnPage() {
                             <Button
                               key={lesson.id}
                               variant={isActive ? 'secondary' : 'ghost'}
-                              className="w-full justify-start font-normal h-auto py-2"
+                              className={`w-full justify-start font-normal h-auto py-2 ${
+                                isActive 
+                                  ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900' 
+                                  : 'hover:bg-emerald-50 text-emerald-800'
+                              }`}
                               onClick={() => handleLessonSelect(lesson.id, module.id)}
                             >
                               <div className="flex items-start gap-3">
                                 {lessonProgress?.isCompleted ? (
-                                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                                  <CheckCircle className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
                                 ) : (
-                                  <div className="h-4 w-4 rounded-full border border-gray-300 mt-0.5 flex-shrink-0" />
+                                  <div className="h-4 w-4 rounded-full border border-emerald-300 mt-0.5 flex-shrink-0" />
                                 )}
 
                                 <div className="flex-1 text-left min-w-0">
                                   <div className="flex items-center gap-2">
-                                    {lesson.contentType === 'VIDEO' && <Video className="h-3 w-3 flex-shrink-0" />}
-                                    {lesson.contentType === 'ARTICLE' && <FileText className="h-3 w-3 flex-shrink-0" />}
+                                    {lesson.contentType === 'VIDEO' && <Video className="h-3 w-3 flex-shrink-0 text-emerald-600" />}
+                                    {lesson.contentType === 'ARTICLE' && <FileText className="h-3 w-3 flex-shrink-0 text-emerald-600" />}
                                     <span className="truncate font-medium">{lesson.title}</span>
                                   </div>
 
                                   {lesson.description && (
-                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{lesson.description}</p>
+                                    <p className="text-xs text-emerald-700 mt-1 line-clamp-2">{lesson.description}</p>
                                   )}
 
                                   {lesson.contentType === 'VIDEO' && lesson.videoDuration && (
-                                    <span className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                                    <span className="text-xs text-emerald-700 flex items-center gap-1 mt-1">
                                       <Clock className="h-3 w-3" />
                                       {Math.floor(lesson.videoDuration / 60)} min
                                     </span>
@@ -413,9 +433,9 @@ export default function CourseLearnPage() {
 
               <TabsContent value="notes" className="p-4">
                 <div className="text-center py-8">
-                  <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="font-semibold mb-2">Notes feature coming soon</h3>
-                  <p className="text-sm text-muted-foreground">Take notes while you learn</p>
+                  <BookOpen className="h-12 w-12 mx-auto text-emerald-600 mb-4" />
+                  <h3 className="font-semibold mb-2 text-emerald-900">Notes feature coming soon</h3>
+                  <p className="text-sm text-emerald-700">Take notes while you learn</p>
                 </div>
               </TabsContent>
             </Tabs>
@@ -423,26 +443,31 @@ export default function CourseLearnPage() {
         </Card>
 
         {/* Main Content Area */}
-        <Card className="md:col-span-2">
+        <Card className="md:col-span-2 bg-white border-emerald-200">
           <CardContent className="p-0 h-[calc(100vh-200px)] overflow-y-auto">
             {selectedLesson ? (
               <div className="space-y-6 p-6">
                 {/* Lesson Header */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold">{selectedLesson.title}</h2>
+                    <h2 className="text-2xl font-bold text-emerald-900">{selectedLesson.title}</h2>
                     <Button
                       variant={getLessonProgress(selectedLesson.id)?.isCompleted ? 'secondary' : 'outline'}
                       onClick={() => markLessonComplete(selectedLesson.id)}
                       disabled={getLessonProgress(selectedLesson.id)?.isCompleted}
                       size="sm"
+                      className={
+                        getLessonProgress(selectedLesson.id)?.isCompleted
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-white border-emerald-300 hover:bg-emerald-50 text-emerald-900'
+                      }
                     >
                       <CheckCircle className="mr-2 h-4 w-4" />
                       {getLessonProgress(selectedLesson.id)?.isCompleted ? 'Completed' : 'Mark Complete'}
                     </Button>
                   </div>
 
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-4 text-sm text-emerald-700">
                     <div className="flex items-center gap-1">
                       {selectedLesson.contentType === 'VIDEO' && <Video className="h-4 w-4" />}
                       {selectedLesson.contentType === 'ARTICLE' && <FileText className="h-4 w-4" />}
@@ -457,11 +482,11 @@ export default function CourseLearnPage() {
                   </div>
                   
                   {selectedLesson.description && selectedLesson.contentType !== 'ARTICLE' && (
-                    <p className="text-muted-foreground mt-2">{selectedLesson.description}</p>
+                    <p className="text-emerald-700 mt-2">{selectedLesson.description}</p>
                   )}
                 </div>
 
-                <Separator />
+                <Separator className="bg-emerald-200" />
 
                 {/* Lesson Content */}
                 {selectedLesson.contentType === 'VIDEO' ? (
@@ -509,14 +534,14 @@ export default function CourseLearnPage() {
                       )}
                     </div>
                     {formattedVideoUrl && (
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-emerald-700">
                         <p>Video URL: {formattedVideoUrl}</p>
                         <p className="mt-1">If the video doesn&apos;t load, try opening it directly: 
                           <a 
                             href={formattedVideoUrl} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-blue-500 hover:underline ml-1"
+                            className="text-emerald-600 hover:underline ml-1"
                           >
                             Open in YouTube
                           </a>
@@ -524,9 +549,9 @@ export default function CourseLearnPage() {
                       </div>
                     )}
                     {!formattedVideoUrl && (
-                      <Alert>
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
+                      <Alert className="bg-red-50 border-red-200">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-red-800">
                           Video URL is missing or invalid. Please contact support.
                         </AlertDescription>
                       </Alert>
@@ -534,34 +559,34 @@ export default function CourseLearnPage() {
                   </div>
                 ) : selectedLesson.contentType === 'ARTICLE' ? (
                   <div className="space-y-4">
-                    <div className="prose prose-sm md:prose-base lg:prose-lg max-w-none dark:prose-invert">
+                    <div className="prose prose-sm md:prose-base lg:prose-lg max-w-none prose-emerald">
                       {(selectedLesson.articleContent || selectedLesson.description) ? (
-                        <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                        <div className="p-6 bg-emerald-50 rounded-lg">
                           {selectedLesson.articleContent ? (
                             <div dangerouslySetInnerHTML={{ __html: selectedLesson.articleContent }} />
                           ) : (
-                            <div className="whitespace-pre-line text-base leading-relaxed">
+                            <div className="whitespace-pre-line text-base leading-relaxed text-emerald-900">
                               {selectedLesson.description}
                             </div>
                           )}
                         </div>
                       ) : (
                         <div className="text-center py-12">
-                          <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                          <p className="text-muted-foreground">Article content not available</p>
+                          <FileText className="h-12 w-12 mx-auto text-emerald-600 mb-4" />
+                          <p className="text-emerald-700">Article content not available</p>
                         </div>
                       )}
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Quiz feature coming soon</p>
+                    <BookOpen className="h-12 w-12 mx-auto text-emerald-600 mb-4" />
+                    <p className="text-emerald-700">Quiz feature coming soon</p>
                   </div>
                 )}
 
                 {/* Navigation */}
-                <div className="flex items-center justify-between pt-6 border-t">
+                <div className="flex items-center justify-between pt-6 border-t border-emerald-200">
                   <Button
                     variant="outline"
                     disabled={!prevLesson}
@@ -571,6 +596,7 @@ export default function CourseLearnPage() {
                         curriculum.modules.find((m) => m.lessons.some((l) => l.id === prevLesson.id))!.id
                       )
                     }
+                    className="bg-white border-emerald-300 hover:bg-emerald-50 text-emerald-900 disabled:opacity-50"
                   >
                     <ChevronLeft className="mr-2 h-4 w-4" />
                     Previous
@@ -581,6 +607,7 @@ export default function CourseLearnPage() {
                       <Button 
                         variant="outline" 
                         onClick={() => router.push(`/dashboard/user/courses/${courseId}/modules/${selectedModuleId}`)}
+                        className="bg-white border-emerald-300 hover:bg-emerald-50 text-emerald-900"
                       >
                         Module Overview
                       </Button>
@@ -595,6 +622,7 @@ export default function CourseLearnPage() {
                         curriculum.modules.find((m) => m.lessons.some((l) => l.id === nextLesson.id))!.id
                       )
                     }
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
                   >
                     Next
                     <ChevronRight className="ml-2 h-4 w-4" />
@@ -603,9 +631,9 @@ export default function CourseLearnPage() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <PlayCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Select a lesson to begin</h3>
-                <p className="text-muted-foreground">Choose a lesson from the sidebar to start learning</p>
+                <PlayCircle className="h-12 w-12 mx-auto text-emerald-600 mb-4" />
+                <h3 className="text-lg font-semibold mb-2 text-emerald-900">Select a lesson to begin</h3>
+                <p className="text-emerald-700">Choose a lesson from the sidebar to start learning</p>
               </div>
             )}
           </CardContent>

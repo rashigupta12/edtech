@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bell, Calendar, ChevronLeft, Clock, MessageSquare } from 'lucide-react';
+import { Bell, Calendar, ChevronLeft, Clock, MessageSquare, Leaf} from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -115,6 +115,15 @@ export default function AnnouncementsPage() {
     }
   };
 
+  const getBadgeColor = (type: string) => {
+    switch (type) {
+      case 'URGENT': return 'bg-red-100 text-red-800 border-red-200';
+      case 'UPDATE': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'REMINDER': return 'bg-amber-100 text-amber-800 border-amber-200';
+      default: return 'bg-teal-100 text-teal-800 border-teal-200';
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -144,12 +153,12 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-8">
-      {/* Header */}
+    <div className="p-6 w-full mx-auto space-y-8">
+      {/* Header with green theme */}
       <div>
         <Button
           variant="ghost"
-          className="mb-6"
+          className="mb-6 hover:bg-emerald-50 hover:text-emerald-700"
           onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}
         >
           <ChevronLeft className="mr-2 h-4 w-4" />
@@ -158,56 +167,63 @@ export default function AnnouncementsPage() {
 
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Course Announcements</h1>
-            <p className="text-muted-foreground mt-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-emerald-100 to-green-100 rounded-lg">
+                <Leaf className="h-6 w-6 text-emerald-600" />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-800">Course Announcements</h1>
+            </div>
+            <p className="text-gray-600 mt-2 ml-11">
               Stay updated with {course?.title ? `"${course.title}"` : 'this course'}
             </p>
-            {usingMockData && (
-              <p className="text-xs text-orange-600 mt-2">
-                Showing demo announcements (no real data yet)
-              </p>
-            )}
+           
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Bell className="h-5 w-5" />
-            <span>{unreadCount} unread</span>
+          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-lg border border-emerald-100">
+            <Bell className="h-5 w-5 text-emerald-600" />
+            <span className="text-sm font-medium text-emerald-700">{unreadCount} unread</span>
           </div>
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats with green theme */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+        <Card className="border-green-100 hover:border-green-200 transition-colors">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <MessageSquare className="h-6 w-6 text-primary" />
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg">
+                <MessageSquare className="h-6 w-6 text-white" />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-3xl font-bold">{announcements.length}</p>
+                <p className="text-sm text-gray-600">Total Announcements</p>
+                <p className="text-3xl font-bold text-gray-800">{announcements.length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-emerald-100 hover:border-emerald-200 transition-colors">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Bell className="h-6 w-6 text-blue-600" />
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-lg">
+                <Bell className="h-6 w-6 text-white" />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">Unread</p>
-                <p className="text-3xl font-bold">{unreadCount}</p>
+                <p className="text-sm text-gray-600">Unread</p>
+                <p className="text-3xl font-bold text-gray-800">{unreadCount}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-lime-100 hover:border-lime-200 transition-colors">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-6 w-6 text-green-600" />
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-lime-500 to-green-500 rounded-lg">
+                <Calendar className="h-6 w-6 text-white" />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">Latest</p>
-                <p className="text-lg font-semibold">
+                <p className="text-sm text-gray-600">Latest Update</p>
+                <p className="text-lg font-semibold text-gray-800">
                   {announcements.length > 0 ? formatDate(announcements[0].publishedAt) : '—'}
                 </p>
               </div>
@@ -219,9 +235,12 @@ export default function AnnouncementsPage() {
       {/* Announcements List */}
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-semibold">All Announcements</h2>
+          <div className="flex items-center gap-3">
+            <div className="h-1 w-6 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full"></div>
+            <h2 className="text-2xl font-semibold text-gray-800">All Announcements</h2>
+          </div>
           {unreadCount > 0 && (
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50">
               Mark All as Read
             </Button>
           )}
@@ -231,22 +250,30 @@ export default function AnnouncementsPage() {
           {announcements.map((ann) => (
             <Card
               key={ann.id}
-              className={!ann.isRead ? 'border-primary/30 bg-primary/5 shadow-sm' : ''}
+              className={`
+                border-l-4 transition-all duration-200 hover:shadow-md
+                ${!ann.isRead 
+                  ? 'border-l-emerald-500 border-emerald-50 bg-gradient-to-r from-emerald-50/50 to-transparent' 
+                  : 'border-l-gray-200 border-gray-50'
+                }
+              `}
             >
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <div className="flex items-center gap-3">
-                      <h3 className="text-xl font-semibold">{ann.title}</h3>
+                      <h3 className="text-xl font-semibold text-gray-800">{ann.title}</h3>
                       {!ann.isRead && (
-                        <Badge className="animate-pulse">NEW</Badge>
+                        <Badge className="animate-pulse bg-gradient-to-r from-emerald-500 to-green-500 border-0 text-white">
+                          NEW
+                        </Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                      <Badge variant={getBadgeVariant(ann.type)}>
+                    <div className="flex items-center gap-4 mt-2 text-sm">
+                      <span className={`px-3 py-1 rounded-full border ${getBadgeColor(ann.type)}`}>
                         {ann.type.toLowerCase()}
-                      </Badge>
-                      <span className="flex items-center gap-1">
+                      </span>
+                      <span className="flex items-center gap-1 text-gray-600">
                         <Clock className="h-3 w-3" />
                         {formatDate(ann.publishedAt)}
                       </span>
@@ -256,12 +283,19 @@ export default function AnnouncementsPage() {
 
                 <Separator className="my-4" />
 
-                <div className="prose max-w-none text-foreground/90">
+                <div className="prose max-w-none text-gray-700">
                   <p>{ann.content}</p>
                 </div>
 
                 <div className="mt-5 text-right">
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className={`
+                      hover:bg-emerald-50 hover:text-emerald-700
+                      ${ann.isRead ? 'text-gray-600' : 'text-emerald-600'}
+                    `}
+                  >
                     {ann.isRead ? 'Mark as Unread' : 'Mark as Read'}
                   </Button>
                 </div>
@@ -270,12 +304,12 @@ export default function AnnouncementsPage() {
           ))}
         </div>
 
-        {usingMockData && (
-          <div className="text-center text-sm text-muted-foreground mt-8 p-6 bg-muted/50 rounded-lg">
-            These are demo announcements. Real announcements will appear here once posted by your instructor.
-          </div>
-        )}
+       
       </div>
+
+      {/* Green theme decorative elements */}
+      <div className="fixed -z-10 top-0 right-0 w-96 h-96 bg-gradient-to-br from-emerald-100/20 to-green-100/20 rounded-full blur-3xl"></div>
+      <div className="fixed -z-10 bottom-0 left-0 w-64 h-64 bg-gradient-to-br from-teal-100/20 to-emerald-100/20 rounded-full blur-3xl"></div>
     </div>
   );
 }

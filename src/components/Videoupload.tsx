@@ -1,4 +1,3 @@
-// components/ui/file-upload.tsx
 "use client";
 
 import { useState } from "react";
@@ -13,6 +12,12 @@ interface FileUploadProps {
   maxSize?: number; // in MB
   label?: string;
   value?: string;
+}
+
+interface UploadResponse {
+  url: string;
+  success: boolean;
+  error?: string;
 }
 
 export function FileUpload({
@@ -40,13 +45,15 @@ export function FileUpload({
 
     // Validate file type
     const acceptTypes = accept.split(",").map(type => type.trim());
-    if (!acceptTypes.some(type => {
+    const isValidType = acceptTypes.some(type => {
       if (type.includes("/*")) {
         const mainType = type.split("/")[0];
         return file.type.startsWith(mainType + "/");
       }
       return file.type === type;
-    })) {
+    });
+    
+    if (!isValidType) {
       setError(`Invalid file type. Accepted: ${accept}`);
       return;
     }
@@ -82,19 +89,31 @@ export function FileUpload({
       clearInterval(progressInterval);
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Upload failed");
+        const errorData: UploadResponse = await response.json();
+        throw new Error(errorData.error || "Upload failed");
       }
 
-      const data = await response.json();
+      const data: UploadResponse = await response.json();
+      
+      if (!data.success || !data.url) {
+        throw new Error(data.error || "Upload failed");
+      }
+
       setProgress(100);
       setUploadedUrl(data.url);
       onUploadComplete(data.url);
 
       // Reset progress after success
       setTimeout(() => setProgress(0), 1000);
-    } catch (err: any) {
-      setError(err.message || "Upload failed. Please try again.");
+    } catch (err: unknown) {
+      // Handle different error types
+      if (err instanceof Error) {
+        setError(err.message || "Upload failed. Please try again.");
+      } else if (typeof err === "string") {
+        setError(err);
+      } else {
+        setError("Upload failed. Please try again.");
+      }
       console.error("Upload error:", err);
     } finally {
       setUploading(false);

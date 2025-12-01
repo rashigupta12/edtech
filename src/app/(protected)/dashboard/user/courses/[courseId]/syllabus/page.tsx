@@ -100,12 +100,12 @@ export default function SyllabusPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-8">
-        <Skeleton className="h-12 w-80" />
-        <Skeleton className="h-48 w-full" />
+      <div className="p-6 space-y-8  min-h-screen">
+        <Skeleton className="h-12 w-80 " />
+        <Skeleton className="h-48 w-full " />
         <div className="space-y-6">
           {[1, 2, 3].map(i => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            <Skeleton key={i} className="h-32 w-full rounded-xl " />
           ))}
         </div>
       </div>
@@ -113,69 +113,80 @@ export default function SyllabusPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
+    <div className="p-6 w-full mx-auto space-y-8 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start gap-6">
         <div>
           <Button
             variant="ghost"
-            className="mb-4"
+            className="mb-4 hover:bg-emerald-100 text-emerald-900"
             onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}
           >
             <ChevronLeft className="mr-2 h-4 w-4" />
             Back to Course
           </Button>
-          <h1 className="text-3xl font-bold">Course Syllabus</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold text-emerald-900">Course Syllabus</h1>
+          <p className="text-emerald-700 mt-2">
             Complete overview of all modules and lessons
           </p>
         </div>
 
-        <Button onClick={() => router.push(`/dashboard/user/courses/${courseId}/learn`)}>
+        <Button 
+          onClick={() => router.push(`/dashboard/user/courses/${courseId}/learn`)}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
           <PlayCircle className="mr-2 h-5 w-5" />
           Continue Learning
         </Button>
       </div>
 
       {/* Summary Stats */}
-      <Card>
+      <Card className="bg-white border-emerald-200 shadow-sm">
         <CardContent className="pt-6">
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
             <div className="text-center md:text-left">
               <div className="flex items-center gap-3 mb-2">
-                <BookOpen className="h-6 w-6 text-primary" />
-                <span className="text-sm text-muted-foreground">Modules</span>
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <BookOpen className="h-6 w-6 text-emerald-600" />
+                </div>
+                <span className="text-sm text-emerald-700">Modules</span>
               </div>
-              <p className="text-3xl font-bold">{curriculum?.modules.length || 0}</p>
+              <p className="text-3xl font-bold text-emerald-900">{curriculum?.modules.length || 0}</p>
             </div>
 
             <div className="text-center md:text-left">
               <div className="flex items-center gap-3 mb-2">
-                <Award className="h-6 w-6 text-green-600" />
-                <span className="text-sm text-muted-foreground">Lessons</span>
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <Award className="h-6 w-6 text-emerald-600" />
+                </div>
+                <span className="text-sm text-emerald-700">Lessons</span>
               </div>
-              <p className="text-3xl font-bold">{totalLessons}</p>
+              <p className="text-3xl font-bold text-emerald-900">{totalLessons}</p>
             </div>
 
             <div className="text-center md:text-left">
               <div className="flex items-center gap-3 mb-2">
-                <CheckCircle className="h-6 w-6 text-blue-600" />
-                <span className="text-sm text-muted-foreground">Completed</span>
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <CheckCircle className="h-6 w-6 text-emerald-600" />
+                </div>
+                <span className="text-sm text-emerald-700">Completed</span>
               </div>
-              <p className="text-3xl font-bold">{progress?.completedLessons || 0}</p>
+              <p className="text-3xl font-bold text-emerald-900">{progress?.completedLessons || 0}</p>
             </div>
 
             <div className="text-center md:text-left">
               <div className="flex items-center gap-3 mb-2">
-                <Clock className="h-6 w-6 text-orange-600" />
-                <span className="text-sm text-muted-foreground">Progress</span>
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <Clock className="h-6 w-6 text-emerald-600" />
+                </div>
+                <span className="text-sm text-emerald-700">Progress</span>
               </div>
-              <p className="text-3xl font-bold">{progress?.progressPercentage || 0}%</p>
+              <p className="text-3xl font-bold text-emerald-900">{progress?.progressPercentage || 0}%</p>
             </div>
           </div>
 
           <div className="mt-8">
-            <div className="flex justify-between text-sm mb-2">
+            <div className="flex justify-between text-sm mb-2 text-emerald-900">
               <span>Overall Course Progress</span>
               <span>{progress?.progressPercentage || 0}%</span>
             </div>
@@ -186,25 +197,25 @@ export default function SyllabusPage() {
 
       {/* Curriculum Accordion */}
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold">Course Curriculum</h2>
+        <h2 className="text-2xl font-bold text-emerald-900">Course Curriculum</h2>
 
         <Accordion type="single" collapsible className="space-y-4">
           {curriculum?.modules.map((module, idx) => {
             const moduleProgress = calculateModuleProgress(module);
 
             return (
-              <Card key={module.id}>
+              <Card key={module.id} className="bg-white border-emerald-200 shadow-sm overflow-hidden">
                 <AccordionItem value={module.id} className="border-0">
                   <AccordionTrigger className="px-6 py-5 hover:no-underline">
                     <div className="flex items-center justify-between w-full pr-4">
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                        <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center font-bold text-emerald-700">
                           {idx + 1}
                         </div>
                         <div className="text-left">
-                          <h3 className="font-semibold text-lg">{module.title}</h3>
+                          <h3 className="font-semibold text-lg text-emerald-900">{module.title}</h3>
                           {module.description && (
-                            <p className="text-sm text-muted-foreground mt-1">
+                            <p className="text-sm text-emerald-700 mt-1">
                               {module.description}
                             </p>
                           )}
@@ -212,31 +223,34 @@ export default function SyllabusPage() {
                       </div>
 
                       <div className="flex items-center gap-4">
-                        <Badge variant="outline">
+                        <Badge variant="outline" className="border-emerald-600 text-emerald-700 bg-emerald-50">
                           {module.lessons.length} lessons
                         </Badge>
-                        <Badge variant={moduleProgress === 100 ? 'default' : 'secondary'}>
+                        <Badge 
+                          variant={moduleProgress === 100 ? 'default' : 'secondary'}
+                          className={moduleProgress === 100 ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800'}
+                        >
                           {moduleProgress}% complete
                         </Badge>
                       </div>
                     </div>
                   </AccordionTrigger>
 
-                  <AccordionContent className="px-6 pb-6">
+                  <AccordionContent className="px-6 pb-6 bg-emerald-50/30">
                     {module.description && (
                       <>
-                        <p className="text-muted-foreground mb-4">{module.description}</p>
-                        <Separator className="mb-6" />
+                        <p className="text-emerald-700 mb-4">{module.description}</p>
+                        <Separator className="mb-6 bg-emerald-200" />
                       </>
                     )}
 
                     {/* Module Progress Bar */}
-                    <div className="mb-6">
-                      <div className="flex justify-between text-sm mb-2">
+                    <div className="mb-6 bg-white p-4 rounded-lg border border-emerald-200">
+                      <div className="flex justify-between text-sm mb-2 text-emerald-900">
                         <span>Module Progress</span>
-                        <span>{moduleProgress}%</span>
+                        <span className="font-semibold">{moduleProgress}%</span>
                       </div>
-                      <Progress value={moduleProgress} className="h-2" />
+                      <Progress value={moduleProgress} className="h-2 bg-emerald-100" />
                     </div>
 
                     {/* Lessons */}
@@ -247,23 +261,23 @@ export default function SyllabusPage() {
                         return (
                           <div
                             key={lesson.id}
-                            className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent/50 transition"
+                            className="flex items-center justify-between p-4 rounded-lg border border-emerald-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 transition"
                           >
                             <div className="flex items-center gap-4">
                               {isCompleted ? (
-                                <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                                  <CheckCircle className="h-5 w-5 text-green-600" />
+                                <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                                  <CheckCircle className="h-5 w-5 text-emerald-600" />
                                 </div>
                               ) : (
-                                <div className="h-8 w-8 rounded-full border-2 border-border flex items-center justify-center text-sm font-medium">
+                                <div className="h-8 w-8 rounded-full border-2 border-emerald-300 flex items-center justify-center text-sm font-medium text-emerald-700">
                                   {lessonIdx + 1}
                                 </div>
                               )}
 
                               <div>
-                                <p className="font-medium">{lesson.title}</p>
-                                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                  <Badge variant="outline" className="text-xs">
+                                <p className="font-medium text-emerald-900">{lesson.title}</p>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-emerald-700">
+                                  <Badge variant="outline" className="text-xs border-emerald-600 text-emerald-700 bg-emerald-50">
                                     {lesson.contentType}
                                   </Badge>
                                   {lesson.videoDuration && (
@@ -282,6 +296,7 @@ export default function SyllabusPage() {
                               onClick={() =>
                                 router.push(`/dashboard/user/courses/${courseId}/learn?lesson=${lesson.id}`)
                               }
+                              className="bg-white border-emerald-300 hover:bg-emerald-50 text-emerald-900"
                             >
                               {isCompleted ? 'Review' : 'Start'}
                               <PlayCircle className="ml-2 h-4 w-4" />
@@ -293,8 +308,7 @@ export default function SyllabusPage() {
 
                     <div className="mt-6">
                       <Button
-                        className="w-full"
-                        variant="outline"
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                         onClick={() => router.push(`/dashboard/user/courses/${courseId}/modules/${module.id}`)}
                       >
                         View Full Module
@@ -309,11 +323,16 @@ export default function SyllabusPage() {
       </div>
 
       {/* Learning Tips */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Learning Tips</CardTitle>
+      <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 shadow-sm">
+        <CardHeader className="border-b border-emerald-200">
+          <CardTitle className="text-emerald-900 flex items-center gap-2">
+            <div className="p-2 bg-white rounded-lg">
+              <Award className="h-5 w-5 text-emerald-600" />
+            </div>
+            Learning Tips
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="grid gap-6 md:grid-cols-2">
             {[
               "Stay consistent – study a little every day",
@@ -321,9 +340,11 @@ export default function SyllabusPage() {
               "Practice what you learn immediately",
               "Join discussions and ask questions",
             ].map((tip, i) => (
-              <div key={i} className="flex gap-3">
-                <div className="h-2 w-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                <p className="text-sm text-muted-foreground">{tip}</p>
+              <div key={i} className="flex gap-3 items-start">
+                <div className="h-6 w-6 rounded-full bg-emerald-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <CheckCircle className="h-4 w-4 text-white" />
+                </div>
+                <p className="text-sm text-emerald-800 leading-relaxed">{tip}</p>
               </div>
             ))}
           </div>
