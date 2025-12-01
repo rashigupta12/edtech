@@ -1,3 +1,5 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
+/*eslint-disable @typescript-eslint/no-unused-vars */
 // components/dashboard/DashboardLayout.tsx
 "use client";
 
@@ -7,8 +9,11 @@ import {
   DollarSign,
   FileText,
   Home,
+  LayoutDashboard,
   List,
+  MessageCircle,
   Plus,
+  Quote,
   Tag,
   Ticket,
   TrendingUp,
@@ -89,6 +94,11 @@ const navConfigs = {
         { title: "Add Assignment", href: "/dashboard/admin/assignments/create", icon: Plus },
       ],
     },
+
+        { title: "CMS", href: "/dashboard/admin/cms", icon: LayoutDashboard },
+        { title: "Testimonals", href: "/dashboard/admin/testimonials", icon:MessageCircle },
+
+
     // {
     //   title: "Astrologer ",
     //   icon: Users,

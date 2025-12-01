@@ -1,3 +1,5 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
+/*eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/(protected)/dashboard/admin/bootcamps/page.tsx
 "use client";
 
@@ -46,6 +48,7 @@ type Bootcamp = {
   createdAt: string;
   collegeName: string | null;
   thumbnailUrl: string | null;
+  
 };
 
 export default function BootcampsPage() {

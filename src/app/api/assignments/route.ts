@@ -36,7 +36,6 @@ const errorResponse = (message: string, code = 'ERROR', status = 400): NextRespo
 // ===========================
 // CONTROLLERS - ASSIGNMENTS
 // ===========================
-
 const getassignments = async () =>{
   const assignments = await db
     .select()
@@ -97,7 +96,7 @@ const createAssignment = async (request: NextRequest) => {
         description: body.description,
         instructions: body.instructions || null,
         attachments: body.attachments || null,
-        dueDate: body.dueDate || null,
+        dueDate: body.dueDate ? new Date(body.dueDate) : null, 
         maxScore: body.maxScore || 100,
         createdBy: body.createdBy,
       })
@@ -364,10 +363,8 @@ export async function GET(request: NextRequest) {
       return await getCourseAssignments(courseId);
     }
 
-   
-  
-    // Route: GET /api/colleges (list all)
-    return await getassignments();
+    
+    return await getassignments ();
   } catch (error: any) {
     return errorResponse(error.message || 'Internal server error', 'INTERNAL_ERROR', 500);
   }

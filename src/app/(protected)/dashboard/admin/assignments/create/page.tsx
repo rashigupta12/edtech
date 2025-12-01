@@ -1,7 +1,10 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
+/*eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCurrentUser } from '@/hooks/auth';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -9,7 +12,21 @@ interface ApiResponse<T> {
   error?: { code: string; message: string };
 }
 
+interface Course {
+  id: string;
+  title: string;
+  slug: string;
+}
+
+interface Module {
+  id: string;
+  title: string;
+  description?: string;
+  sortOrder: number;
+}
+
 export default function CreateAssignmentPage() {
+  const user = useCurrentUser();
   const [formData, setFormData] = useState({
     courseId: '',
     moduleId: '',
@@ -18,14 +35,83 @@ export default function CreateAssignmentPage() {
     instructions: '',
     dueDate: '',
     maxScore: 100,
-    createdBy: 'admin', // In real app, get from auth context
+    createdBy: user?.id || '',
   });
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(false);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [modulesLoading, setModulesLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const router = useRouter();
 
+  // Fetch courses on component mount
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const response = await fetch('/api/courses');
+        const result: ApiResponse<Course[]> = await response.json();
+
+        if (result.success) {
+          setCourses(result.data || []);
+        } else {
+          setError('Failed to load courses');
+        }
+      } catch (err) {
+        setError('Failed to load courses');
+        console.error('Error loading courses:', err);
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
+
+  // Fetch modules when course is selected
+  useEffect(() => {
+    const fetchModules = async () => {
+      if (!formData.courseId) {
+        setModules([]);
+        return;
+      }
+
+      setModulesLoading(true);
+      try {
+        const response = await fetch(`/api/courses?id=${formData.courseId}&modules=true`);
+        const result: ApiResponse<Module[]> = await response.json();
+
+        if (result.success) {
+          setModules(result.data || []);
+        } else {
+          setError('Failed to load modules');
+          setModules([]);
+        }
+      } catch (err) {
+        setError('Failed to load modules');
+        setModules([]);
+        console.error('Error loading modules:', err);
+      } finally {
+        setModulesLoading(false);
+      }
+    };
+
+    fetchModules();
+  }, [formData.courseId]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.courseId) {
+      setError('Please select a course');
+      return;
+    }
+
+    if (!formData.title || !formData.description) {
+      setError('Title and description are required');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -37,7 +123,7 @@ export default function CreateAssignmentPage() {
         },
         body: JSON.stringify({
           ...formData,
-          dueDate: formData.dueDate || null,
+          dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
           moduleId: formData.moduleId || null,
         }),
       });
@@ -45,7 +131,7 @@ export default function CreateAssignmentPage() {
       const result: ApiResponse<any> = await response.json();
 
       if (result.success) {
-        router.push('/admin/assignments');
+        router.push('/dashboard/admin/assignments');
       } else {
         setError(result.error?.message || 'Failed to create assignment');
       }
@@ -59,10 +145,20 @@ export default function CreateAssignmentPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    if (name === 'courseId') {
+      // Reset module when course changes
+      setFormData(prev => ({
+        ...prev,
+        courseId: value,
+        moduleId: ''
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   return (
@@ -87,31 +183,52 @@ export default function CreateAssignmentPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Course ID *
+                  Course *
                 </label>
-                <input
-                  type="text"
+                <select
                   name="courseId"
                   value={formData.courseId}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter course UUID"
-                />
+                  disabled={coursesLoading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                >
+                  <option value="">Select a course</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+                {coursesLoading && (
+                  <p className="text-sm text-gray-500 mt-1">Loading courses...</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Module ID
+                  Module
                 </label>
-                <input
-                  type="text"
+                <select
                   name="moduleId"
                   value={formData.moduleId}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter module UUID (optional)"
-                />
+                  disabled={!formData.courseId || modulesLoading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                >
+                  <option value="">Select a module</option>
+                  {modules.map((module) => (
+                    <option key={module.id} value={module.id}>
+                      {module.title}
+                    </option>
+                  ))}
+                </select>
+                {modulesLoading && (
+                  <p className="text-sm text-gray-500 mt-1">Loading modules...</p>
+                )}
+                {!formData.courseId && (
+                  <p className="text-sm text-gray-500 mt-1">Select a course first</p>
+                )}
               </div>
             </div>
 
@@ -199,7 +316,7 @@ export default function CreateAssignmentPage() {
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !formData.courseId}
                 className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Creating...' : 'Create Assignment'}

@@ -1,3 +1,5 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
+/*eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -123,7 +125,7 @@ export default function AdminAssignmentsPage() {
               <p className="text-gray-600 mt-2">Manage all assignments across courses</p>
             </div>
             <Link
-              href="/admin/assignments/create"
+              href="/dashboard/admin/assignments/create"
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
             >
               Create Assignment
@@ -146,7 +148,7 @@ export default function AdminAssignmentsPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Status
               </label>
@@ -160,15 +162,15 @@ export default function AdminAssignmentsPage() {
                 <option value="DRAFT">Draft</option>
                 <option value="ARCHIVED">Archived</option>
               </select>
-            </div>
-            <div className="flex items-end">
+            </div> */}
+            {/* <div className="flex items-end">
               <button
                 onClick={() => setFilters({ courseId: '', status: '' })}
                 className="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors"
               >
                 Clear Filters
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -187,7 +189,7 @@ export default function AdminAssignmentsPage() {
               <h3 className="text-lg font-medium text-gray-900 mb-2">No assignments found</h3>
               <p className="text-gray-600 mb-4">Get started by creating your first assignment.</p>
               <Link
-                href="/admin/assignments/create"
+                href="/dashboard/admin/assignments/create"
                 className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Create Assignment
@@ -210,9 +212,9 @@ export default function AdminAssignmentsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Max Score
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
-                    </th>
+                    </th> */}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -243,26 +245,26 @@ export default function AdminAssignmentsPage() {
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {assignment.maxScore}
                       </td>
-                      <td className="px-6 py-4">
+                      {/* <td className="px-6 py-4">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(assignment.status)}`}>
                           {assignment.status}
                         </span>
-                      </td>
+                      </td> */}
                       <td className="px-6 py-4 text-sm font-medium space-x-2">
                         <Link
-                          href={`/admin/assignments/${assignment.id}`}
+                          href={`/dashboard/admin/assignments/${assignment.id}`}
                           className="text-blue-600 hover:text-blue-900"
                         >
                           View
                         </Link>
                         <Link
-                          href={`/admin/assignments/${assignment.id}/edit`}
+                          href={`/dashboard/admin/assignments/${assignment.id}/edit`}
                           className="text-green-600 hover:text-green-900"
                         >
                           Edit
                         </Link>
                         <Link
-                          href={`/admin/assignments/${assignment.id}/submissions`}
+                          href={`/dashboard/admin/assignments/${assignment.id}/submissions`}
                           className="text-purple-600 hover:text-purple-900"
                         >
                           Submissions

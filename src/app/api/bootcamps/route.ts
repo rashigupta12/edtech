@@ -1,9 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/*eslint-disable @typescript-eslint/no-explicit-any */
+/*eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/api/bootcamps/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { BootcampsTable, BootcampCoursesTable, CoursesTable, CollegesTable } from '@/db/schema';
 import { eq, desc, sql, and } from 'drizzle-orm';
+import { isFriday } from 'date-fns';
 
 // ===========================
 // TYPES & HELPERS
@@ -53,10 +55,12 @@ const listBootcamps = async () => {
       duration: BootcampsTable.duration,
       status: BootcampsTable.status,
       startDate: BootcampsTable.startDate,
+      price: BootcampsTable.price,
       endDate: BootcampsTable.endDate,
       currentEnrollments: BootcampsTable.currentEnrollments,
       collegeName: CollegesTable.collegeName,
       createdAt: BootcampsTable.createdAt,
+      isFree: BootcampsTable.isFree,
     })
     .from(BootcampsTable)
     .leftJoin(CollegesTable, eq(BootcampsTable.collegeId, CollegesTable.id))
