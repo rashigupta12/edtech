@@ -1,5 +1,4 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
-/*eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/(protected)/dashboard/admin/courses/create/page.tsx
 "use client";
 

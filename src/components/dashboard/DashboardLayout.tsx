@@ -1,4 +1,4 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
+
 /*eslint-disable @typescript-eslint/no-unused-vars */
 // components/dashboard/DashboardLayout.tsx
 "use client";

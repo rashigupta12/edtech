@@ -1,5 +1,4 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
-/*eslint-disable @typescript-eslint/no-unused-vars */
+
 // src/app/(protected)/dashboard/admin/courses/create/page.tsx
 "use client";
 
@@ -281,40 +280,36 @@ const updateLesson = <K extends keyof Lesson>(
       }
 
       // Add modules and lessons
-      for (let i = 0; i < modules.length; i++) {
-        const module = modules[i];
-        if (module.title.trim()) {
-          // Create module
-          const moduleRes = await fetch(`/api/courses?id=${courseId}&modules=true`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: module.title,
-              description: module.description,
-              sortOrder: i,
-            }),
-          });
-          
-          const moduleData = await moduleRes.json();
-          
-          if (moduleData.success) {
-            // Add lessons for this module
-            for (let j = 0; j < module.lessons.length; j++) {
-              const lesson = module.lessons[j];
-              if (lesson.title.trim()) {
-                await fetch(`/api/courses?id=${courseId}&lessons=true&moduleId=${moduleData.data.id}`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    ...lesson,
-                    sortOrder: j,
-                  }),
-                });
-              }
-            }
-          }
-        }
+    for (const [i, mod] of modules.entries()) {
+  if (!mod.title.trim()) continue;
+
+  const moduleRes = await fetch(`/api/courses?id=${courseId}&modules=true`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: mod.title,
+      description: mod.description,
+      sortOrder: i,
+    }),
+  });
+
+  const moduleData = await moduleRes.json();
+
+  if (moduleData.success) {
+    for (const [j, lesson] of mod.lessons.entries()) {
+      if (lesson.title.trim()) {
+        await fetch(`/api/courses?id=${courseId}&lessons=true&moduleId=${moduleData.data.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...lesson,
+            sortOrder: j,
+          }),
+        });
       }
+    }
+  }
+}
 
       Swal.fire({
         icon: "success",

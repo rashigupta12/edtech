@@ -30,6 +30,7 @@ type ApiResponse<T = any> = {
 
 type SearchParams = {
   id?: string;
+  slug?:string;
   submit?: string;
   approve?: string;
   reject?: string;
@@ -926,9 +927,93 @@ const getCourseCurriculumWithLessons = async (id: string) => {
 
   return successResponse(curriculum);
 };
-// ===========================
-// MAIN ROUTE HANDLERS
-// ===========================
+
+
+
+// GET COURSE BY SLUG
+const getCourseBySlug = async (slug: string) => {
+  const [course] = await db
+    .select({
+      id: CoursesTable.id,
+      slug: CoursesTable.slug,
+      title: CoursesTable.title,
+      shortDescription: CoursesTable.shortDescription,
+      description: CoursesTable.description,
+      thumbnailUrl: CoursesTable.thumbnailUrl,
+      previewVideoUrl: CoursesTable.previewVideoUrl,
+      duration: CoursesTable.duration,
+      level: CoursesTable.level,
+      language: CoursesTable.language,
+      prerequisites: CoursesTable.prerequisites,
+      status: CoursesTable.status,
+      isFeatured: CoursesTable.isFeatured,
+      maxStudents: CoursesTable.maxStudents,
+      currentEnrollments: CoursesTable.currentEnrollments,
+      isFree: CoursesTable.isFree,
+      price: CoursesTable.price,
+      discountPrice: CoursesTable.discountPrice,
+      createdAt: CoursesTable.createdAt,
+      publishedAt: CoursesTable.publishedAt,
+      collegeName: CollegesTable.collegeName,
+      collegeId: CollegesTable.id,
+      categoryName: CategoriesTable.name,
+      categoryId: CategoriesTable.id,
+    })
+    .from(CoursesTable)
+    .leftJoin(CollegesTable, eq(CoursesTable.collegeId, CollegesTable.id))
+    .leftJoin(CategoriesTable, eq(CoursesTable.categoryId, CategoriesTable.id))
+    .where(eq(CoursesTable.slug, slug))
+    .limit(1);
+
+  if (!course) {
+    return errorResponse('Course not found', 'NOT_FOUND', 404);
+  }
+
+  const outcomes = await db
+    .select()
+    .from(CourseLearningOutcomesTable)
+    .where(eq(CourseLearningOutcomesTable.courseId, course.id))
+    .orderBy(CourseLearningOutcomesTable.sortOrder);
+
+  const requirements = await db
+    .select()
+    .from(CourseRequirementsTable)
+    .where(eq(CourseRequirementsTable.courseId, course.id))
+    .orderBy(CourseRequirementsTable.sortOrder);
+
+  const modules = await db
+    .select()
+    .from(CourseModulesTable)
+    .where(eq(CourseModulesTable.courseId, course.id))
+    .orderBy(CourseModulesTable.sortOrder);
+
+  // Get lessons for each module
+  const modulesWithLessons = await Promise.all(
+    modules.map(async (module) => {
+      const lessons = await db
+        .select()
+        .from(CourseLessonsTable)
+        .where(eq(CourseLessonsTable.moduleId, module.id))
+        .orderBy(CourseLessonsTable.sortOrder);
+
+      return {
+        ...module,
+        lessons
+      };
+    })
+  );
+
+  return successResponse({
+    ...course,
+    outcomes,
+    requirements,
+    curriculum: {
+      modules: modulesWithLessons,
+      totalModules: modulesWithLessons.length,
+      totalLessons: modulesWithLessons.reduce((total, module) => total + module.lessons.length, 0)
+    }
+  });
+};
 
 // GET Handler
 export async function GET(request: NextRequest) {
@@ -936,9 +1021,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const params: SearchParams = {
       id: searchParams.get('id') || undefined,
+      slug: searchParams.get('slug') || undefined, // ADD THIS
       curriculum: searchParams.get('curriculum') || undefined,
       modules: searchParams.get('modules') || undefined,
     };
+
+    // Route: GET /api/courses?slug=full-stack-web-development-bootcamp
+    if (params.slug) {
+      return await getCourseBySlug(params.slug);
+    }
 
     // Route: GET /api/courses?id=123&curriculum=true
     if (params.id && parseBoolean(params.curriculum)) {
@@ -946,7 +1037,7 @@ export async function GET(request: NextRequest) {
       if (!validation.valid) {
         return errorResponse(validation.error!);
       }
-      return await getCourseCurriculumWithLessons(params.id); // This should be the only call for curriculum
+      return await getCourseCurriculumWithLessons(params.id);
     }
 
     // Route: GET /api/courses?id=123&modules=true

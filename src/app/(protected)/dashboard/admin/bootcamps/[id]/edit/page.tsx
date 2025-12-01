@@ -1,5 +1,3 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
-/*eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/(protected)/dashboard/admin/bootcamps/[id]/edit/page.tsx
 "use client";
 

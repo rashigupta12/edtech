@@ -536,7 +536,7 @@ export default function CreateTestimonialPage() {
                 />
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-xs text-gray-500">
-                    Write a detailed testimonial from the student's perspective
+                    Write a detailed testimonial from the student&apos;s perspective
                   </p>
                   <p className="text-sm text-gray-600 font-medium">
                     {formData.testimonial.length} characters

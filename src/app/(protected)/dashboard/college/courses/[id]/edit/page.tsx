@@ -561,102 +561,96 @@ export default function EditCoursePage() {
         }
 
         // Process modules and lessons
-        for (let i = 0; i < modules.length; i++) {
-          const module = modules[i];
-          
-          if (module.isNew) {
-            // Create new module
-            if (module.title.trim()) {
-              const moduleRes = await fetch(`/api/courses?id=${params.id}&modules=true`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: module.title,
-                  description: module.description,
-                  sortOrder: i,
-                }),
-              });
-              
-              const moduleData = await moduleRes.json();
-              
-              if (moduleData.success) {
-                // Create lessons for new module
-                for (let j = 0; j < module.lessons.length; j++) {
-                  const lesson = module.lessons[j];
-                  if (lesson.title.trim()) {
-                    await fetch(`/api/courses?id=${params.id}&lessons=true&moduleId=${moduleData.data.id}`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        title: lesson.title,
-                        description: lesson.description,
-                        contentType: lesson.contentType,
-                        videoUrl: lesson.videoUrl,
-                        articleContent: lesson.articleContent,
-                        isFree: lesson.isFree,
-                        sortOrder: j,
-                      }),
-                    });
-                  }
-                }
-              }
-            }
-          } else {
-            // Update existing module
-            await fetch(`/api/courses?id=${module.id}&updateModule=true`, {
-              method: "PUT",
+       for (let i = 0; i < modules.length; i++) {
+  const mod = modules[i];  // ← Renamed from "module" to "mod"
+
+  if (mod.isNew) {
+    // Create new module
+    if (mod.title.trim()) {
+      const moduleRes = await fetch(`/api/courses?id=${params.id}&modules=true`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: mod.title,
+          description: mod.description,
+          sortOrder: i,
+        }),
+      });
+
+      const moduleData = await moduleRes.json();
+
+      if (moduleData.success) {
+        for (let j = 0; j < mod.lessons.length; j++) {
+          const lesson = mod.lessons[j];
+          if (lesson.title.trim()) {
+            await fetch(`/api/courses?id=${params.id}&lessons=true&moduleId=${moduleData.data.id}`, {
+              method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                title: module.title,
-                description: module.description,
-                sortOrder: i,
+                title: lesson.title,
+                description: lesson.description,
+                contentType: lesson.contentType,
+                videoUrl: lesson.videoUrl,
+                articleContent: lesson.articleContent,
+                isFree: lesson.isFree,
+                sortOrder: j,
               }),
             });
-
-            // Process lessons for existing module
-            for (let j = 0; j < module.lessons.length; j++) {
-              const lesson = module.lessons[j];
-              
-              // Check if lesson is new (has no proper UUID format)
-              const isNewLesson = lesson.id.startsWith('new-');
-              
-              if (isNewLesson) {
-                // Create new lesson
-                if (lesson.title.trim()) {
-                  await fetch(`/api/courses?id=${params.id}&lessons=true&moduleId=${module.id}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      title: lesson.title,
-                      description: lesson.description,
-                      contentType: lesson.contentType,
-                      videoUrl: lesson.videoUrl,
-                      articleContent: lesson.articleContent,
-                      isFree: lesson.isFree,
-                      sortOrder: j,
-                    }),
-                  });
-                }
-              } else {
-                // Update existing lesson
-                await fetch(`/api/courses?id=${lesson.id}&updateLesson=true`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    title: lesson.title,
-                    description: lesson.description,
-                    contentType: lesson.contentType,
-                    videoUrl: lesson.videoUrl,
-                    articleContent: lesson.articleContent,
-                    isFree: lesson.isFree,
-                    sortOrder: j,
-                  }),
-                });
-              }
-            }
           }
         }
+      }
+    }
+  } else {
+    // Update existing module
+    await fetch(`/api/courses?id=${mod.id}&updateModule=true`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: mod.title,
+        description: mod.description,
+        sortOrder: i,
+      }),
+    });
 
+    // Process lessons...
+    for (let j = 0; j < mod.lessons.length; j++) {
+      const lesson = mod.lessons[j];
+      const isNewLesson = lesson.id.startsWith('new-');
+
+      if (isNewLesson) {
+        if (lesson.title.trim()) {
+          await fetch(`/api/courses?id=${params.id}&lessons=true&moduleId=${mod.id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: lesson.title,
+              description: lesson.description,
+              contentType: lesson.contentType,
+              videoUrl: lesson.videoUrl,
+              articleContent: lesson.articleContent,
+              isFree: lesson.isFree,
+              sortOrder: j,
+            }),
+          });
+        }
+      } else {
+        await fetch(`/api/courses?id=${lesson.id}&updateLesson=true`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: lesson.title,
+            description: lesson.description,
+            contentType: lesson.contentType,
+            videoUrl: lesson.videoUrl,
+            articleContent: lesson.articleContent,
+            isFree: lesson.isFree,
+            sortOrder: j,
+          }),
+        });
+      }
+    }
+  }
+}
         Swal.fire({
           icon: "success",
           title: "Course Updated!",
