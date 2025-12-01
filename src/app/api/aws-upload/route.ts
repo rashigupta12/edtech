@@ -470,7 +470,7 @@ export async function POST(request: NextRequest) {
     const fileName = `${Date.now()}-${baseName}${finalExtension}`;
     const mediaType = isImage ? 'images' : 'videos';
     const folderType = isThumbnailFile ? 'thumbnails' : mediaType;
-    const key = `futuretek/images/${folderType}/${fileName}`;
+    const key = `lms/${folderType}/${fileName}`;
 
     console.log("Upload URL:", key);
 
