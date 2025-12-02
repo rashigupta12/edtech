@@ -19,7 +19,10 @@ import {
   BarChart3,
   FileText,
   Users,
-  Star
+  Star,
+  ChevronLeft,
+  GraduationCap,
+  Layers
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -191,7 +194,7 @@ export default function CourseDetailPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="space-y-8 p-6 min-h-screen">
+      <div className="space-y-8 p-6 min-h-screen max-w-7xl mx-auto">
         <Skeleton className="h-12 w-3/4" />
         <div className="grid gap-4 md:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
@@ -206,11 +209,11 @@ export default function CourseDetailPage() {
   // Course not found
   if (!course) {
     return (
-      <div className="text-center py-20  min-h-screen">
-        <h1 className="text-2xl font-bold mb-4 text-emerald-900">Course not found</h1>
+      <div className="text-center py-20 min-h-screen max-w-7xl mx-auto">
+        <h1 className="text-2xl font-bold mb-4 text-gray-900">Course not found</h1>
         <Button 
           onClick={() => router.push('/dashboard/user/courses')}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          className="bg-green-600 hover:bg-green-700 text-white"
         >
           Back to My Courses
         </Button>
@@ -227,16 +230,26 @@ export default function CourseDetailPage() {
     <div className="space-y-8 p-6 max-w-7xl mx-auto min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-        <div>
-          <h1 className="text-3xl font-bold text-emerald-900">{course.title}</h1>
-          <p className="text-emerald-700 mt-2 text-lg">{course.shortDescription}</p>
+        <div className="space-y-3">
+          <Button
+            variant="ghost"
+            className="pl-0 hover:bg-transparent text-gray-600 hover:text-gray-900"
+            onClick={() => router.push('/dashboard/user/courses')}
+          >
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Back to Courses
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{course.title}</h1>
+            <p className="text-gray-600 mt-2 text-lg">{course.shortDescription}</p>
+          </div>
         </div>
 
         {enrollment && (
           <Button
             size="lg"
             onClick={() => router.push(`/dashboard/user/courses/${courseId}/learn`)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="bg-green-600 hover:bg-green-700 text-white"
           >
             <PlayCircle className="mr-2 h-5 w-5" />
             Continue Learning
@@ -245,113 +258,132 @@ export default function CourseDetailPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-6">
-        <Card className="bg-white border-emerald-200 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-emerald-100 rounded-full">
-                <BookOpen className="h-6 w-6 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-sm text-emerald-700">Progress</p>
-                <p className="text-2xl font-bold text-emerald-900">{enrollment?.progress || 0}%</p>
-                <p className="text-xs text-emerald-600 mt-1">
-                  {enrollment?.completedLessons || 0}/{enrollment?.totalLessons || 0} lessons
-                </p>
-              </div>
-            </div>
-            <Progress value={enrollment?.progress || 0} className="mt-3 bg-emerald-100" />
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <Target className="h-8 w-8 text-blue-600" />
-              <div>
-                <p className="text-sm text-blue-700">Assessments</p>
-                <p className="text-2xl font-bold text-blue-900">{assessmentCompletion}%</p>
-                <p className="text-xs text-blue-600 mt-1">
-                  {enrollment?.completedAssessments || 0}/{enrollment?.totalAssessments || 0} passed
-                </p>
-              </div>
-            </div>
-            <Progress value={assessmentCompletion} className="mt-3 bg-blue-100" />
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <Clock className="h-8 w-8 text-amber-600" />
-              <div>
-                <p className="text-sm text-amber-700">Duration</p>
-                <p className="text-2xl font-bold text-amber-900">{course.duration}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <Award className="h-8 w-8 text-purple-600" />
-              <div>
-                <p className="text-sm text-purple-700">Level</p>
-                <p className="text-2xl font-bold text-purple-900">{course.level}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-emerald-200 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <BarChart3 className="h-8 w-8 text-indigo-600" />
-              <div className="flex-1">
-                <p className="text-sm text-indigo-700">Overall Score</p>
-                <p className="text-2xl font-bold text-indigo-900">
-                  {enrollment?.overallScore != null ? `${enrollment?.overallScore}%` : 'N/A'}
-                </p>
-                <div className="flex items-center gap-4 mt-2 text-xs">
-                  <span className="text-indigo-600">
-                    Final: {enrollment?.finalAssessmentScore !== null ? `${enrollment?.finalAssessmentScore}%` : 'N/A'}
-                  </span>
-                  <span className="text-indigo-600">
-                    Avg Quiz: {enrollment?.averageQuizScore !== null ? `${enrollment?.averageQuizScore}%` : 'N/A'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+     <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+  <Card className="bg-white border border-gray-200 shadow-sm">
+    <CardContent className="pt-6">
+      <div className="flex flex-col items-center text-center">
+        <div className="p-3 bg-green-50 rounded-lg mb-3">
+          <BookOpen className="h-6 w-6 text-green-600" />
+        </div>
+        <p className="text-sm text-gray-600 mb-1">Progress</p>
+        <p className="text-2xl font-bold text-gray-900 mb-2">{enrollment?.progress || 0}%</p>
+        <p className="text-xs text-gray-500">
+          {enrollment?.completedLessons || 0}/{enrollment?.totalLessons || 0} lessons
+        </p>
+        <div className="w-full bg-gray-100 rounded-full h-1.5 mt-3">
+          <div 
+            className="bg-green-600 h-1.5 rounded-full" 
+            style={{ width: `${enrollment?.progress || 0}%` }}
+          />
+        </div>
       </div>
+    </CardContent>
+  </Card>
+
+  <Card className="bg-white border border-gray-200 shadow-sm">
+    <CardContent className="pt-6">
+      <div className="flex flex-col items-center text-center">
+        <div className="p-3 bg-blue-50 rounded-lg mb-3">
+          <Target className="h-6 w-6 text-blue-600" />
+        </div>
+        <p className="text-sm text-gray-600 mb-1">Assessments</p>
+        <p className="text-2xl font-bold text-gray-900 mb-2">{assessmentCompletion}%</p>
+        <p className="text-xs text-gray-500">
+          {enrollment?.completedAssessments || 0}/{enrollment?.totalAssessments || 0} passed
+        </p>
+        <div className="w-full bg-gray-100 rounded-full h-1.5 mt-3">
+          <div 
+            className="bg-blue-600 h-1.5 rounded-full" 
+            style={{ width: `${assessmentCompletion}%` }}
+          />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card className="bg-white border border-gray-200 shadow-sm">
+    <CardContent className="pt-6">
+      <div className="flex flex-col items-center text-center">
+        <div className="p-3 bg-amber-50 rounded-lg mb-3">
+          <Clock className="h-6 w-6 text-amber-600" />
+        </div>
+        <p className="text-sm text-gray-600 mb-1">Duration</p>
+        <p className="text-2xl font-bold text-gray-900">{course.duration}</p>
+      </div>
+    </CardContent>
+  </Card>
+
+  
+
+  <Card className="bg-white border border-gray-200 shadow-sm">
+    <CardContent className="pt-6">
+      <div className="flex flex-col items-center text-center">
+        <div className="p-3 bg-indigo-50 rounded-lg mb-3">
+          <BarChart3 className="h-6 w-6 text-indigo-600" />
+        </div>
+        <p className="text-sm text-gray-600 mb-1">Overall Score</p>
+        <p className="text-2xl font-bold text-gray-900">
+          {enrollment?.overallScore != null ? `${enrollment?.overallScore}%` : 'N/A'}
+        </p>
+        <div className="flex flex-col gap-1 mt-2 text-xs text-gray-500">
+          <span>
+            Final: {enrollment?.finalAssessmentScore !== null ? `${enrollment?.finalAssessmentScore}%` : 'N/A'}
+          </span>
+          <span>
+            Avg Quiz: {enrollment?.averageQuizScore !== null ? `${enrollment?.averageQuizScore}%` : 'N/A'}
+          </span>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+
+  <Card className="bg-white border border-gray-200 shadow-sm">
+    <CardContent className="pt-6">
+      <div className="flex flex-col items-center text-center">
+        <div className="p-3 bg-green-50 rounded-lg mb-3">
+          <BookOpen className="h-6 w-6 text-green-600" />
+        </div>
+        <p className="text-sm text-gray-600 mb-1">Modules</p>
+        <p className="text-2xl font-bold text-gray-900">{course.curriculum?.totalModules || 0}</p>
+        <p className="text-xs text-gray-500">
+          {course.curriculum?.totalLessons || 0} lessons
+        </p>
+      </div>
+    </CardContent>
+  </Card>
+</div>
 
       <div className="grid gap-8 md:grid-cols-3">
         {/* Left: Description + Outcomes + Assessments */}
         <div className="md:col-span-2 space-y-8">
-          <Card className="bg-white border-emerald-200 shadow-sm">
-            <CardHeader className="bg-emerald-50 border-b border-emerald-200">
-              <CardTitle className="text-emerald-900">Course Description</CardTitle>
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardHeader className="border-b border-gray-200">
+              <CardTitle className="text-gray-900 flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-green-600" />
+                Course Description
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <div
-                className="prose prose-sm max-w-none prose-headings:text-emerald-900 prose-p:text-emerald-800 prose-strong:text-emerald-900"
+                className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900"
                 dangerouslySetInnerHTML={{ __html: course.description }}
               />
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-emerald-200 shadow-sm">
-            <CardHeader className="bg-emerald-50 border-b border-emerald-200">
-              <CardTitle className="text-emerald-900">Learning Outcomes</CardTitle>
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardHeader className="border-b border-gray-200">
+              <CardTitle className="text-gray-900 flex items-center gap-2">
+                <GraduationCap className="h-5 w-5 text-green-600" />
+                Learning Outcomes
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <ul className="space-y-3">
                 {course.outcomes.map((item) => (
                   <li key={item.id} className="flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 mt-0.5 flex-shrink-0" />
-                    <span className="text-emerald-800">{item.outcome}</span>
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-700">{item.outcome}</span>
                   </li>
                 ))}
               </ul>
@@ -360,19 +392,22 @@ export default function CourseDetailPage() {
 
           {/* Assessment Information */}
           {hasAssessments && (
-            <Card className="bg-white border-blue-200 shadow-sm">
-              <CardHeader className="bg-blue-50 border-b border-blue-200">
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardHeader className="border-b border-gray-200">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-blue-900">Assessment Overview</CardTitle>
+                  <CardTitle className="text-gray-900 flex items-center gap-2">
+                    <Target className="h-5 w-5 text-blue-600" />
+                    Assessment Overview
+                  </CardTitle>
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={fetchAssessmentProgress}
                     disabled={statsLoading}
-                    className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+                    className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                   >
                     {statsLoading ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
                     ) : (
                       'Refresh'
                     )}
@@ -382,20 +417,20 @@ export default function CourseDetailPage() {
               <CardContent className="pt-6">
                 <div className="space-y-6">
                   {/* Course Completion Requirements */}
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-semibold text-blue-900 mb-2">Course Completion Requirements</h4>
-                    <ul className="space-y-2 text-sm text-blue-800">
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h4 className="font-semibold text-gray-900 mb-2">Course Completion Requirements</h4>
+                    <ul className="space-y-2 text-sm text-gray-700">
                       <li className="flex items-center gap-2">
-                        <CheckCircle className={`h-4 w-4 ${course.requireAllAssessmentsPassed ? 'text-blue-600' : 'text-gray-400'}`} />
+                        <CheckCircle className={`h-4 w-4 ${course.requireAllAssessmentsPassed ? 'text-green-500' : 'text-gray-400'}`} />
                         {course.requireAllAssessmentsPassed ? 'All assessments must be passed' : 'Assessments are optional'}
                       </li>
                       <li className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-blue-600" />
+                        <Target className="h-4 w-4 text-blue-500" />
                         Minimum passing score: {course.minimumCoursePassingScore}%
                       </li>
                       {course.hasFinalAssessment && (
                         <li className="flex items-center gap-2">
-                          <Award className="h-4 w-4 text-purple-600" />
+                          <Award className="h-4 w-4 text-purple-500" />
                           Final assessment {course.finalAssessmentRequired ? 'required' : 'optional'}
                         </li>
                       )}
@@ -405,20 +440,20 @@ export default function CourseDetailPage() {
                   {/* Module Assessments */}
                   {hasModuleAssessments && (
                     <div>
-                      <h4 className="font-semibold text-blue-900 mb-3">Module Assessments</h4>
+                      <h4 className="font-semibold text-gray-900 mb-3">Module Assessments</h4>
                       <div className="space-y-3">
                         {assessmentProgress!.moduleAssessmentStatus!.map((module, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-white border border-blue-100 rounded-lg">
+                          <div key={index} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
                             <div className="flex items-center gap-3">
-                              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                                module.passed ? 'bg-emerald-100 text-emerald-700' : 
-                                module.attempted ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                              <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
+                                module.passed ? 'bg-green-100 text-green-700' : 
+                                module.attempted ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'
                               }`}>
                                 <Target className="h-4 w-4" />
                               </div>
                               <div>
-                                <p className="font-medium text-blue-900">{module.moduleTitle}</p>
-                                <p className="text-xs text-blue-600">
+                                <p className="font-medium text-gray-900">{module.moduleTitle}</p>
+                                <p className="text-xs text-gray-600">
                                   {module.assessmentRequired ? 'Required' : 'Optional'} • 
                                   {module.attempted ? ` Score: ${module.latestScore}%` : ' Not attempted'}
                                 </p>
@@ -427,9 +462,9 @@ export default function CourseDetailPage() {
                             <Badge 
                               variant={module.passed ? 'default' : module.attempted ? 'secondary' : 'outline'}
                               className={`
-                                ${module.passed ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 
+                                ${module.passed ? 'bg-green-600 hover:bg-green-700 text-white' : 
                                   module.attempted ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 
-                                  'border-blue-300 text-blue-700'}
+                                  'border-gray-300 text-gray-700 bg-white'}
                               `}
                             >
                               {module.passed ? 'Passed' : module.attempted ? 'Failed' : 'Pending'}
@@ -443,21 +478,21 @@ export default function CourseDetailPage() {
                   {/* Final Assessment */}
                   {course.hasFinalAssessment && assessmentProgress?.finalAssessmentStatus && (
                     <div>
-                      <h4 className="font-semibold text-purple-900 mb-3">Final Assessment</h4>
+                      <h4 className="font-semibold text-gray-900 mb-3">Final Assessment</h4>
                       <div className={`p-4 rounded-lg border ${
                         assessmentProgress.finalAssessmentStatus.passed ? 
-                        'bg-emerald-50 border-emerald-200' : 
-                        'bg-purple-50 border-purple-200'
+                        'bg-green-50 border-green-200' : 
+                        'bg-gray-50 border-gray-200'
                       }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Award className={`h-8 w-8 ${
                               assessmentProgress.finalAssessmentStatus.passed ? 
-                              'text-emerald-600' : 'text-purple-600'
+                              'text-green-600' : 'text-gray-600'
                             }`} />
                             <div>
-                              <p className="font-medium text-purple-900">Course Final Exam</p>
-                              <p className="text-sm text-purple-700">
+                              <p className="font-medium text-gray-900">Course Final Exam</p>
+                              <p className="text-sm text-gray-700">
                                 Passing score: {assessmentProgress.finalAssessmentStatus.passingScore}%
                                 {assessmentProgress.finalAssessmentStatus.attempted && 
                                   ` • Your score: ${assessmentProgress.finalAssessmentStatus.latestScore}%`
@@ -471,10 +506,10 @@ export default function CourseDetailPage() {
                                       assessmentProgress.finalAssessmentStatus.attempted ? 'secondary' : 'outline'}
                               className={`
                                 ${assessmentProgress.finalAssessmentStatus.passed ? 
-                                  'bg-emerald-500 hover:bg-emerald-600 text-white' : 
+                                  'bg-green-600 hover:bg-green-700 text-white' : 
                                   assessmentProgress.finalAssessmentStatus.attempted ? 
                                   'bg-amber-100 text-amber-800 hover:bg-amber-200' : 
-                                  'border-purple-300 text-purple-700'}
+                                  'border-gray-300 text-gray-700 bg-white'}
                               `}
                             >
                               {assessmentProgress.finalAssessmentStatus.passed ? 'Passed' : 
@@ -494,25 +529,25 @@ export default function CourseDetailPage() {
 
                   {/* Assessment Types */}
                   <div>
-                    <h4 className="font-semibold text-blue-900 mb-3">Assessment Types</h4>
+                    <h4 className="font-semibold text-gray-900 mb-3">Assessment Types</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 bg-white border border-blue-100 rounded-lg">
+                      <div className="p-3 bg-white border border-gray-200 rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
-                          <div className="h-6 w-6 bg-blue-100 rounded flex items-center justify-center">
+                          <div className="h-6 w-6 bg-blue-50 rounded flex items-center justify-center">
                             <FileText className="h-3 w-3 text-blue-600" />
                           </div>
-                          <span className="text-sm font-medium text-blue-900">Lesson Quizzes</span>
+                          <span className="text-sm font-medium text-gray-900">Lesson Quizzes</span>
                         </div>
-                        <p className="text-xs text-blue-600">Test understanding after each lesson</p>
+                        <p className="text-xs text-gray-600">Test understanding after each lesson</p>
                       </div>
-                      <div className="p-3 bg-white border border-blue-100 rounded-lg">
+                      <div className="p-3 bg-white border border-gray-200 rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
-                          <div className="h-6 w-6 bg-purple-100 rounded flex items-center justify-center">
+                          <div className="h-6 w-6 bg-purple-50 rounded flex items-center justify-center">
                             <Target className="h-3 w-3 text-purple-600" />
                           </div>
-                          <span className="text-sm font-medium text-purple-900">Module Tests</span>
+                          <span className="text-sm font-medium text-gray-900">Module Tests</span>
                         </div>
-                        <p className="text-xs text-purple-600">Comprehensive module assessments</p>
+                        <p className="text-xs text-gray-600">Comprehensive module assessments</p>
                       </div>
                     </div>
                   </div>
@@ -521,20 +556,20 @@ export default function CourseDetailPage() {
                   {enrollment && (
                     <div className={`p-4 rounded-lg border ${
                       enrollment.certificateEligible ? 
-                      'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
+                      'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
                     }`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <Award className={`h-8 w-8 ${
-                            enrollment.certificateIssued ? 'text-emerald-600' : 
+                            enrollment.certificateIssued ? 'text-green-600' : 
                             enrollment.certificateEligible ? 'text-amber-600' : 'text-gray-400'
                           }`} />
                           <div>
-                            <p className="font-medium">
+                            <p className="font-medium text-gray-900">
                               {enrollment.certificateIssued ? 'Certificate Issued' : 
                                enrollment.certificateEligible ? 'Certificate Ready' : 'Certificate Status'}
                             </p>
-                            <p className="text-sm">
+                            <p className="text-sm text-gray-600">
                               {enrollment.certificateIssued ? 'Download your certificate' : 
                                enrollment.certificateEligible ? 'You are eligible for a certificate' : 
                                'Complete course requirements for certificate'}
@@ -544,7 +579,7 @@ export default function CourseDetailPage() {
                         {enrollment.certificateEligible && !enrollment.certificateIssued && (
                           <Button 
                             size="sm" 
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            className="bg-green-600 hover:bg-green-700 text-white"
                             onClick={() => router.push(`/dashboard/user/courses/${courseId}/certificate`)}
                           >
                             Get Certificate
@@ -561,38 +596,41 @@ export default function CourseDetailPage() {
 
         {/* Right Sidebar */}
         <div className="space-y-6">
-          <Card className="bg-white border-emerald-200 shadow-sm">
-            <CardHeader className="bg-emerald-50 border-b border-emerald-200">
-              <CardTitle className="text-emerald-900">Course Info</CardTitle>
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardHeader className="border-b border-gray-200">
+              <CardTitle className="text-gray-900 flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-green-600" />
+                Course Info
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm pt-6">
               <div className="flex justify-between">
-                <span className="text-emerald-700">Category</span>
-                <Badge variant="outline" className="border-emerald-600 text-emerald-700 bg-emerald-50">
+                <span className="text-gray-600">Category</span>
+                <Badge variant="secondary" className="bg-green-50 text-green-700">
                   {course.categoryName}
                 </Badge>
               </div>
-              <Separator className="bg-emerald-200" />
+              <Separator className="bg-gray-200" />
               <div className="flex justify-between">
-                <span className="text-emerald-700">Language</span>
-                <span className="text-emerald-900">{course.language}</span>
+                <span className="text-gray-600">Language</span>
+                <span className="text-gray-900">{course.language}</span>
               </div>
-              <Separator className="bg-emerald-200" />
+              <Separator className="bg-gray-200" />
               <div className="flex justify-between">
-                <span className="text-emerald-700">Status</span>
+                <span className="text-gray-600">Status</span>
                 <Badge 
                   variant={enrollment ? 'default' : 'secondary'}
-                  className={enrollment ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'}
+                  className={enrollment ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-100 text-gray-800'}
                 >
                   {enrollment ? 'Enrolled' : 'Not Enrolled'}
                 </Badge>
               </div>
               {enrollment && (
                 <>
-                  <Separator className="bg-emerald-200" />
+                  <Separator className="bg-gray-200" />
                   <div className="flex justify-between">
-                    <span className="text-emerald-700">Enrolled Since</span>
-                    <span className="text-emerald-900">
+                    <span className="text-gray-600">Enrolled Since</span>
+                    <span className="text-gray-900">
                       {new Date(enrollment.enrolledAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -602,15 +640,18 @@ export default function CourseDetailPage() {
           </Card>
 
           {course.requirements.length > 0 && (
-            <Card className="bg-white border-emerald-200 shadow-sm">
-              <CardHeader className="bg-emerald-50 border-b border-emerald-200">
-                <CardTitle className="text-emerald-900">Prerequisites</CardTitle>
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardHeader className="border-b border-gray-200">
+                <CardTitle className="text-gray-900 flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  Prerequisites
+                </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
-                <ul className="space-y-2 text-sm text-emerald-800">
+                <ul className="space-y-2 text-sm text-gray-700">
                   {course.requirements.map((req) => (
                     <li key={req.id} className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                       {req.requirement}
                     </li>
                   ))}
@@ -619,43 +660,46 @@ export default function CourseDetailPage() {
             </Card>
           )}
 
-          <Card className="bg-white border-emerald-200 shadow-sm">
-            <CardHeader className="bg-emerald-50 border-b border-emerald-200">
-              <CardTitle className="text-emerald-900">Curriculum Stats</CardTitle>
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardHeader className="border-b border-gray-200">
+              <CardTitle className="text-gray-900 flex items-center gap-2">
+                <Layers className="h-5 w-5 text-green-600" />
+                Curriculum Stats
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-emerald-600" />
-                  <span className="text-sm text-emerald-700">Modules</span>
+                  <BookOpen className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-gray-600">Modules</span>
                 </div>
-                <span className="font-semibold text-emerald-900">{course.curriculum?.totalModules || 0}</span>
+                <span className="font-semibold text-gray-900">{course.curriculum?.totalModules || 0}</span>
               </div>
-              <Separator className="bg-emerald-200" />
+              <Separator className="bg-gray-200" />
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-emerald-600" />
-                  <span className="text-sm text-emerald-700">Lessons</span>
+                  <FileText className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-gray-600">Lessons</span>
                 </div>
-                <span className="font-semibold text-emerald-900">{course.curriculum?.totalLessons || 0}</span>
+                <span className="font-semibold text-gray-900">{course.curriculum?.totalLessons || 0}</span>
               </div>
-              <Separator className="bg-emerald-200" />
+              <Separator className="bg-gray-200" />
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Target className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm text-blue-700">Assessments</span>
+                  <span className="text-sm text-gray-600">Assessments</span>
                 </div>
-                <span className="font-semibold text-blue-900">{enrollment?.totalAssessments || 0}</span>
+                <span className="font-semibold text-gray-900">{enrollment?.totalAssessments || 0}</span>
               </div>
               {course.hasFinalAssessment && (
                 <>
-                  <Separator className="bg-emerald-200" />
+                  <Separator className="bg-gray-200" />
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Award className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm text-purple-700">Final Exam</span>
+                      <span className="text-sm text-gray-600">Final Exam</span>
                     </div>
-                    <Badge variant="outline" className="border-purple-300 text-purple-700">
+                    <Badge variant="outline" className="border-gray-300 text-gray-700 bg-white">
                       {course.finalAssessmentRequired ? 'Required' : 'Optional'}
                     </Badge>
                   </div>
@@ -664,35 +708,38 @@ export default function CourseDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-emerald-200 shadow-sm">
-            <CardHeader className="bg-emerald-50 border-b border-emerald-200">
-              <CardTitle className="text-emerald-900">Quick Access</CardTitle>
+          <Card className="bg-white border border-gray-200 shadow-sm">
+            <CardHeader className="border-b border-gray-200">
+              <CardTitle className="text-gray-900 flex items-center gap-2">
+                <PlayCircle className="h-5 w-5 text-green-600" />
+                Quick Access
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-6">
               <Button 
                 variant="outline" 
-                className="w-full justify-start bg-white border-emerald-300 hover:bg-emerald-50 text-emerald-900 hover:text-emerald-900" 
+                className="w-full justify-start bg-white border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-900 hover:border-gray-400" 
                 asChild
               >
                 <Link href={`/dashboard/user/courses/${courseId}/learn`}>
-                  <PlayCircle className="mr-2 h-4 w-4 text-emerald-600" />
+                  <PlayCircle className="mr-2 h-4 w-4 text-green-600" />
                   {enrollment?.progress === 0 ? 'Start Learning' : 'Continue Learning'}
                 </Link>
               </Button>
               <Button 
                 variant="outline" 
-                className="w-full justify-start bg-white border-emerald-300 hover:bg-emerald-50 text-emerald-900 hover:text-emerald-900" 
+                className="w-full justify-start bg-white border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-900 hover:border-gray-400" 
                 asChild
               >
                 <Link href={`/dashboard/user/courses/${courseId}/syllabus`}>
-                  <BookOpen className="mr-2 h-4 w-4 text-emerald-600" />
+                  <BookOpen className="mr-2 h-4 w-4 text-green-600" />
                   View Syllabus
                 </Link>
               </Button>
-              {hasAssessments && (
+              {/* {hasAssessments && (
                 <Button 
                   variant="outline" 
-                  className="w-full justify-start bg-white border-blue-300 hover:bg-blue-50 text-blue-900 hover:text-blue-900" 
+                  className="w-full justify-start bg-white border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-900 hover:border-gray-400" 
                   asChild
                 >
                   <Link href={`/dashboard/user/courses/${courseId}/assessments`}>
@@ -703,18 +750,18 @@ export default function CourseDetailPage() {
               )}
               <Button 
                 variant="outline" 
-                className="w-full justify-start bg-white border-emerald-300 hover:bg-emerald-50 text-emerald-900 hover:text-emerald-900" 
+                className="w-full justify-start bg-white border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-900 hover:border-gray-400" 
                 asChild
               >
                 <Link href={`/dashboard/user/courses/${courseId}/progress`}>
-                  <BarChart3 className="mr-2 h-4 w-4 text-emerald-600" />
+                  <BarChart3 className="mr-2 h-4 w-4 text-green-600" />
                   Progress Report
                 </Link>
-              </Button>
+              </Button> */}
               {enrollment?.certificateEligible && (
                 <Button 
                   variant="outline" 
-                  className="w-full justify-start bg-white border-amber-300 hover:bg-amber-50 text-amber-900 hover:text-amber-900" 
+                  className="w-full justify-start bg-white border-gray-300 hover:bg-gray-50 text-gray-700 hover:text-gray-900 hover:border-gray-400" 
                   asChild
                 >
                   <Link href={`/dashboard/user/courses/${courseId}/certificate`}>

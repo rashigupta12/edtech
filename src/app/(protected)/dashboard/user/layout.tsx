@@ -8,6 +8,7 @@ import {
 
   Home,
   IndianRupee,
+  Settings,
   Wallet
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
@@ -107,12 +108,12 @@ export default function UserDashboardLayout({
       href: "/dashboard/user/payments",
       single: true,
     },
-    // {
-    //   title: "Profile",
-    //   icon: Settings,
-    //   href: "/dashboard/user/profile",
-    //   single: true,
-    // },
+    {
+      title: "Profile",
+      icon: Settings,
+      href: "/dashboard/user/profile",
+      single: true,
+    },
   ];
 
   return (

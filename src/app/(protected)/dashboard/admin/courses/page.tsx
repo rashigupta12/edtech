@@ -337,7 +337,7 @@ export default function CoursesPage() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
               <GraduationCap className="h-6 w-6 text-white" />
             </div>
             <h2 className="text-3xl font-bold text-gray-900">

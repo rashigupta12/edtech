@@ -100,25 +100,32 @@ export default function UserCoursesPage() {
   // Refresh progress for a specific course
   const refreshProgress = async (courseId: string, enrollmentId: string) => {
     if (!userId) return;
-    
+
     setRefreshing(courseId);
     try {
       // Trigger progress recalculation
-      const response = await fetch(`/api/progress?userId=${userId}&courseId=${courseId}`);
+      const response = await fetch(
+        `/api/progress?userId=${userId}&courseId=${courseId}`
+      );
       if (response.ok) {
         const data = await response.json();
-        
+
         // Update local state with new progress
         setEnrollments((prev) =>
           prev.map((enrollment) =>
             enrollment.courseId === courseId
-              ? { 
-                  ...enrollment, 
+              ? {
+                  ...enrollment,
                   progress: data.data?.overallProgress || enrollment.progress,
-                  completedLessons: data.data?.completedLessons || enrollment.completedLessons,
-                  totalLessons: data.data?.totalLessons || enrollment.totalLessons,
-                  completedAssessments: data.data?.completedAssessments || enrollment.completedAssessments,
-                  totalAssessments: data.data?.totalAssessments || enrollment.totalAssessments,
+                  completedLessons:
+                    data.data?.completedLessons || enrollment.completedLessons,
+                  totalLessons:
+                    data.data?.totalLessons || enrollment.totalLessons,
+                  completedAssessments:
+                    data.data?.completedAssessments ||
+                    enrollment.completedAssessments,
+                  totalAssessments:
+                    data.data?.totalAssessments || enrollment.totalAssessments,
                 }
               : enrollment
           )
@@ -136,12 +143,13 @@ export default function UserCoursesPage() {
     if (enrollment.status === "COMPLETED") {
       return "Course Completed";
     }
-    
+
     const lessonText = `${enrollment.completedLessons}/${enrollment.totalLessons} lessons`;
-    const assessmentText = enrollment.totalAssessments > 0 
-      ? ` • ${enrollment.completedAssessments}/${enrollment.totalAssessments} assessments`
-      : "";
-    
+    const assessmentText =
+      enrollment.totalAssessments > 0
+        ? ` • ${enrollment.completedAssessments}/${enrollment.totalAssessments} assessments`
+        : "";
+
     return `Progress: ${lessonText}${assessmentText}`;
   };
 
@@ -367,7 +375,7 @@ export default function UserCoursesPage() {
                       {course.courseThumbnail ? (
                         <img
                           // src={course.courseThumbnail}
-                          src ="https://blog.zegocloud.com/wp-content/uploads/2024/03/types-of-web-development-services.jpg"
+                          src="https://blog.zegocloud.com/wp-content/uploads/2024/03/types-of-web-development-services.jpg"
                           alt={course.courseTitle}
                           className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
@@ -398,7 +406,7 @@ export default function UserCoursesPage() {
                           {getStatusBadgeText(course.status)}
                         </Badge>
                       </div>
-                      
+
                       {/* Certificate Badge */}
                       {course.certificateIssued && (
                         <div className="absolute top-4 right-4">
@@ -408,7 +416,7 @@ export default function UserCoursesPage() {
                           </Badge>
                         </div>
                       )}
-                      
+
                       {/* Score Badge */}
                       {course.overallScore && (
                         <div className="absolute bottom-4 left-4">
@@ -443,10 +451,12 @@ export default function UserCoursesPage() {
                                   <Clock className="h-4 w-4 text-emerald-400" />
                                   <span className="text-sm text-emerald-600">
                                     Completed{" "}
-                                    {new Date(course.completedAt).toLocaleDateString(
-                                      "en-US",
-                                      { month: "short", day: "numeric" }
-                                    )}
+                                    {new Date(
+                                      course.completedAt
+                                    ).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                    })}
                                   </span>
                                 </>
                               )}
@@ -483,7 +493,9 @@ export default function UserCoursesPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => refreshProgress(course.courseId, course.id)}
+                                  onClick={() =>
+                                    refreshProgress(course.courseId, course.id)
+                                  }
                                   disabled={refreshing === course.courseId}
                                   className="h-6 w-6 p-0"
                                 >
@@ -517,20 +529,22 @@ export default function UserCoursesPage() {
                                 <span className="text-gray-500">100%</span>
                               </div>
                             </div>
-                            
+
                             {/* Detailed Progress */}
                             <div className="grid grid-cols-2 gap-2 pt-2">
                               <div className="flex items-center gap-2">
                                 <CheckCircle className="h-4 w-4 text-emerald-500" />
                                 <span className="text-sm text-gray-700">
-                                  {course.completedLessons}/{course.totalLessons} lessons
+                                  {course.completedLessons}/
+                                  {course.totalLessons} lessons
                                 </span>
                               </div>
                               {course.totalAssessments > 0 && (
                                 <div className="flex items-center gap-2">
                                   <Target className="h-4 w-4 text-blue-500" />
                                   <span className="text-sm text-gray-700">
-                                    {course.completedAssessments}/{course.totalAssessments} assessments
+                                    {course.completedAssessments}/
+                                    {course.totalAssessments} assessments
                                   </span>
                                 </div>
                               )}
@@ -587,69 +601,40 @@ export default function UserCoursesPage() {
                                 Details
                               </Button>
                             </div>
-                            
-                            {/* Certificate Button */}
-                            {course.certificateEligible && !course.certificateIssued && (
-                              <div>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-amber-300 text-amber-700 hover:bg-amber-50 px-6"
-                                  onClick={() =>
-                                    router.push(
-                                      `/dashboard/user/courses/${course.courseId}/certificate`
-                                    )
-                                  }
-                                >
-                                  <Award className="h-4 w-4 mr-2" />
-                                  Get Certificate
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                            <div>
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start border border-green-700 text-gray-600 hover:text-green-700 hover:bg-emerald-50 px-10"
+                                onClick={() =>
+                                  router.push(
+                                    `/dashboard/user/courses/${course.courseId}/syllabus`
+                                  )
+                                }
+                              >
+                                Syllabus
+                              </Button>
+                            </div>
 
-                        {/* Quick Links */}
-                        <div className="lg:w-48 space-y-3">
-                          <h4 className="font-medium text-gray-900">
-                            Quick Links
-                          </h4>
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start text-gray-600 hover:text-green-700 hover:bg-emerald-50"
-                            onClick={() =>
-                              router.push(
-                                `/dashboard/user/courses/${course.courseId}/syllabus`
-                              )
-                            }
-                          >
-                            <ChevronRight className="h-4 w-4 mr-2" />
-                            Syllabus
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start text-gray-600 hover:text-green-700 hover:bg-emerald-50"
-                            onClick={() =>
-                              router.push(
-                                `/dashboard/user/courses/${course.courseId}/assessments`
-                              )
-                            }
-                          >
-                            <Target className="h-4 w-4 mr-2" />
-                            Assessments
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start text-gray-600 hover:text-green-700 hover:bg-emerald-50"
-                            onClick={() =>
-                              router.push(
-                                `/dashboard/user/courses/${course.courseId}/progress`
-                              )
-                            }
-                          >
-                            <BarChart3 className="h-4 w-4 mr-2" />
-                            Progress
-                          </Button>
+                            {/* Certificate Button */}
+                            {course.certificateEligible &&
+                              !course.certificateIssued && (
+                                <div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-amber-300 text-amber-700 hover:bg-amber-50 px-6"
+                                    onClick={() =>
+                                      router.push(
+                                        `/dashboard/user/courses/${course.courseId}/certificate`
+                                      )
+                                    }
+                                  >
+                                    <Award className="h-4 w-4 mr-2" />
+                                    Get Certificate
+                                  </Button>
+                                </div>
+                              )}
+                          </div>
                         </div>
                       </div>
                     </div>
