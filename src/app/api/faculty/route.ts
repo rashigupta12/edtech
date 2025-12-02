@@ -166,13 +166,11 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-// PUT /api/faculty?id={facultyId}&permissions=true - Update faculty permissions
+// In your PUT function in app/api/faculty/route.ts
 export async function PUT(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const facultyId = searchParams.get("id");
-    const isPermissionsUpdate = searchParams.get("permissions") === "true";
 
     if (!facultyId) {
       return NextResponse.json(
@@ -183,16 +181,17 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
 
-    if (isPermissionsUpdate) {
-      const { canCreateCourses, canApproveContent, canManageStudents, canScheduleSessions } = body;
+    // Check if this is a permissions update (has permissions object)
+    if (body.permissions && typeof body.permissions === 'object') {
+      const { canCreateCourses, canApproveContent, canManageStudents, canScheduleSessions } = body.permissions;
 
       const [updated] = await db
         .update(FacultyTable)
         .set({
-          canCreateCourses,
-          canApproveContent,
-          canManageStudents,
-          canScheduleSessions,
+          canCreateCourses: canCreateCourses ?? false,
+          canApproveContent: canApproveContent ?? false,
+          canManageStudents: canManageStudents ?? false,
+          canScheduleSessions: canScheduleSessions ?? true,
           updatedAt: new Date(),
         })
         .where(eq(FacultyTable.id, facultyId))
@@ -205,13 +204,27 @@ export async function PUT(request: NextRequest) {
       });
     }
 
-    // General faculty update
+    // General faculty update - handle permissions fields directly
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    // Map individual permission fields if present
+    if (body.canCreateCourses !== undefined) updateData.canCreateCourses = body.canCreateCourses;
+    if (body.canApproveContent !== undefined) updateData.canApproveContent = body.canApproveContent;
+    if (body.canManageStudents !== undefined) updateData.canManageStudents = body.canManageStudents;
+    if (body.canScheduleSessions !== undefined) updateData.canScheduleSessions = body.canScheduleSessions;
+
+    // Map other fields
+    if (body.departmentId !== undefined) updateData.departmentId = body.departmentId;
+    if (body.facultyRole !== undefined) updateData.facultyRole = body.facultyRole;
+    if (body.designation !== undefined) updateData.designation = body.designation;
+    if (body.employmentType !== undefined) updateData.employmentType = body.employmentType;
+    if (body.status !== undefined) updateData.status = body.status;
+
     const [updated] = await db
       .update(FacultyTable)
-      .set({
-        ...body,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(FacultyTable.id, facultyId))
       .returning();
 

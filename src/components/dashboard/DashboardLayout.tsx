@@ -170,6 +170,11 @@ const navConfigs = {
 
   agent: [
     { title: "Dashboard", href: "/dashboard/college", icon: Home },
+      {
+      title: "Profile",
+      href: "/dashboard/college/profile",
+      icon: Users,
+    },
     {
       title: " Courses",
       icon: Tag,
@@ -183,28 +188,37 @@ const navConfigs = {
       ],
     },
 
-    
-    {
-      title: "Earnings",
-      icon: TrendingUp,
+     {
+      title: " Departments",
+      icon: Tag,
       children: [
-        {
-          title: "Commission Overview",
-          href: "/dashboard/agent/earnings",
-          icon: DollarSign,
-        },
-        {
-          title: "Payout History",
-          href: "/dashboard/agent/payouts",
-          icon: Wallet,
-        },
+        { title: "All Departments", href: "/dashboard/college/departments", icon: List },
       ],
     },
-    {
-      title: "Assign Coupons",
-      href: "/dashboard/agent/assign-coupons",
+      {
+      title: "Faculty",
+      href: "/dashboard/college/faculty",
       icon: Users,
     },
+
+    
+    // {
+    //   title: "Earnings",
+    //   icon: TrendingUp,
+    //   children: [
+    //     {
+    //       title: "Commission Overview",
+    //       href: "/dashboard/agent/earnings",
+    //       icon: DollarSign,
+    //     },
+    //     {
+    //       title: "Payout History",
+    //       href: "/dashboard/agent/payouts",
+    //       icon: Wallet,
+    //     },
+    //   ],
+    // },
+  
   ] as const,
 
   user: [

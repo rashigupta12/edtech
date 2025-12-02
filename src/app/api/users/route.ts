@@ -406,6 +406,7 @@ export async function POST(req: NextRequest) {
       password,
       mobile,
       bio,  
+      role
     } = body;
 
     // Validate required fields
@@ -443,7 +444,7 @@ export async function POST(req: NextRequest) {
         email,
         password: hashedPassword,
         mobile,
-        role: "COLLEGE",
+        role: body.role || "COLLEGE",
         bio,
         isActive: true,
         updatedAt: new Date(),

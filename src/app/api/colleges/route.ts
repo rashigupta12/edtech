@@ -29,6 +29,7 @@ type SearchParams = {
   reject?: string;
   suspend?: string;
   documents?: string;
+  userId?:string
 };
 
 // ===========================
@@ -114,6 +115,20 @@ const getCollegeById = async (id: string) => {
     .select()
     .from(CollegesTable)
     .where(eq(CollegesTable.id, id))
+    .limit(1);
+
+  if (!college[0]) {
+    return errorResponse('College not found', 'NOT_FOUND', 404);
+  }
+
+  return successResponse(college[0]);
+};
+
+const getCollegeBycollegeAdminid = async (userid: string) => {
+  const college = await db
+    .select()
+    .from(CollegesTable)
+    .where(eq(CollegesTable.userId, userid))
     .limit(1);
 
   if (!college[0]) {
@@ -452,6 +467,7 @@ export async function GET(request: NextRequest) {
       pending: searchParams.get('pending') || undefined,
       stats: searchParams.get('stats') || undefined,
       courses: searchParams.get('courses') || undefined,
+      userId : searchParams.get('userId') || undefined
     };
 
     // Route: GET /api/colleges?pending=true
@@ -484,6 +500,14 @@ export async function GET(request: NextRequest) {
         return errorResponse(validation.error!);
       }
       return await getCollegeById(params.id);
+    }
+
+    if(params.userId){
+           const validation = validateId(params.userId);
+      if (!validation.valid) {
+        return errorResponse(validation.error!);
+      }
+      return await getCollegeBycollegeAdminid(params.userId);
     }
 
     // Route: GET /api/colleges (list all)
