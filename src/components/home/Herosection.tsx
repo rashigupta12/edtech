@@ -1,5 +1,6 @@
 import React from 'react';
 import { BookOpen, Users, Award, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 export default function HeroSection() {
   return (
@@ -32,7 +33,7 @@ export default function HeroSection() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
               <button className="px-6 py-3 bg-white text-slate-700 rounded-lg font-medium border border-slate-200 hover:border-emerald-600 hover:text-emerald-700 transition-all">
-                Browse Courses
+                <Link href="/courses" >Browse Courses</Link>
               </button>
             </div>
           </div>

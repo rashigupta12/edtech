@@ -1,345 +1,292 @@
-// src/app/(protected)/dashboard/user/page.tsx
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, BookOpen, Trophy } from "lucide-react";
-import { useSession } from "next-auth/react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from 'react';
+import { BookOpen, Calendar, Clock, Award, TrendingUp, FileText, Bell, Loader2 } from 'lucide-react';
+import { useCurrentUser } from '@/hooks/auth';
 
-interface DashboardStats {
-  enrolledCourses: number;
-  newThisMonth: number;
-  hoursLearned: number;
-  certificates: number;
-  certificatesInProgress: number;
-  learningStreak: number;
-}
-
-interface ActiveCourse {
+interface Course {
   id: string;
-  title: string;
-  slug: string;
+  name: string;
   progress: number;
-  sessions: number;
-  completedSessions: number;
-  thumbnail?: string;
+  nextClass: string;
+  instructor: string;
+  thumbnailUrl?: string;
+  level?: string;
+  duration?: string;
+  enrolledAt?: Date;
+  status?: string;
 }
 
-export default function UserDashboardHome() {
-  const { data: session } = useSession();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [activeCourses, setActiveCourses] = useState<ActiveCourse[]>([]);
+interface Assignment {
+  id: number;
+  title: string;
+  course: string;
+  dueDate: string;
+  status: string;
+}
+
+interface Grade {
+  id: number;
+  assignment: string;
+  course: string;
+  grade: string;
+  score: number;
+}
+
+export default function StudentDashboard() {
+  const user = useCurrentUser();
+  const userLoading = !user;
+  const userId = user?.id;
+  
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchDashboardData() {
-      if (!session?.user?.id) return;
-
-      try {
-        setLoading(true);
-
-        // Fetch dashboard stats
-        const statsResponse = await fetch("/api/user/dashboard-stats");
-        if (statsResponse.ok) {
-          const statsData = await statsResponse.json();
-          setStats(statsData);
-        }
-      } catch (error) {
-        console.error("Failed to fetch dashboard stats:", error);
-      } finally {
-        setLoading(false);
-      }
+    if (user?.id) {
+      fetchEnrolledCourses();
     }
+  }, [user]);
 
-    async function fetchActiveCourses() {
-      if (!session?.user?.id) return;
-
-      try {
-        setCoursesLoading(true);
-
-        // Fetch active courses
-        const coursesResponse = await fetch("/api/user/active-courses");
-        if (coursesResponse.ok) {
-          const coursesData = await coursesResponse.json();
-          setActiveCourses(coursesData);
-        }
-      } catch (error) {
-        console.error("Failed to fetch active courses:", error);
-      } finally {
-        setCoursesLoading(false);
+  const fetchEnrolledCourses = async () => {
+    try {
+      setLoading(true);
+      // Fetch user's enrolled courses
+      const response = await fetch(`/api/enrollments?userId=${userId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        // Transform enrollment data to course format
+        const enrolledCourses: Course[] = data.data.map((enrollment: any) => ({
+          id: enrollment.courseId,
+          name: enrollment.courseTitle || 'Course Title',
+          progress: enrollment.progress || 0,
+          nextClass: 'Today, 2:00 PM', // Calculate based on your schedule logic
+          instructor: enrollment.instructor || 'Instructor',
+          thumbnailUrl: enrollment.thumbnailUrl,
+          level: enrollment.level,
+          duration: enrollment.duration,
+          enrolledAt: enrollment.enrolledAt,
+          status: enrollment.status
+        }));
+        setCourses(enrolledCourses);
+      } else {
+        setError(data.error?.message || 'Failed to fetch enrolled courses');
       }
+    } catch (err) {
+      setError('Failed to load enrolled courses');
+      console.error('Error fetching enrolled courses:', err);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    fetchDashboardData();
-    fetchActiveCourses();
-  }, [session?.user?.id]);
+  const upcomingAssignments: Assignment[] = [
+    { id: 1, title: 'Algorithm Analysis Essay', course: 'Data Structures', dueDate: 'Dec 5, 2025', status: 'pending' },
+    { id: 2, title: 'React Project Submission', course: 'Web Development', dueDate: 'Dec 8, 2025', status: 'in-progress' },
+    { id: 3, title: 'Database Design Document', course: 'Database Systems', dueDate: 'Dec 10, 2025', status: 'pending' }
+  ];
 
-  const userName = session?.user?.name?.split(" ")[0] || "Student";
+  const recentGrades: Grade[] = [
+    { id: 1, assignment: 'Midterm Exam', course: 'Computer Science', grade: 'A', score: 92 },
+    { id: 2, assignment: 'Binary Trees Lab', course: 'Data Structures', grade: 'A-', score: 88 },
+    { id: 3, assignment: 'CSS Flexbox Quiz', course: 'Web Development', grade: 'B+', score: 85 }
+  ];
+
+  const calculateAverageProgress = (): number => {
+    if (courses.length === 0) return 0;
+    const total = courses.reduce((sum, course) => sum + (course.progress || 0), 0);
+    return Math.round(total / courses.length);
+  };
+
+  if (userLoading || loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-green-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Please log in to view your dashboard</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Header */}
-      <div className="relative">
-        <div className="absolute -left-1 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-600 to-yellow-500 rounded-full"></div>
-        <div className="pl-4">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-900 to-blue-700 bg-clip-text text-transparent">
-            Welcome back, {userName}!
-          </h1>
-          <p className="text-slate-600 mt-1">Continue your learning journey</p>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Enrolled Courses */}
-        <Card className="border border-blue-100 bg-gradient-to-br from-white to-blue-50/30 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-slate-700 flex items-center gap-2">
-              <div className="p-1.5 bg-blue-100 rounded-lg">
-                <BookOpen className="h-4 w-4 text-blue-600" />
-              </div>
-              Enrolled Courses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-2">
-                <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold text-blue-900">
-                  {stats?.enrolledCourses || 0}
-                </div>
-                <p className="text-xs text-blue-600 mt-1">
-                  +{stats?.newThisMonth || 0} this month
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Hours Learned */}
-        {/* <Card className="border border-blue-100 bg-gradient-to-br from-white to-blue-50/30 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-slate-700 flex items-center gap-2">
-              <div className="p-1.5 bg-blue-100 rounded-lg">
-                <Clock className="h-4 w-4 text-blue-600" />
-              </div>
-              Hours Learned
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-2">
-                <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold text-blue-900">
-                  {stats?.hoursLearned || 0}
-                </div>
-                <p className="text-xs text-blue-600 mt-1">
-                  Keep learning!
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card> */}
-
-        {/* Certificates */}
-        <Card className="border border-yellow-100 bg-gradient-to-br from-white to-yellow-50/30 shadow-sm hover:shadow-lg hover:border-yellow-200 transition-all duration-300">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-slate-700 flex items-center gap-2">
-              <div className="p-1.5 bg-yellow-100 rounded-lg">
-                <Trophy className="h-4 w-4 text-yellow-600" />
-              </div>
-              Certificates
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-2">
-                <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold text-yellow-900">
-                  {stats?.certificates || 0}
-                </div>
-                <p className="text-xs text-slate-600 mt-1">
-                  {stats?.certificatesInProgress || 0} in progress
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Learning Streak */}
-        {/* <Card className="border border-blue-100 bg-gradient-to-br from-white to-blue-50/30 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-slate-700 flex items-center gap-2">
-              <div className="p-1.5 bg-yellow-100 rounded-lg">
-                <TrendingUp className="h-4 w-4 text-yellow-600" />
-              </div>
-              Learning Streak
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-2">
-                <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold text-blue-900">
-                  {stats?.learningStreak || 0} days
-                </div>
-                <p className="text-xs text-yellow-600 mt-1">
-                  {stats?.learningStreak && stats.learningStreak > 0 ? "Keep it up!" : "Start your streak!"}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card> */}
-      </div>
-
-      {/* Active Courses */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-blue-900">
-            Continue Learning
+    <div className="min-h-screen bg-gray-50">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome back, {user.name?.split(' ')[0] || 'Student'}!
           </h2>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-          >
-            <Link
-              href="/dashboard/user/courses"
-              className="flex items-center gap-1"
-            >
-              View All
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <p className="text-gray-600">Here's what's happening with your courses today.</p>
         </div>
 
-        {coursesLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="border border-blue-100 bg-white">
-                <CardHeader className="pb-3">
-                  <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse"></div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="h-2.5 w-full bg-gray-200 rounded animate-pulse"></div>
-                    <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
-                    <div className="h-9 w-full bg-gray-200 rounded animate-pulse mt-4"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">Active Courses</span>
+              <BookOpen className="w-5 h-5 text-green-600" />
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{courses.length}</p>
           </div>
-        ) : activeCourses.length === 0 ? (
-          <Card className="border border-blue-100 bg-white">
-            <CardContent className="py-12 text-center">
-              <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                No Active Courses Yet
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Start your learning journey by enrolling in a course
-              </p>
-              <Button
-                asChild
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
-              >
-                <Link href="/courses">Browse Courses</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {activeCourses.map((course) => (
-              <Card
-                key={course.id}
-                className="border border-blue-100 bg-white hover:shadow-lg hover:border-blue-200 transition-all duration-300 relative overflow-hidden group"
-              >
-                {/* Golden Top Border */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600"></div>
+          
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">Assignments Due</span>
+              <FileText className="w-5 h-5 text-green-600" />
+            </div>
+            <p className="text-3xl font-bold text-gray-900">3</p>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">Avg. Progress</span>
+              <TrendingUp className="w-5 h-5 text-green-600" />
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{calculateAverageProgress()}%</p>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">GPA</span>
+              <Award className="w-5 h-5 text-green-600" />
+            </div>
+            <p className="text-3xl font-bold text-gray-900">3.7</p>
+          </div>
+        </div>
 
-                <CardHeader className="pb-3 pt-5">
-                  <CardTitle className="text-base font-semibold line-clamp-1 text-blue-900">
-                    {course.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="w-full bg-blue-50 rounded-full h-2.5 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 rounded-full transition-all duration-500 group-hover:from-blue-600 group-hover:to-blue-700"
-                        style={{ width: `${course.progress}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-slate-500">
-                        {course.completedSessions} of {course.sessions} sessions
-                      </p>
-                      <p className="text-xs font-semibold text-blue-600">
-                        {course.progress}%
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    asChild
-                    className="w-full mt-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-sm"
-                    size="sm"
-                  >
-                    <Link href={`/dashboard/user/courses/${course.slug}`}>
-                      Continue
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600">{error}</p>
           </div>
         )}
-      </div>
 
-      {/* Quick Actions */}
-      <Card className="border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-yellow-50/50 shadow-sm hover:shadow-md transition-all duration-300">
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-blue-900">
-                Ready for your next course?
-              </h3>
-              <p className="text-slate-600 text-sm mt-1">
-                Explore our comprehensive astrological programs
-              </p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* My Courses */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">My Courses</h3>
+              </div>
+              <div className="p-6 space-y-4">
+                {courses.length === 0 ? (
+                  <div className="text-center py-8">
+                    <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">No enrolled courses yet</p>
+                    <button className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                      Browse Courses
+                    </button>
+                  </div>
+                ) : (
+                  courses.map(course => (
+                    <div key={course.id} className="border border-gray-200 rounded-lg p-4 hover:border-green-500 transition-colors">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-1">{course.name}</h4>
+                          <p className="text-sm text-gray-600">{course.instructor}</p>
+                        </div>
+                        <span className="text-sm font-medium text-green-600">{course.progress}%</span>
+                      </div>
+                      <div className="mb-3">
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-green-600 h-2 rounded-full transition-all"
+                            style={{ width: `${course.progress}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Clock className="w-4 h-4 mr-1" />
+                        Next class: {course.nextClass}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-            <Button
-              asChild
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all"
-            >
-              <Link href="/courses" className="flex items-center gap-2">
-                Browse Courses
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+
+            {/* Recent Grades */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-8">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Recent Grades</h3>
+              </div>
+              <div className="p-6">
+                <div className="space-y-3">
+                  {recentGrades.map(grade => (
+                    <div key={grade.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                      <div>
+                        <p className="font-medium text-gray-900">{grade.assignment}</p>
+                        <p className="text-sm text-gray-600">{grade.course}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-green-600">{grade.grade}</p>
+                        <p className="text-sm text-gray-600">{grade.score}/100</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Upcoming Assignments */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Upcoming Assignments</h3>
+              </div>
+              <div className="p-6 space-y-4">
+                {upcomingAssignments.map(assignment => (
+                  <div key={assignment.id} className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-medium text-gray-900 text-sm">{assignment.title}</h4>
+                      {assignment.status === 'in-progress' && (
+                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">In Progress</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600 mb-2">{assignment.course}</p>
+                    <div className="flex items-center text-xs text-gray-500">
+                      <Calendar className="w-3 h-3 mr-1" />
+                      Due: {assignment.dueDate}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+              </div>
+              <div className="p-6 space-y-2">
+                <button className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium">
+                  View All Courses
+                </button>
+                <button className="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                  My Assignments
+                </button>
+                <button className="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                  Grade Book
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
