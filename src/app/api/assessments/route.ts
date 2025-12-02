@@ -38,6 +38,7 @@ type SearchParams = {
   userId?: string;
   attempt?: string;
   submit?: string;
+  questionId?: string;
   questionsBank?: string;
 };
 
@@ -305,6 +306,86 @@ const getAssessment = async (id: string) => {
     return successResponse(assessment);
   } catch (error: any) {
     return errorResponse(error.message || 'Failed to get assessment', 'GET_ERROR', 500);
+  }
+};
+// UPDATE ASSESSMENT
+const updateAssessment = async (id: string, request: NextRequest) => {
+  try {
+    const body = await request.json() as Partial<AssessmentData>;
+    const validation = validateId(id);
+    if (!validation.valid) {
+      return errorResponse(validation.error!);
+    }
+
+    // Get existing assessment
+    const [existingAssessment] = await db
+      .select()
+      .from(AssessmentsTable)
+      .where(eq(AssessmentsTable.id, id))
+      .limit(1);
+
+    if (!existingAssessment) {
+      return errorResponse('Assessment not found', 'NOT_FOUND', 404);
+    }
+
+    // Prepare update data
+    const updateData: any = {};
+
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.duration !== undefined) updateData.duration = body.duration;
+    if (body.passingScore !== undefined) updateData.passingScore = body.passingScore;
+    if (body.maxAttempts !== undefined) updateData.maxAttempts = body.maxAttempts;
+    if (body.timeLimit !== undefined) updateData.timeLimit = body.timeLimit;
+    if (body.isRequired !== undefined) updateData.isRequired = body.isRequired;
+    if (body.showCorrectAnswers !== undefined) updateData.showCorrectAnswers = body.showCorrectAnswers;
+    if (body.allowRetake !== undefined) updateData.allowRetake = body.allowRetake;
+    if (body.randomizeQuestions !== undefined) updateData.randomizeQuestions = body.randomizeQuestions;
+    if (body.availableFrom !== undefined) updateData.availableFrom = body.availableFrom ? new Date(body.availableFrom) : null;
+    if (body.availableUntil !== undefined) updateData.availableUntil = body.availableUntil ? new Date(body.availableUntil) : null;
+    
+    // Update assessment
+    const [updatedAssessment] = await db
+      .update(AssessmentsTable)
+      .set({
+        ...updateData,
+        updatedAt: new Date(),
+      })
+      .where(eq(AssessmentsTable.id, id))
+      .returning();
+
+    // Update flags on course/module/lesson if changed
+    if (body.isRequired !== undefined) {
+      if (existingAssessment.assessmentLevel === 'LESSON_QUIZ' && existingAssessment.lessonId) {
+        await db
+          .update(CourseLessonsTable)
+          .set({
+            quizRequired: body.isRequired,
+          })
+          .where(eq(CourseLessonsTable.id, existingAssessment.lessonId));
+      } else if (existingAssessment.assessmentLevel === 'MODULE_ASSESSMENT' && existingAssessment.moduleId) {
+        await db
+          .update(CourseModulesTable)
+          .set({
+            assessmentRequired: body.isRequired,
+            minimumPassingScore: body.passingScore || existingAssessment.passingScore,
+          })
+          .where(eq(CourseModulesTable.id, existingAssessment.moduleId));
+      } else if (existingAssessment.assessmentLevel === 'COURSE_FINAL') {
+        await db
+          .update(CoursesTable)
+          .set({
+            finalAssessmentRequired: body.isRequired !== undefined ? body.isRequired : true,
+            minimumCoursePassingScore: body.passingScore || existingAssessment.passingScore,
+          })
+          .where(eq(CoursesTable.id, existingAssessment.courseId));
+      }
+    }
+
+    return successResponse(updatedAssessment, 'Assessment updated successfully');
+  } catch (error: any) {
+    console.error('Update assessment error:', error);
+    return errorResponse(error.message || 'Failed to update assessment', 'UPDATE_ERROR', 500);
   }
 };
 
@@ -707,6 +788,39 @@ const addQuestion = async (assessmentId: string, request: NextRequest) => {
   }
 };
 
+
+
+
+// Add this function to delete a question:
+const deleteQuestion = async (questionId: string) => {
+  try {
+    const validation = validateId(questionId);
+    if (!validation.valid) {
+      return errorResponse(validation.error!);
+    }
+
+    // Check if question exists
+    const [question] = await db
+      .select()
+      .from(AssessmentQuestionsTable)
+      .where(eq(AssessmentQuestionsTable.id, questionId))
+      .limit(1);
+
+    if (!question) {
+      return errorResponse('Question not found', 'NOT_FOUND', 404);
+    }
+
+    // Delete the question
+    await db
+      .delete(AssessmentQuestionsTable)
+      .where(eq(AssessmentQuestionsTable.id, questionId));
+
+    return successResponse({ id: questionId }, 'Question deleted successfully');
+  } catch (error: any) {
+    console.error('Delete question error:', error);
+    return errorResponse(error.message || 'Failed to delete question', 'DELETE_ERROR', 500);
+  }
+};
 // GET QUESTIONS FROM QUESTION BANK
 const getQuestionBankQuestions = async (questionBankId: string) => {
   try {
@@ -845,6 +959,54 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// UPDATE QUESTION
+const updateQuestion = async (questionId: string, request: NextRequest) => {
+  try {
+    const body = await request.json() as Partial<QuestionData>;
+    const validation = validateId(questionId);
+    if (!validation.valid) {
+      return errorResponse(validation.error!);
+    }
+
+    // Get existing question
+    const [existingQuestion] = await db
+      .select()
+      .from(AssessmentQuestionsTable)
+      .where(eq(AssessmentQuestionsTable.id, questionId))
+      .limit(1);
+
+    if (!existingQuestion) {
+      return errorResponse('Question not found', 'NOT_FOUND', 404);
+    }
+
+    // Prepare update data
+    const updateData: any = {};
+
+    if (body.questionText !== undefined) updateData.questionText = body.questionText;
+    if (body.questionType !== undefined) updateData.questionType = body.questionType;
+    if (body.difficulty !== undefined) updateData.difficulty = body.difficulty;
+    if (body.options !== undefined) updateData.options = body.options;
+    if (body.correctAnswer !== undefined) updateData.correctAnswer = body.correctAnswer;
+    if (body.explanation !== undefined) updateData.explanation = body.explanation;
+    if (body.points !== undefined) updateData.points = body.points;
+    if (body.negativePoints !== undefined) updateData.negativePoints = body.negativePoints;
+    if (body.questionBankId !== undefined) updateData.questionBankId = body.questionBankId;
+
+    // Update question
+    const [updatedQuestion] = await db
+      .update(AssessmentQuestionsTable)
+      .set(updateData)
+      .where(eq(AssessmentQuestionsTable.id, questionId))
+      .returning();
+
+    return successResponse(updatedQuestion, 'Question updated successfully');
+  } catch (error: any) {
+    console.error('Update question error:', error);
+    return errorResponse(error.message || 'Failed to update question', 'UPDATE_ERROR', 500);
+  }
+};
+
+
 // PUT Handler
 export async function PUT(request: NextRequest) {
   try {
@@ -852,6 +1014,7 @@ export async function PUT(request: NextRequest) {
     const params: SearchParams = {
       id: searchParams.get('id') || undefined,
       submit: searchParams.get('submit') || undefined,
+      questionId: searchParams.get('questionId') || undefined, // Add this
     };
 
     // Route: PUT /api/assessments?id=123&submit=true
@@ -861,6 +1024,24 @@ export async function PUT(request: NextRequest) {
         return errorResponse(validation.error!);
       }
       return await submitAttempt(params.id, request);
+    }
+
+    // Route: PUT /api/assessments?questionId=123 (update question)
+    if (params.questionId) {
+      const validation = validateId(params.questionId);
+      if (!validation.valid) {
+        return errorResponse(validation.error!);
+      }
+      return await updateQuestion(params.questionId, request);
+    }
+
+    // Route: PUT /api/assessments?id=123 (update assessment)
+    if (params.id) {
+      const validation = validateId(params.id);
+      if (!validation.valid) {
+        return errorResponse(validation.error!);
+      }
+      return await updateAssessment(params.id, request);
     }
 
     return errorResponse('Invalid request parameters', 'INVALID_REQUEST', 400);
@@ -876,8 +1057,19 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const params: SearchParams = {
       id: searchParams.get('id') || undefined,
+      questionId: searchParams.get('questionId') || undefined, // Add this
     };
 
+    // Route: DELETE /api/assessments?questionId=123 (delete question)
+    if (params.questionId) {
+      const validation = validateId(params.questionId);
+      if (!validation.valid) {
+        return errorResponse(validation.error!);
+      }
+      return await deleteQuestion(params.questionId);
+    }
+
+    // Rest of your existing delete assessment code...
     if (!params.id) {
       return errorResponse('ID is required for delete operation');
     }
@@ -945,6 +1137,6 @@ export async function DELETE(request: NextRequest) {
     return successResponse({ id: params.id }, 'Assessment deleted successfully');
   } catch (error: any) {
     console.error('DELETE error:', error);
-    return errorResponse(error.message || 'Failed to delete assessment', 'DELETE_ERROR', 500);
+    return errorResponse(error.message || 'Failed to delete', 'DELETE_ERROR', 500);
   }
 }

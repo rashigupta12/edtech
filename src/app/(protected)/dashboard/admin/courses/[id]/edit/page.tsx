@@ -23,11 +23,25 @@ import {
   Edit,
   Trash2,
   ChevronDown,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
+import { NumberInput } from "@/components/ui/number-input";
+
+type Question = {
+  id?: string;
+  questionText: string;
+  questionType: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER";
+  options?: string[];
+  correctAnswer: string;
+  points?: number;
+  difficulty?: "EASY" | "MEDIUM" | "HARD";
+  explanation?: string;
+  negativePoints?: number;
+};
 
 type College = {
   id: string;
@@ -51,6 +65,25 @@ type Requirement = {
   sortOrder: number;
 };
 
+type Assessment = {
+  id?: string;
+  title: string;
+  description?: string;
+  assessmentLevel: "LESSON_QUIZ" | "MODULE_ASSESSMENT" | "COURSE_FINAL";
+  passingScore: number;
+  maxAttempts?: number;
+  timeLimit?: number;
+  isRequired: boolean;
+  showCorrectAnswers: boolean;
+  allowRetake: boolean;
+  randomizeQuestions: boolean;
+  availableFrom?: string;
+  availableUntil?: string;
+  questions: Question[];
+  moduleId?: string;
+  lessonId?: string;
+};
+
 type Lesson = {
   id: string;
   title: string;
@@ -64,6 +97,9 @@ type Lesson = {
   quizUrl: string | null;
   createdAt: string;
   updatedAt: string;
+  hasQuiz?: boolean;
+  quiz?: Assessment;
+  quizRequired?: boolean;
 };
 
 type Module = {
@@ -72,6 +108,11 @@ type Module = {
   description: string | null;
   sortOrder: number;
   lessons: Lesson[];
+  isNew?: true;
+  hasAssessment?: boolean;
+  assessmentRequired?: boolean;
+  minimumPassingScore?: number;
+  moduleAssessment?: Assessment;
 };
 
 type Course = {
@@ -95,6 +136,11 @@ type Course = {
   status: string;
   outcomes: Outcome[];
   requirements: Requirement[];
+  hasFinalAssessment?: boolean;
+  finalAssessmentRequired?: boolean;
+  minimumCoursePassingScore?: number;
+  requireAllModulesComplete?: boolean;
+  requireAllAssessmentsPassed?: boolean;
 };
 
 export default function EditCoursePage() {
@@ -104,7 +150,27 @@ export default function EditCoursePage() {
   const [saving, setSaving] = useState(false);
   const [colleges, setColleges] = useState<College[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [editingAssessment, setEditingAssessment] = useState<{
+    type: "lesson" | "module" | "course";
+    moduleIndex?: number;
+    lessonIndex?: number;
+    assessmentId?: string;
+  } | null>(null);
 
+  const [courseFinalAssessment, setCourseFinalAssessment] =
+    useState<Assessment | null>(null);
+  const [courseHasFinalAssessment, setCourseHasFinalAssessment] =
+    useState(false);
+  const [finalAssessmentRequired, setFinalAssessmentRequired] = useState(false);
+  const [minimumCoursePassingScore, setMinimumCoursePassingScore] =
+    useState(60);
+  const [requireAllModulesComplete, setRequireAllModulesComplete] =
+    useState(true);
+  const [requireAllAssessmentsPassed, setRequireAllAssessmentsPassed] =
+    useState(true);
+
+    // Add this constant at the top of the component
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   // Form state
   const [formData, setFormData] = useState({
     title: "",
@@ -209,6 +275,17 @@ export default function EditCoursePage() {
         setOutcomes(courseData.data.outcomes || []);
         setRequirements(courseData.data.requirements || []);
 
+        // Set course completion settings
+        setCourseHasFinalAssessment(course.hasFinalAssessment || false);
+        setFinalAssessmentRequired(course.finalAssessmentRequired || false);
+        setMinimumCoursePassingScore(course.minimumCoursePassingScore || 60);
+        setRequireAllModulesComplete(
+          course.requireAllModulesComplete !== false
+        );
+        setRequireAllAssessmentsPassed(
+          course.requireAllAssessmentsPassed !== false
+        );
+
         // Fetch colleges
         const collegesRes = await fetch("/api/colleges");
         const collegesData = await collegesRes.json();
@@ -222,7 +299,11 @@ export default function EditCoursePage() {
         );
         const curriculumData = await curriculumRes.json();
         if (curriculumData.success) {
-          setModules(curriculumData.data.modules || []);
+          const loadedModules = curriculumData.data.modules || [];
+          setModules(loadedModules);
+
+          // Fetch assessments after modules are loaded
+          fetchAssessments(loadedModules);
         }
 
         // Fetch categories
@@ -248,6 +329,182 @@ export default function EditCoursePage() {
       fetchData();
     }
   }, [params.id, router]);
+
+  // Fetch assessments function
+  const fetchAssessments = async (modulesData: Module[] = modules) => {
+    try {
+      console.log("Fetching assessments for course:", params.id);
+      const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
+      const response = await res.json();
+
+      console.log("Assessments API response:", response);
+
+      // The assessments are nested inside response.data.assessments
+      const assessmentsData =
+        response.success && response.data?.assessments
+          ? response.data.assessments
+          : [];
+
+      console.log("Assessments data (array):", assessmentsData);
+
+      if (!Array.isArray(assessmentsData)) {
+        console.error("Assessments data is not an array:", assessmentsData);
+        return;
+      }
+
+      // Separate assessments by type
+      const courseFinal = assessmentsData.find(
+        (a: any) => a.assessmentLevel === "COURSE_FINAL"
+      );
+      if (courseFinal) {
+        console.log("Found course final assessment:", courseFinal);
+
+        // Fetch questions for the assessment using correct API endpoint
+        try {
+          const questionsRes = await fetch(
+            `/api/assessments?id=${courseFinal.id}&questions=true`
+          );
+          const questionsData = await questionsRes.json();
+          console.log("Questions API response for final:", questionsData);
+
+          if (questionsData.success) {
+            // The questions are in questionsData.data.questions
+            const questionsArray = questionsData.data?.questions || [];
+            if (Array.isArray(questionsArray)) {
+              courseFinal.questions = questionsArray;
+            } else {
+              courseFinal.questions = [];
+            }
+          } else {
+            courseFinal.questions = [];
+          }
+        } catch (error) {
+          console.error(
+            "Error fetching questions for final assessment:",
+            error
+          );
+          courseFinal.questions = [];
+        }
+
+        setCourseFinalAssessment(courseFinal);
+      }
+
+      // Update modules with their assessments
+      const updatedModules = [...modulesData];
+
+      // Process each assessment
+      for (const assessment of assessmentsData) {
+        console.log("Processing assessment:", assessment);
+
+        if (
+          assessment.assessmentLevel === "MODULE_ASSESSMENT" &&
+          assessment.moduleId
+        ) {
+          const moduleIndex = updatedModules.findIndex(
+            (m) => m.id === assessment.moduleId
+          );
+          if (moduleIndex !== -1) {
+            console.log(`Attaching module assessment to module ${moduleIndex}`);
+
+            // Fetch questions for module assessment using correct API endpoint
+            try {
+              const questionsRes = await fetch(
+                `/api/assessments?id=${assessment.id}&questions=true`
+              );
+              const questionsData = await questionsRes.json();
+              console.log("Questions API response for module:", questionsData);
+
+              if (questionsData.success) {
+                const questionsArray = questionsData.data?.questions || [];
+                if (Array.isArray(questionsArray)) {
+                  assessment.questions = questionsArray;
+                } else {
+                  assessment.questions = [];
+                }
+              } else {
+                assessment.questions = [];
+              }
+            } catch (error) {
+              console.error(
+                "Error fetching questions for module assessment:",
+                error
+              );
+              assessment.questions = [];
+            }
+
+            updatedModules[moduleIndex].moduleAssessment = assessment;
+            updatedModules[moduleIndex].hasAssessment = true;
+          } else {
+            console.log(
+              `Module ${assessment.moduleId} not found for assessment`
+            );
+          }
+        }
+
+        if (
+          assessment.assessmentLevel === "LESSON_QUIZ" &&
+          assessment.lessonId
+        ) {
+          console.log(`Looking for lesson ${assessment.lessonId} for quiz`);
+          let found = false;
+
+          for (const module of updatedModules) {
+            const lessonIndex = module.lessons.findIndex(
+              (l) => l.id === assessment.lessonId
+            );
+            if (lessonIndex !== -1) {
+              console.log(
+                `Attaching quiz to lesson ${lessonIndex} in module ${module.title}`
+              );
+
+              // Fetch questions for lesson quiz using correct API endpoint
+              try {
+                const questionsRes = await fetch(
+                  `/api/assessments?id=${assessment.id}&questions=true`
+                );
+                const questionsData = await questionsRes.json();
+                console.log(
+                  "Questions API response for lesson:",
+                  questionsData
+                );
+
+                if (questionsData.success) {
+                  const questionsArray = questionsData.data?.questions || [];
+                  if (Array.isArray(questionsArray)) {
+                    assessment.questions = questionsArray;
+                  } else {
+                    assessment.questions = [];
+                  }
+                } else {
+                  assessment.questions = [];
+                }
+              } catch (error) {
+                console.error(
+                  "Error fetching questions for lesson quiz:",
+                  error
+                );
+                assessment.questions = [];
+              }
+
+              module.lessons[lessonIndex].quiz = assessment;
+              module.lessons[lessonIndex].hasQuiz = true;
+              found = true;
+              break;
+            }
+          }
+
+          if (!found) {
+            console.log(`Lesson ${assessment.lessonId} not found for quiz`);
+          }
+        }
+      }
+
+      setModules(updatedModules);
+      console.log("Updated modules with assessments:", updatedModules);
+    } catch (error) {
+      console.error("Failed to fetch assessments:", error);
+    }
+  };
 
   const handleFieldChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -380,6 +637,34 @@ export default function EditCoursePage() {
     setEditingModule(null);
   };
 
+  // Module assessment functions
+  const toggleModuleAssessment = (moduleIndex: number) => {
+    const updatedModules = [...modules];
+    const module = updatedModules[moduleIndex];
+
+    if (!module.hasAssessment) {
+      // Add module assessment
+      module.hasAssessment = true;
+      module.moduleAssessment = {
+        title: `${module.title} Assessment`,
+        description: "Module assessment to test your understanding",
+        assessmentLevel: "MODULE_ASSESSMENT",
+        passingScore: module.minimumPassingScore || 60,
+        isRequired: module.assessmentRequired || true,
+        showCorrectAnswers: false,
+        allowRetake: true,
+        randomizeQuestions: true,
+        questions: [],
+      };
+    } else {
+      // Remove module assessment
+      module.hasAssessment = false;
+      module.moduleAssessment = undefined;
+    }
+
+    setModules(updatedModules);
+  };
+
   // Lesson functions
   const addNewLesson = (moduleId: string) => {
     const newId = `new-${Date.now()}-${Math.random()
@@ -448,6 +733,34 @@ export default function EditCoursePage() {
     );
   };
 
+  const toggleQuizForLesson = (moduleIndex: number, lessonIndex: number) => {
+    const updatedModules = [...modules];
+    const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
+
+    if (!lesson.hasQuiz) {
+      // Add quiz
+      lesson.hasQuiz = true;
+      lesson.quiz = {
+        title: `${lesson.title} Quiz`,
+        description: "Test your knowledge from this lesson",
+        assessmentLevel: "LESSON_QUIZ",
+        passingScore: 60,
+        isRequired: false,
+        showCorrectAnswers: true,
+        allowRetake: true,
+        randomizeQuestions: false,
+        questions: [],
+      };
+    } else {
+      // Remove quiz
+      lesson.hasQuiz = false;
+      lesson.quizRequired = false;
+      lesson.quiz = undefined;
+    }
+
+    setModules(updatedModules);
+  };
+
   const startEditLesson = (moduleId: string, lesson: Lesson) => {
     setEditingLesson({
       id: lesson.id,
@@ -496,6 +809,671 @@ export default function EditCoursePage() {
     );
   };
 
+  // Assessment update function
+  const updateAssessmentField = (
+    type: "lesson" | "module" | "course",
+    field: keyof Assessment | "questions",
+    value: any,
+    moduleIndex?: number,
+    lessonIndex?: number
+  ) => {
+    if (
+      type === "lesson" &&
+      moduleIndex !== undefined &&
+      lessonIndex !== undefined
+    ) {
+      const updatedModules = [...modules];
+      const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
+      if (lesson.quiz) {
+        (lesson.quiz as any)[field] = value;
+        setModules(updatedModules);
+      }
+    } else if (type === "module" && moduleIndex !== undefined) {
+      const updatedModules = [...modules];
+      const module = updatedModules[moduleIndex];
+      if (module.moduleAssessment) {
+        (module.moduleAssessment as any)[field] = value;
+        setModules(updatedModules);
+      }
+    } else if (type === "course") {
+      setCourseFinalAssessment((prev) => ({ ...prev!, [field]: value }));
+    }
+  };
+
+  const addQuestion = (
+    type: "lesson" | "module" | "course",
+    moduleIndex?: number,
+    lessonIndex?: number
+  ) => {
+    const newQuestion: Question = {
+      questionText: "",
+      questionType: "MULTIPLE_CHOICE",
+      options: ["", "", "", ""],
+      correctAnswer: "",
+      points: 1,
+      difficulty: "MEDIUM",
+    };
+
+    updateAssessmentField(
+      type,
+      "questions",
+      type === "lesson" &&
+        moduleIndex !== undefined &&
+        lessonIndex !== undefined
+        ? [
+            ...(modules[moduleIndex].lessons[lessonIndex].quiz?.questions ||
+              []),
+            newQuestion,
+          ]
+        : type === "module" && moduleIndex !== undefined
+        ? [
+            ...(modules[moduleIndex].moduleAssessment?.questions || []),
+            newQuestion,
+          ]
+        : [...(courseFinalAssessment?.questions || []), newQuestion],
+      moduleIndex,
+      lessonIndex
+    );
+  };
+
+  const updateQuestion = (
+    type: "lesson" | "module" | "course",
+    questionIndex: number,
+    field: keyof Question,
+    value: any,
+    moduleIndex?: number,
+    lessonIndex?: number
+  ) => {
+    let questions: Question[] = [];
+
+    if (
+      type === "lesson" &&
+      moduleIndex !== undefined &&
+      lessonIndex !== undefined
+    ) {
+      questions = [
+        ...(modules[moduleIndex].lessons[lessonIndex].quiz?.questions || []),
+      ];
+    } else if (type === "module" && moduleIndex !== undefined) {
+      questions = [...(modules[moduleIndex].moduleAssessment?.questions || [])];
+    } else if (type === "course") {
+      questions = [...(courseFinalAssessment?.questions || [])];
+    }
+
+    if (questionIndex < questions.length) {
+      (questions[questionIndex] as any)[field] = value;
+      updateAssessmentField(
+        type,
+        "questions",
+        questions,
+        moduleIndex,
+        lessonIndex
+      );
+    }
+  };
+
+  const removeQuestion = (
+    type: "lesson" | "module" | "course",
+    questionIndex: number,
+    moduleIndex?: number,
+    lessonIndex?: number
+  ) => {
+    let questions: Question[] = [];
+
+    if (
+      type === "lesson" &&
+      moduleIndex !== undefined &&
+      lessonIndex !== undefined
+    ) {
+      questions =
+        modules[moduleIndex].lessons[lessonIndex].quiz?.questions || [];
+    } else if (type === "module" && moduleIndex !== undefined) {
+      questions = modules[moduleIndex].moduleAssessment?.questions || [];
+    } else if (type === "course") {
+      questions = courseFinalAssessment?.questions || [];
+    }
+
+    const updatedQuestions = questions.filter((_, i) => i !== questionIndex);
+    updateAssessmentField(
+      type,
+      "questions",
+      updatedQuestions,
+      moduleIndex,
+      lessonIndex
+    );
+  };
+
+  // Assessment Editor Modal
+  const renderAssessmentEditor = () => {
+    if (!editingAssessment) return null;
+
+    const { type, moduleIndex, lessonIndex } = editingAssessment;
+
+    let assessment: Assessment | undefined |null;
+    let title = "";
+
+    if (
+      type === "lesson" &&
+      moduleIndex !== undefined &&
+      lessonIndex !== undefined
+    ) {
+      assessment = modules[moduleIndex]?.lessons[lessonIndex]?.quiz;
+      title = `${modules[moduleIndex]?.lessons[lessonIndex]?.title} Quiz`;
+    } else if (type === "module" && moduleIndex !== undefined) {
+      assessment = modules[moduleIndex]?.moduleAssessment;
+      title = `${modules[moduleIndex]?.title} Assessment`;
+    } else if (type === "course") {
+      assessment = courseFinalAssessment;
+      title = "Final Course Assessment";
+    }
+
+    if (!assessment) {
+      // Create new assessment if none exists
+      assessment = {
+        title:
+          type === "lesson"
+            ? "Lesson Quiz"
+            : type === "module"
+            ? "Module Assessment"
+            : "Final Course Assessment",
+        description: "",
+        assessmentLevel:
+          type === "lesson"
+            ? "LESSON_QUIZ"
+            : type === "module"
+            ? "MODULE_ASSESSMENT"
+            : "COURSE_FINAL",
+        passingScore: 60,
+        isRequired: true,
+        showCorrectAnswers: type === "lesson",
+        allowRetake: true,
+        randomizeQuestions: type === "module" || type === "course",
+        questions: [],
+      };
+    }
+
+    const updateCurrentAssessment = (
+      field: keyof Assessment | "questions",
+      value: any
+    ) => {
+      updateAssessmentField(type, field, value, moduleIndex, lessonIndex);
+    };
+
+    const updateCurrentQuestion = (
+      questionIndex: number,
+      field: keyof Question,
+      value: any
+    ) => {
+      updateQuestion(
+        type,
+        questionIndex,
+        field,
+        value,
+        moduleIndex,
+        lessonIndex
+      );
+    };
+
+    const addNewQuestion = () => {
+      addQuestion(type, moduleIndex, lessonIndex);
+    };
+
+    const removeCurrentQuestion = (questionIndex: number) => {
+      removeQuestion(type, questionIndex, moduleIndex, lessonIndex);
+    };
+
+    // Update the saveAssessment function inside renderAssessmentEditor:
+    const saveAssessment = async () => {
+      try {
+        const assessmentToSave = assessment!;
+        let endpoint = "";
+        let method = "POST";
+
+        if (assessmentToSave.id) {
+          method = "PUT";
+          // Use the new update endpoint
+          endpoint = `/api/assessments?id=${assessmentToSave.id}`;
+        } else {
+          // Create new assessment
+          if (
+            type === "lesson" &&
+            moduleIndex !== undefined &&
+            lessonIndex !== undefined
+          ) {
+            const lessonId = modules[moduleIndex].lessons[lessonIndex].id;
+            endpoint = `/api/assessments?courseId=${params.id}&assessmentLevel=LESSON_QUIZ&lessonId=${lessonId}`;
+          } else if (type === "module" && moduleIndex !== undefined) {
+            const moduleId = modules[moduleIndex].id;
+            endpoint = `/api/assessments?courseId=${params.id}&assessmentLevel=MODULE_ASSESSMENT&moduleId=${moduleId}`;
+          } else if (type === "course") {
+            endpoint = `/api/assessments?courseId=${params.id}&assessmentLevel=COURSE_FINAL`;
+          }
+        }
+
+       
+        // First save the assessment (without questions)
+        const assessmentData = {
+          title: assessmentToSave.title,
+          description: assessmentToSave.description || "",
+          passingScore: assessmentToSave.passingScore,
+          timeLimit: assessmentToSave.timeLimit,
+          maxAttempts: assessmentToSave.maxAttempts,
+          isRequired: assessmentToSave.isRequired,
+          showCorrectAnswers: assessmentToSave.showCorrectAnswers,
+          allowRetake: assessmentToSave.allowRetake,
+          randomizeQuestions: assessmentToSave.randomizeQuestions,
+          availableFrom: assessmentToSave.availableFrom,
+          availableUntil: assessmentToSave.availableUntil,
+        };
+
+        const res = await fetch(endpoint, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(assessmentData),
+        });
+
+        const response = await res.json();
+        console.log("Save assessment response:", response);
+
+        if (response.success) {
+          const savedAssessment = response.data || response;
+          const assessmentId = savedAssessment.id || assessmentToSave.id;
+
+          // Save/Update questions
+          if (
+            assessmentToSave.questions &&
+            assessmentToSave.questions.length > 0
+          ) {
+            try {
+              // First, get existing questions to know which ones to update vs create
+              const existingQuestionsRes = await fetch(
+                `/api/assessments?id=${assessmentId}&questions=true`
+              );
+              const existingQuestionsData = await existingQuestionsRes.json();
+
+              let existingQuestions = [];
+              if (
+                existingQuestionsData.success &&
+                existingQuestionsData.data?.questions
+              ) {
+                existingQuestions = existingQuestionsData.data.questions;
+              }
+
+              for (let i = 0; i < assessmentToSave.questions.length; i++) {
+                const question = assessmentToSave.questions[i];
+
+                
+                
+                const isExistingQuestion = question.id && UUID_REGEX.test(question.id);
+
+                if (isExistingQuestion) {
+                  // This is an existing question - update it
+                  const questionEndpoint = `/api/assessments?questionId=${question.id}`;
+                  await fetch(questionEndpoint, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      questionText: question.questionText,
+                      questionType: question.questionType,
+                      difficulty: question.difficulty || "MEDIUM",
+                      options: question.options || [],
+                      correctAnswer: question.correctAnswer,
+                      explanation: question.explanation || "",
+                      points: question.points || 1,
+                      negativePoints: question.negativePoints || 0,
+                    }),
+                  });
+                } else {
+                  // This is a new question - create it
+                  const questionEndpoint = `/api/assessments?id=${assessmentId}&questions=true`;
+                  await fetch(questionEndpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      questionText: question.questionText,
+                      questionType: question.questionType,
+                      difficulty: question.difficulty || "MEDIUM",
+                      options: question.options || [],
+                      correctAnswer: question.correctAnswer,
+                      explanation: question.explanation || "",
+                      points: question.points || 1,
+                      negativePoints: question.negativePoints || 0,
+                    }),
+                  });
+                }
+              }
+
+              // Delete questions that were removed
+              const currentQuestionIds = assessmentToSave.questions
+                .map((q) => q.id)
+                .filter((id) => id && UUID_REGEX.test(id));
+
+              const questionsToDelete = existingQuestions.filter(
+                (eq: any) => !currentQuestionIds.includes(eq.id)
+              );
+
+              for (const questionToDelete of questionsToDelete) {
+                await fetch(
+                  `/api/assessments?questionId=${questionToDelete.id}`,
+                  {
+                    method: "DELETE",
+                  }
+                );
+              }
+            } catch (questionsError) {
+              console.error("Error saving questions:", questionsError);
+            }
+          }
+
+          Swal.fire({
+            icon: "success",
+            title: "Saved!",
+            text: "Assessment saved successfully",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+          setEditingAssessment(null);
+
+          // Refresh assessments data
+          setTimeout(() => {
+            fetchAssessments();
+          }, 500);
+        } else {
+          Swal.fire(
+            "Error",
+            response.error?.message || "Failed to save assessment",
+            "error"
+          );
+        }
+      } catch (error) {
+        console.error("Failed to save assessment:", error);
+        Swal.fire(
+          "Error",
+          "Failed to save assessment. Please try again.",
+          "error"
+        );
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">Edit {title}</h3>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setEditingAssessment(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <Label>Assessment Title</Label>
+                <Input
+                  value={assessment.title}
+                  onChange={(e) =>
+                    updateCurrentAssessment("title", e.target.value)
+                  }
+                  placeholder="Assessment title"
+                />
+              </div>
+
+              <div>
+                <Label>Description</Label>
+                <Textarea
+                  value={assessment.description || ""}
+                  onChange={(e) =>
+                    updateCurrentAssessment("description", e.target.value)
+                  }
+                  placeholder="Assessment description"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Passing Score (%)</Label>
+                  <Input
+                    type="number"
+                    value={assessment.passingScore}
+                    onChange={(e) =>
+                      updateCurrentAssessment(
+                        "passingScore",
+                        Number(e.target.value)
+                      )
+                    }
+                    min={0}
+                    max={100}
+                  />
+                </div>
+
+                <div>
+                  <Label>Time Limit (minutes, optional)</Label>
+                  <Input
+                    type="number"
+                    value={assessment.timeLimit || ""}
+                    onChange={(e) =>
+                      updateCurrentAssessment(
+                        "timeLimit",
+                        e.target.value ? Number(e.target.value) : undefined
+                      )
+                    }
+                    placeholder="No limit"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Questions ({assessment.questions.length})</Label>
+                  <Button
+                    type="button"
+                    onClick={addNewQuestion}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Question
+                  </Button>
+                </div>
+
+                {assessment.questions.map((question, qIndex) => (
+                  <div key={qIndex} className="border rounded p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <Label>Question {qIndex + 1}</Label>
+                        <Textarea
+                          value={question.questionText}
+                          onChange={(e) =>
+                            updateCurrentQuestion(
+                              qIndex,
+                              "questionText",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Enter question text..."
+                          rows={2}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeCurrentQuestion(qIndex)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Question Type</Label>
+                        <Select
+                          value={question.questionType}
+                          onValueChange={(value) =>
+                            updateCurrentQuestion(qIndex, "questionType", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MULTIPLE_CHOICE">
+                              Multiple Choice
+                            </SelectItem>
+                            <SelectItem value="TRUE_FALSE">
+                              True/False
+                            </SelectItem>
+                            <SelectItem value="SHORT_ANSWER">
+                              Short Answer
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Points</Label>
+                        <Input
+                          type="number"
+                          value={question.points || 1}
+                          onChange={(e) =>
+                            updateCurrentQuestion(
+                              qIndex,
+                              "points",
+                              Number(e.target.value)
+                            )
+                          }
+                          min={1}
+                        />
+                      </div>
+                    </div>
+
+                    {question.questionType === "MULTIPLE_CHOICE" && (
+                      <div className="space-y-2">
+                        <Label>Options</Label>
+                        {(question.options || []).map((option, optionIndex) => (
+                          <div
+                            key={optionIndex}
+                            className="flex items-center gap-2"
+                          >
+                            <Input
+                              value={option}
+                              onChange={(e) => {
+                                const newOptions = [
+                                  ...(question.options || []),
+                                ];
+                                newOptions[optionIndex] = e.target.value;
+                                updateCurrentQuestion(
+                                  qIndex,
+                                  "options",
+                                  newOptions
+                                );
+                              }}
+                              placeholder={`Option ${optionIndex + 1}`}
+                            />
+                            <input
+                              type="radio"
+                              name={`correct-${qIndex}`}
+                              checked={question.correctAnswer === option}
+                              onChange={() =>
+                                updateCurrentQuestion(
+                                  qIndex,
+                                  "correctAnswer",
+                                  option
+                                )
+                              }
+                              className="h-4 w-4"
+                            />
+                            <Label>Correct</Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {question.questionType === "TRUE_FALSE" && (
+                      <div className="space-y-2">
+                        <Label>Correct Answer</Label>
+                        <Select
+                          value={question.correctAnswer}
+                          onValueChange={(value) =>
+                            updateCurrentQuestion(
+                              qIndex,
+                              "correctAnswer",
+                              value
+                            )
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="true">True</SelectItem>
+                            <SelectItem value="false">False</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {question.questionType === "SHORT_ANSWER" && (
+                      <div>
+                        <Label>Correct Answer</Label>
+                        <Input
+                          value={question.correctAnswer}
+                          onChange={(e) =>
+                            updateCurrentQuestion(
+                              qIndex,
+                              "correctAnswer",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Expected answer"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <Label>Explanation (optional)</Label>
+                      <Textarea
+                        value={question.explanation || ""}
+                        onChange={(e) =>
+                          updateCurrentQuestion(
+                            qIndex,
+                            "explanation",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Explanation for the answer"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingAssessment(null)}
+                >
+                  Cancel
+                </Button>
+                <Button type="button" onClick={saveAssessment}>
+                  Save Assessment
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -519,11 +1497,15 @@ export default function EditCoursePage() {
       prerequisites: formData.prerequisites || null,
       duration: formData.duration || null,
       price: formData.price ? Number(formData.price) : null,
-
       discountPrice: formData.discountPrice
         ? Number(formData.discountPrice)
         : null,
       maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
+      hasFinalAssessment: courseHasFinalAssessment,
+      finalAssessmentRequired: finalAssessmentRequired,
+      minimumCoursePassingScore: minimumCoursePassingScore,
+      requireAllModulesComplete: requireAllModulesComplete,
+      requireAllAssessmentsPassed: requireAllAssessmentsPassed,
     };
 
     try {
@@ -597,6 +1579,9 @@ export default function EditCoursePage() {
                   body: JSON.stringify({
                     title: module.title,
                     description: module.description,
+                    hasAssessment: module.hasAssessment || false,
+                    assessmentRequired: module.assessmentRequired || true,
+                    minimumPassingScore: module.minimumPassingScore || 60,
                     sortOrder: i,
                   }),
                 }
@@ -605,11 +1590,26 @@ export default function EditCoursePage() {
               const moduleData = await moduleRes.json();
 
               if (moduleData.success) {
+                // Add module assessment if exists
+                if (module.hasAssessment && module.moduleAssessment) {
+                  await fetch(
+                    `/api/courses?id=${params.id}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${moduleData.data.id}`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        ...module.moduleAssessment,
+                        questions: module.moduleAssessment?.questions || [],
+                      }),
+                    }
+                  );
+                }
+
                 // Create lessons for new module
                 for (let j = 0; j < module.lessons.length; j++) {
                   const lesson = module.lessons[j];
                   if (lesson.title.trim()) {
-                    await fetch(
+                    const lessonRes = await fetch(
                       `/api/courses?id=${params.id}&lessons=true&moduleId=${moduleData.data.id}`,
                       {
                         method: "POST",
@@ -622,10 +1622,29 @@ export default function EditCoursePage() {
                           quizUrl: lesson.quizUrl,
                           articleContent: lesson.articleContent,
                           isFree: lesson.isFree,
+                          hasQuiz: lesson.hasQuiz || false,
+                          quizRequired: lesson.quizRequired || false,
                           sortOrder: j,
                         }),
                       }
                     );
+
+                    const lessonData = await lessonRes.json();
+
+                    if (lessonData.success && lesson.hasQuiz && lesson.quiz) {
+                      // Add lesson quiz
+                      await fetch(
+                        `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lessonData.data.id}`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            ...lesson.quiz,
+                            questions: lesson.quiz?.questions || [],
+                          }),
+                        }
+                      );
+                    }
                   }
                 }
               }
@@ -638,21 +1657,50 @@ export default function EditCoursePage() {
               body: JSON.stringify({
                 title: module.title,
                 description: module.description,
+                hasAssessment: module.hasAssessment || false,
+                assessmentRequired: module.assessmentRequired || true,
+                minimumPassingScore: module.minimumPassingScore || 60,
                 sortOrder: i,
               }),
             });
+
+            // Update module assessment if exists
+            if (module.hasAssessment && module.moduleAssessment) {
+              if (module.moduleAssessment.id) {
+                // Update existing assessment
+                await fetch(
+                  `/api/assessments?id=${module.moduleAssessment.id}`,
+                  {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(module.moduleAssessment),
+                  }
+                );
+              } else {
+                // Create new assessment
+                await fetch(
+                  `/api/courses?id=${params.id}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${module.id}`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      ...module.moduleAssessment,
+                      questions: module.moduleAssessment?.questions || [],
+                    }),
+                  }
+                );
+              }
+            }
 
             // Process lessons for existing module
             for (let j = 0; j < module.lessons.length; j++) {
               const lesson = module.lessons[j];
 
-              // Check if lesson is new (has no proper UUID format)
-              const isNewLesson = lesson.id.startsWith("new-");
-
+const isNewLesson = !lesson.id || lesson.id.startsWith("new-") || !UUID_REGEX.test(lesson.id);
               if (isNewLesson) {
                 // Create new lesson
                 if (lesson.title.trim()) {
-                  await fetch(
+                  const lessonRes = await fetch(
                     `/api/courses?id=${params.id}&lessons=true&moduleId=${module.id}`,
                     {
                       method: "POST",
@@ -665,10 +1713,29 @@ export default function EditCoursePage() {
                         quizUrl: lesson.quizUrl,
                         articleContent: lesson.articleContent,
                         isFree: lesson.isFree,
+                        hasQuiz: lesson.hasQuiz || false,
+                        quizRequired: lesson.quizRequired || false,
                         sortOrder: j,
                       }),
                     }
                   );
+
+                  const lessonData = await lessonRes.json();
+
+                  if (lessonData.success && lesson.hasQuiz && lesson.quiz) {
+                    // Add lesson quiz
+                    await fetch(
+                      `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lessonData.data.id}`,
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          ...lesson.quiz,
+                          questions: lesson.quiz?.questions || [],
+                        }),
+                      }
+                    );
+                  }
                 }
               } else {
                 // Update existing lesson
@@ -682,11 +1749,63 @@ export default function EditCoursePage() {
                     videoUrl: lesson.videoUrl,
                     articleContent: lesson.articleContent,
                     isFree: lesson.isFree,
+                    hasQuiz: lesson.hasQuiz || false,
+                    quizRequired: lesson.quizRequired || false,
                     sortOrder: j,
                   }),
                 });
+
+                // Update lesson quiz if exists
+                if (lesson.hasQuiz && lesson.quiz) {
+                  if (lesson.quiz.id) {
+                    // Update existing quiz
+                    await fetch(`/api/assessments?id=${lesson.quiz.id}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(lesson.quiz),
+                    });
+                  } else {
+                    // Create new quiz
+                    await fetch(
+                      `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lesson.id}`,
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          ...lesson.quiz,
+                          questions: lesson.quiz?.questions || [],
+                        }),
+                      }
+                    );
+                  }
+                }
               }
             }
+          }
+        }
+
+        // Update course final assessment
+        if (courseHasFinalAssessment && courseFinalAssessment) {
+          if (courseFinalAssessment.id) {
+            // Update existing final assessment
+            await fetch(`/api/assessments?id=${courseFinalAssessment.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(courseFinalAssessment),
+            });
+          } else {
+            // Create new final assessment
+            await fetch(
+              `/api/courses?id=${params.id}&assessments=true&assessmentLevel=COURSE_FINAL`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  ...courseFinalAssessment,
+                  questions: courseFinalAssessment.questions,
+                }),
+              }
+            );
           }
         }
 
@@ -925,15 +2044,152 @@ export default function EditCoursePage() {
 
                 <div>
                   <Label htmlFor="maxStudents">Max Students</Label>
-                  <Input
+                  <NumberInput
                     id="maxStudents"
-                    type="number"
                     value={formData.maxStudents}
                     onChange={(e) =>
                       handleFieldChange("maxStudents", e.target.value)
                     }
                     placeholder="50"
                   />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Course Completion Settings */}
+          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-green-50 border-b">
+              <CardTitle className="text-xl text-gray-900">
+                Course Completion Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-medium">Final Assessment</Label>
+                    <p className="text-sm text-gray-500">
+                      Add a final assessment for the course
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={courseHasFinalAssessment}
+                      onChange={(e) =>
+                        setCourseHasFinalAssessment(e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                  </div>
+                </div>
+
+                {courseHasFinalAssessment && (
+                  <div className="border rounded p-4 space-y-4 bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="font-medium">
+                          Final Assessment Required
+                        </Label>
+                        <p className="text-sm text-gray-500">
+                          Students must pass final assessment to complete course
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={finalAssessmentRequired}
+                          onChange={(e) =>
+                            setFinalAssessmentRequired(e.target.checked)
+                          }
+                          className="rounded"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Minimum Passing Score for Course</Label>
+                      <Input
+                        type="number"
+                        value={minimumCoursePassingScore}
+                        onChange={(e) =>
+                          setMinimumCoursePassingScore(Number(e.target.value))
+                        }
+                        min={0}
+                        max={100}
+                        placeholder="60"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="font-medium">
+                          {courseFinalAssessment?.title ||
+                            "Final Course Assessment"}
+                        </Label>
+                        {courseFinalAssessment && (
+                          <p className="text-sm text-gray-500">
+                            {courseFinalAssessment.questions.length} questions •
+                            Passing: {courseFinalAssessment.passingScore}%
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => setEditingAssessment({ type: "course" })}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        {courseFinalAssessment
+                          ? "Edit Assessment"
+                          : "Configure Assessment"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-medium">
+                      Require All Modules Complete
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      Students must complete all modules to finish course
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={requireAllModulesComplete}
+                      onChange={(e) =>
+                        setRequireAllModulesComplete(e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-medium">
+                      Require All Assessments Passed
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      Students must pass all required assessments
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={requireAllAssessmentsPassed}
+                      onChange={(e) =>
+                        setRequireAllAssessmentsPassed(e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -1266,7 +2522,7 @@ export default function EditCoursePage() {
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {modules.map((module, index) => (
+              {modules.map((module, moduleIndex) => (
                 <div
                   key={module.id}
                   className="border rounded-lg hover:bg-gray-50 transition-colors"
@@ -1277,7 +2533,7 @@ export default function EditCoursePage() {
                     onClick={() => toggleModule(module.id)}
                   >
                     <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold text-sm mt-1">
-                      {index + 1}
+                      {moduleIndex + 1}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
@@ -1423,9 +2679,67 @@ export default function EditCoursePage() {
                       </div>
                       <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                         <span>{module.lessons?.length || 0} lessons</span>
+                        {module.hasAssessment && (
+                          <span className="flex items-center gap-1 text-blue-600">
+                            <FileText className="h-3 w-3" />
+                            Assessment
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
+
+                  {/* Module Assessment Button */}
+                  {!editingModule?.id && (
+                    <div className="px-4 pb-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            onClick={() => toggleModuleAssessment(moduleIndex)}
+                            variant={
+                              module.hasAssessment ? "default" : "outline"
+                            }
+                            size="sm"
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            {module.hasAssessment
+                              ? "Assessment Added"
+                              : "Add Assessment"}
+                          </Button>
+                          {module.hasAssessment && module.moduleAssessment && (
+                            <Button
+                              type="button"
+                              onClick={() =>
+                                setEditingAssessment({
+                                  type: "module",
+                                  moduleIndex,
+                                })
+                              }
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit Assessment
+                            </Button>
+                          )}
+                        </div>
+                        {module.hasAssessment && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <span>
+                              Passing:{" "}
+                              {module.moduleAssessment?.passingScore || 60}%
+                            </span>
+                            <span>•</span>
+                            <span>
+                              {module.moduleAssessment?.questions?.length || 0}{" "}
+                              questions
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Lessons Section */}
                   {expandedModules.includes(module.id) && (
@@ -1488,7 +2802,7 @@ export default function EditCoursePage() {
                                           rows={2}
                                           className="text-sm"
                                         />
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                           <div>
                                             <Label className="text-xs">
                                               Content Type
@@ -1534,6 +2848,22 @@ export default function EditCoursePage() {
                                               Free Lesson
                                             </Label>
                                           </div>
+                                          <div className="flex items-center gap-2 pt-6">
+                                            <input
+                                              type="checkbox"
+                                              checked={lesson.hasQuiz || false}
+                                              onChange={() =>
+                                                toggleQuizForLesson(
+                                                  moduleIndex,
+                                                  lessonIndex
+                                                )
+                                              }
+                                              className="rounded"
+                                            />
+                                            <Label className="text-xs">
+                                              Add Quiz
+                                            </Label>
+                                          </div>
                                         </div>
                                         {editingLesson.contentType ===
                                           "VIDEO" && (
@@ -1546,21 +2876,6 @@ export default function EditCoursePage() {
                                               })
                                             }
                                             placeholder="Video URL..."
-                                            className="text-sm"
-                                          />
-                                        )}
-                                        {editingLesson.contentType ===
-                                          "ARTICLE" && (
-                                          <Textarea
-                                            value={editingLesson.articleContent}
-                                            onChange={(e) =>
-                                              setEditingLesson({
-                                                ...editingLesson,
-                                                articleContent: e.target.value,
-                                              })
-                                            }
-                                            placeholder="Article content..."
-                                            rows={4}
                                             className="text-sm"
                                           />
                                         )}
@@ -1626,11 +2941,19 @@ export default function EditCoursePage() {
                                           </p>
                                         )}
                                       </div>
-                                      {lesson.isFree && (
-                                        <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded">
-                                          Free
-                                        </span>
-                                      )}
+                                      <div className="flex items-center gap-2">
+                                        {lesson.isFree && (
+                                          <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded">
+                                            Free
+                                          </span>
+                                        )}
+                                        {lesson.hasQuiz && (
+                                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded flex items-center gap-1">
+                                            <FileText className="h-3 w-3" />
+                                            Quiz
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                     <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                                       <span className="bg-gray-100 px-2 py-1 rounded">
@@ -1688,6 +3011,23 @@ export default function EditCoursePage() {
                                         <Edit className="h-3 w-3 mr-1" />
                                         Edit
                                       </Button>
+                                      {lesson.hasQuiz && lesson.quiz && (
+                                        <Button
+                                          type="button"
+                                          onClick={() =>
+                                            setEditingAssessment({
+                                              type: "lesson",
+                                              moduleIndex,
+                                              lessonIndex,
+                                            })
+                                          }
+                                          variant="outline"
+                                          size="sm"
+                                        >
+                                          <FileText className="h-3 w-3 mr-1" />
+                                          Edit Quiz
+                                        </Button>
+                                      )}
                                       <Button
                                         type="button"
                                         variant="ghost"
@@ -1759,6 +3099,8 @@ export default function EditCoursePage() {
           </div>
         </form>
       </div>
+      {/* Assessment Editor Modal */}
+      {renderAssessmentEditor()}
     </div>
   );
 }
