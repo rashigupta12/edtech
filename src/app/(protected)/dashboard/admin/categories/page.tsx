@@ -24,7 +24,8 @@ import {
   Plus,
   Save,
   Trash2,
-  X
+  X,
+  Layers
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -209,8 +210,8 @@ export default function CategoriesPage() {
       html: `You are about to delete <strong>"${category.name}"</strong>.<br>This action cannot be undone.`,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "Cancel",
       reverseButtons: true,
@@ -348,24 +349,22 @@ export default function CategoriesPage() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <Link
-              href="/dashboard/admin/courses"
-              className="text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            
+            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+              <Layers className="h-6 w-6 text-white" />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900">
               Categories Management
             </h2>
           </div>
-          <p className="text-gray-600 ml-8">
-            Create and manage course categories. Drag to reorder.
+          <p className="text-gray-600 ml-16">
+            Create and manage course categories
           </p>
         </div>
 
         <Button
           onClick={() => handleOpenDialog()}
-          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
+          className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-sm"
         >
           <Plus className="h-4 w-4 mr-2" />
           Add Category
@@ -373,26 +372,26 @@ export default function CategoriesPage() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-2xl p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
-              <FolderOpen className="h-6 w-6 text-white" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <FolderOpen className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-purple-600">Total Categories</p>
+              <p className="text-sm font-medium text-gray-600">Total Categories</p>
               <p className="text-2xl font-bold text-gray-900">{categories.length}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-2xl p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
-              <Eye className="h-6 w-6 text-white" />
+        <div className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <Eye className="h-6 w-6 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-green-600">Active</p>
+              <p className="text-sm font-medium text-gray-600">Active</p>
               <p className="text-2xl font-bold text-gray-900">
                 {categories.filter((c) => c.isActive).length}
               </p>
@@ -400,10 +399,10 @@ export default function CategoriesPage() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-2xl p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gray-500 rounded-xl flex items-center justify-center">
-              <EyeOff className="h-6 w-6 text-white" />
+        <div className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+              <EyeOff className="h-6 w-6 text-gray-600" />
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Inactive</p>
@@ -416,10 +415,10 @@ export default function CategoriesPage() {
       </div>
 
       {/* Categories List */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-12 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
             <p className="text-gray-600 mt-4">Loading categories...</p>
           </div>
         ) : categories.length === 0 ? (
@@ -429,7 +428,7 @@ export default function CategoriesPage() {
             <p className="text-gray-600 mb-6">Create your first category to get started!</p>
             <Button
               onClick={() => handleOpenDialog()}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Category
@@ -444,7 +443,7 @@ export default function CategoriesPage() {
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
-                className={`flex items-center gap-4 p-6 hover:bg-purple-50/30 transition-colors cursor-move ${
+                className={`flex items-center gap-4 p-6 hover:bg-green-50/50 transition-colors cursor-move ${
                   draggedItem === index ? "opacity-50" : ""
                 }`}
               >
@@ -454,7 +453,7 @@ export default function CategoriesPage() {
                 </div>
 
                 {/* Icon */}
-                <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                   {getCategoryIcon(category.icon)}
                 </div>
 
@@ -465,7 +464,7 @@ export default function CategoriesPage() {
                       {category.name}
                     </h3>
                     {!category.isActive && (
-                      <Badge variant="outline" className="bg-gray-100 text-gray-600">
+                      <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-300">
                         Inactive
                       </Badge>
                     )}
@@ -479,13 +478,13 @@ export default function CategoriesPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   {/* Toggle Active */}
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => handleToggleActive(category)}
-                    className={`rounded-full ${
+                    className={`h-8 w-8 rounded-md ${
                       category.isActive
                         ? "hover:bg-gray-100 text-gray-600"
                         : "hover:bg-green-50 text-green-600"
@@ -504,7 +503,7 @@ export default function CategoriesPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => handleOpenDialog(category)}
-                    className="rounded-full hover:bg-purple-50 hover:text-purple-700"
+                    className="h-8 w-8 rounded-md hover:bg-green-50 hover:text-green-700"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -514,7 +513,7 @@ export default function CategoriesPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDelete(category)}
-                    className="rounded-full text-red-600 hover:bg-red-50"
+                    className="h-8 w-8 rounded-md hover:bg-red-50 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -617,7 +616,7 @@ export default function CategoriesPage() {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
               >
                 <Save className="h-4 w-4 mr-2" />
                 {saving ? "Saving..." : editingCategory ? "Update" : "Create"}
