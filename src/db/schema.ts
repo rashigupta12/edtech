@@ -12,14 +12,13 @@ import {
   varchar,
   decimal,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 // =====================
 // Enums
 // =====================
 
 export const UserRole = pgEnum("user_role", ["ADMIN", "COLLEGE", "FACULTY", "STUDENT"]);
-
 export const CourseStatus = pgEnum("course_status", [
   "DRAFT",
   "PENDING_APPROVAL",
@@ -28,68 +27,57 @@ export const CourseStatus = pgEnum("course_status", [
   "PUBLISHED",
   "ARCHIVED",
 ]);
-
 export const CollegeStatus = pgEnum("college_status", [
   "PENDING",
   "APPROVED",
   "REJECTED",
   "SUSPENDED",
 ]);
-
 export const EnrollmentStatus = pgEnum("enrollment_status", [
   "ACTIVE",
   "COMPLETED",
   "DROPPED",
 ]);
-
 export const AssignmentStatus = pgEnum("assignment_status", [
   "PENDING",
   "SUBMITTED",
   "GRADED",
   "LATE",
 ]);
-
 export const CertificateStatus = pgEnum("certificate_status", [
   "PENDING",
   "APPROVED",
   "ISSUED",
   "REJECTED",
 ]);
-
 export const SessionStatus = pgEnum("session_status", [
   "SCHEDULED",
   "ONGOING",
   "COMPLETED",
   "CANCELLED",
 ]);
-
 export const AnnouncementType = pgEnum("announcement_type", [
   "PLATFORM",
   "COLLEGE",
   "COURSE",
 ]);
-
 export const ContentType = pgEnum("content_type", [
   "VIDEO",
   "DOCUMENT",
   "ARTICLE",
   "QUIZ",
 ]);
-
 export const QuestionType = pgEnum("question_type", [
   "MULTIPLE_CHOICE",
   "TRUE_FALSE",
   "SHORT_ANSWER",
 ]);
-
 export const Gender = pgEnum("gender", ["MALE", "FEMALE", "OTHER"]);
-
 export const QuestionDifficulty = pgEnum("question_difficulty", [
   "EASY",
   "MEDIUM",
   "HARD",
 ]);
-
 export const ReportType = pgEnum("report_type", [
   "ENROLLMENT",
   "REVENUE",
@@ -97,24 +85,32 @@ export const ReportType = pgEnum("report_type", [
   "PERFORMANCE",
   "ATTENDANCE",
 ]);
-
 export const FacultyStatus = pgEnum("faculty_status", [
   "ACTIVE",
   "INACTIVE",
   "SUSPENDED",
 ]);
-
 export const FacultyRole = pgEnum("faculty_role", [
   "PROFESSOR",
   "ASSOCIATE_PROFESSOR",
   "ASSISTANT_PROFESSOR",
   "LECTURER",
   "VISITING_FACULTY",
-  "HOD", // Head of Department
+  "HOD",
+]);
+export const AssessmentLevel = pgEnum("assessment_level", [
+  "LESSON_QUIZ",
+  "MODULE_ASSESSMENT",
+  "COURSE_FINAL",
+]);
+export const AttemptStatus = pgEnum("attempt_status", [
+  "IN_PROGRESS",
+  "COMPLETED",
+  "ABANDONED",
 ]);
 
 // =====================
-// User Tables
+// User & Auth Tables
 // =====================
 
 export const UsersTable = pgTable(
@@ -187,10 +183,10 @@ export const FacultyProfilesTable = pgTable(
     state: text("state"),
     country: text("country").default("India"),
     pinCode: text("pin_code"),
-    qualifications: jsonb("qualifications").notNull(), // [{degree: "PhD", institution: "XYZ University", year: 2020}]
+    qualifications: jsonb("qualifications").notNull(),
     areasOfExpertise: jsonb("areas_of_expertise"),
-    totalExperience: integer("total_experience"), // in years
-    teachingExperience: integer("teaching_experience"), // in years
+    totalExperience: integer("total_experience"),
+    teachingExperience: integer("teaching_experience"),
     publications: jsonb("publications"),
     awards: jsonb("awards"),
     researchInterests: jsonb("research_interests"),
@@ -244,10 +240,8 @@ export const PasswordResetTokenTable = pgTable(
   ]
 );
 
-
-
 // =====================
-// College Tables
+// College & Department Tables
 // =====================
 
 export const CollegesTable = pgTable(
@@ -272,7 +266,6 @@ export const CollegesTable = pgTable(
     createdBy: uuid("created_by").references(() => UsersTable.id, { onDelete: "set null" }),
     about: text("about"),
     
-    // Verification Documents
     verificationDocument: text("verification_document"),
     additionalDocuments: jsonb("additional_documents"),
     
@@ -283,7 +276,6 @@ export const CollegesTable = pgTable(
     approvedAt: timestamp("approved_at", { mode: "date" }),
     rejectionReason: text("rejection_reason"),
     
-    // Future payment details
     bankAccountNumber: text("bank_account_number"),
     bankName: text("bank_name"),
     accountHolderName: text("account_holder_name"),
@@ -344,12 +336,11 @@ export const FacultyTable = pgTable(
     employeeId: text("employee_id"),
     facultyRole: FacultyRole("faculty_role").default("LECTURER").notNull(),
     designation: text("designation").notNull(),
-    employmentType: text("employment_type").default("FULL_TIME"), // FULL_TIME, PART_TIME, VISITING
+    employmentType: text("employment_type").default("FULL_TIME"),
     joiningDate: timestamp("joining_date", { mode: "date" }),
     leavingDate: timestamp("leaving_date", { mode: "date" }),
     status: FacultyStatus("status").default("ACTIVE").notNull(),
     
-    // Permissions within college
     canCreateCourses: boolean("can_create_courses").default(false).notNull(),
     canApproveContent: boolean("can_approve_content").default(false).notNull(),
     canManageStudents: boolean("can_manage_students").default(false).notNull(),
@@ -399,8 +390,6 @@ export const CategoriesTable = pgTable(
   ]
 );
 
-
-
 // =====================
 // Course Tables
 // =====================
@@ -431,17 +420,14 @@ export const CoursesTable = pgTable(
     thumbnailUrl: text("thumbnail_url"),
     previewVideoUrl: text("preview_video_url"),
     
-    // Course Details
     duration: text("duration"),
     language: text("language").default("English").notNull(),
     level: text("level").default("Beginner").notNull(),
     prerequisites: text("prerequisites"),
     
-    // Course Status
     status: CourseStatus("status").default("DRAFT").notNull(),
     publishedAt: timestamp("published_at", { mode: "date" }),
     
-    // Approval workflow
     submittedForApprovalAt: timestamp("submitted_for_approval_at", {
       mode: "date",
     }),
@@ -451,16 +437,20 @@ export const CoursesTable = pgTable(
     approvedAt: timestamp("approved_at", { mode: "date" }),
     rejectionReason: text("rejection_reason"),
     
-    // Course Settings
     isFeatured: boolean("is_featured").default(false).notNull(),
     maxStudents: integer("max_students"),
     currentEnrollments: integer("current_enrollments").default(0).notNull(),
     
-    // SEO
+    // Completion Requirements
+    hasFinalAssessment: boolean("has_final_assessment").default(false).notNull(),
+    finalAssessmentRequired: boolean("final_assessment_required").default(true).notNull(),
+    minimumCoursePassingScore: integer("minimum_course_passing_score").default(60).notNull(),
+    requireAllModulesComplete: boolean("require_all_modules_complete").default(true).notNull(),
+    requireAllAssessmentsPassed: boolean("require_all_assessments_passed").default(true).notNull(),
+    
     metaTitle: text("meta_title"),
     metaDescription: text("meta_description"),
     
-    // Future pricing fields
     isFree: boolean("is_free").default(true).notNull(),
     price: decimal("price", { precision: 10, scale: 2 }),
     discountPrice: decimal("discount_price", { precision: 10, scale: 2 }),
@@ -482,74 +472,6 @@ export const CoursesTable = pgTable(
   ]
 );
 
-// Course-Faculty Mapping (Multiple faculty can teach same course)
-export const CourseFacultyTable = pgTable(
-  "course_faculty",
-  {
-    id: uuid("id").defaultRandom().primaryKey().notNull(),
-    courseId: uuid("course_id")
-      .notNull()
-      .references(() => CoursesTable.id, { onDelete: "cascade" }),
-    facultyId: uuid("faculty_id")
-      .notNull()
-      .references(() => FacultyTable.id, { onDelete: "cascade" }),
-    isPrimaryInstructor: boolean("is_primary_instructor").default(false).notNull(),
-    teachingRole: text("teaching_role").default("INSTRUCTOR"), // INSTRUCTOR, CO_INSTRUCTOR, TA
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [
-    index("course_faculty_course_id_idx").on(table.courseId),
-    index("course_faculty_faculty_id_idx").on(table.facultyId),
-    uniqueIndex("course_faculty_unique_idx").on(table.courseId, table.facultyId),
-  ]
-);
-
-export const CoursesRelations = relations(CoursesTable, ({ one, many }) => ({
-  category: one(CategoriesTable, {
-    fields: [CoursesTable.categoryId],
-    references: [CategoriesTable.id],
-  }),
-  createdByUser: one(UsersTable, {
-    fields: [CoursesTable.createdBy],
-    references: [UsersTable.id],
-  }),
-  college: one(CollegesTable, {
-    fields: [CoursesTable.collegeId],
-    references: [CollegesTable.id],
-  }),
-  department: one(DepartmentsTable, {
-    fields: [CoursesTable.departmentId],
-    references: [DepartmentsTable.id],
-  }),
-  approvedByUser: one(UsersTable, {
-    fields: [CoursesTable.approvedBy],
-    references: [UsersTable.id],
-  }),
-  learningOutcomes: many(CourseLearningOutcomesTable),
-  requirements: many(CourseRequirementsTable),
-  modules: many(CourseModulesTable),
-  enrollments: many(EnrollmentsTable),
-  assignments: many(AssignmentsTable),
-  assessments: many(AssessmentsTable),
-  sessions: many(SessionsTable),
-  bootcampCourses: many(BootcampCoursesTable),
-  certificates: many(CertificatesTable),
-  facultyAssignments: many(CourseFacultyTable),
-  discussionForums: many(DiscussionForumsTable),
-}));
-
-export const CourseFacultyRelations = relations(CourseFacultyTable, ({ one }) => ({
-  course: one(CoursesTable, {
-    fields: [CourseFacultyTable.courseId],
-    references: [CoursesTable.id],
-  }),
-  faculty: one(FacultyTable, {
-    fields: [CourseFacultyTable.facultyId],
-    references: [FacultyTable.id],
-  }),
-}));
-
-// Course Learning Outcomes
 export const CourseLearningOutcomesTable = pgTable(
   "course_learning_outcomes",
   {
@@ -563,14 +485,6 @@ export const CourseLearningOutcomesTable = pgTable(
   (table) => [index("course_learning_outcomes_course_id_idx").on(table.courseId)]
 );
 
-export const CourseLearningOutcomesRelations = relations(CourseLearningOutcomesTable, ({ one }) => ({
-  course: one(CoursesTable, {
-    fields: [CourseLearningOutcomesTable.courseId],
-    references: [CoursesTable.id],
-  }),
-}));
-
-// Course Requirements/Prerequisites
 export const CourseRequirementsTable = pgTable(
   "course_requirements",
   {
@@ -584,18 +498,35 @@ export const CourseRequirementsTable = pgTable(
   (table) => [index("course_requirements_course_id_idx").on(table.courseId)]
 );
 
-export const CourseRequirementsRelations = relations(CourseRequirementsTable, ({ one }) => ({
-  course: one(CoursesTable, {
-    fields: [CourseRequirementsTable.courseId],
-    references: [CoursesTable.id],
-  }),
-}));
+// =====================
+// Course Faculty Mapping
+// =====================
+
+export const CourseFacultyTable = pgTable(
+  "course_faculty",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => CoursesTable.id, { onDelete: "cascade" }),
+    facultyId: uuid("faculty_id")
+      .notNull()
+      .references(() => FacultyTable.id, { onDelete: "cascade" }),
+    isPrimaryInstructor: boolean("is_primary_instructor").default(false).notNull(),
+    teachingRole: text("teaching_role").default("INSTRUCTOR"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("course_faculty_course_id_idx").on(table.courseId),
+    index("course_faculty_faculty_id_idx").on(table.facultyId),
+    uniqueIndex("course_faculty_unique_idx").on(table.courseId, table.facultyId),
+  ]
+);
 
 // =====================
 // Course Content Structure
 // =====================
 
-// Modules/Sections
 export const CourseModulesTable = pgTable(
   "course_modules",
   {
@@ -605,6 +536,12 @@ export const CourseModulesTable = pgTable(
       .references(() => CoursesTable.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     description: text("description"),
+    
+    hasAssessment: boolean("has_assessment").default(false).notNull(),
+    assessmentRequired: boolean("assessment_required").default(true).notNull(),
+    minimumPassingScore: integer("minimum_passing_score").default(60).notNull(),
+    requireAllLessonsComplete: boolean("require_all_lessons_complete").default(true).notNull(),
+    
     sortOrder: integer("sort_order").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -618,17 +555,6 @@ export const CourseModulesTable = pgTable(
   ]
 );
 
-export const CourseModulesRelations = relations(CourseModulesTable, ({ one, many }) => ({
-  course: one(CoursesTable, {
-    fields: [CourseModulesTable.courseId],
-    references: [CoursesTable.id],
-  }),
-  lessons: many(CourseLessonsTable),
-  assignments: many(AssignmentsTable),
-  assessments: many(AssessmentsTable),
-}));
-
-// Lessons/Videos
 export const CourseLessonsTable = pgTable(
   "course_lessons",
   {
@@ -643,14 +569,14 @@ export const CourseLessonsTable = pgTable(
     title: text("title").notNull(),
     description: text("description"),
     
-    // Content
     contentType: ContentType("content_type").default("VIDEO").notNull(),
     videoUrl: text("video_url"),
     videoDuration: integer("video_duration"),
     articleContent: text("article_content"),
-     quizUrl: text("quiz_url"), 
     
-    // Downloadable Resources
+    hasQuiz: boolean("has_quiz").default(false).notNull(),
+    quizRequired: boolean("quiz_required").default(false).notNull(),
+    
     resources: jsonb("resources"),
     
     sortOrder: integer("sort_order").default(0).notNull(),
@@ -669,17 +595,30 @@ export const CourseLessonsTable = pgTable(
   ]
 );
 
-export const CourseLessonsRelations = relations(CourseLessonsTable, ({ one, many }) => ({
-  module: one(CourseModulesTable, {
-    fields: [CourseLessonsTable.moduleId],
-    references: [CourseModulesTable.id],
-  }),
-  course: one(CoursesTable, {
-    fields: [CourseLessonsTable.courseId],
-    references: [CoursesTable.id],
-  }),
-  progress: many(LessonProgressTable),
-}));
+export const LessonCompletionRulesTable = pgTable(
+  "lesson_completion_rules",
+  {
+    id: uuid("id").defaultRandom().primaryKey().notNull(),
+    lessonId: uuid("lesson_id")
+      .notNull()
+      .references(() => CourseLessonsTable.id, { onDelete: "cascade" }),
+    
+    requireVideoWatched: boolean("require_video_watched").default(false).notNull(),
+    minVideoWatchPercentage: integer("min_video_watch_percentage").default(90).notNull(),
+    requireQuizPassed: boolean("require_quiz_passed").default(false).notNull(),
+    requireResourcesViewed: boolean("require_resources_viewed").default(false).notNull(),
+    
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("lesson_completion_rules_lesson_id_idx").on(table.lessonId),
+    uniqueIndex("lesson_completion_rules_lesson_unique").on(table.lessonId),
+  ]
+);
 
 // =====================
 // Bootcamp Tables
@@ -693,7 +632,6 @@ export const BootcampsTable = pgTable(
     title: text("title").notNull(),
     description: text("description").notNull(),
     
-    // Bootcamp Owner
     createdBy: uuid("created_by")
       .notNull()
       .references(() => UsersTable.id, { onDelete: "cascade" }),
@@ -703,14 +641,12 @@ export const BootcampsTable = pgTable(
     
     thumbnailUrl: text("thumbnail_url"),
     
-    // Bootcamp Details
     duration: text("duration").notNull(),
     startDate: timestamp("start_date", { mode: "date" }),
     endDate: timestamp("end_date", { mode: "date" }),
     
     status: CourseStatus("status").default("DRAFT").notNull(),
     
-    // Approval workflow
     submittedForApprovalAt: timestamp("submitted_for_approval_at", {
       mode: "date",
     }),
@@ -723,7 +659,6 @@ export const BootcampsTable = pgTable(
     maxStudents: integer("max_students"),
     currentEnrollments: integer("current_enrollments").default(0).notNull(),
     
-    // Future pricing
     isFree: boolean("is_free").default(true).notNull(),
     price: decimal("price", { precision: 10, scale: 2 }),
     discountPrice: decimal("discount_price", { precision: 10, scale: 2 }),
@@ -742,24 +677,6 @@ export const BootcampsTable = pgTable(
   ]
 );
 
-export const BootcampsRelations = relations(BootcampsTable, ({ one, many }) => ({
-  createdByUser: one(UsersTable, {
-    fields: [BootcampsTable.createdBy],
-    references: [UsersTable.id],
-  }),
-  college: one(CollegesTable, {
-    fields: [BootcampsTable.collegeId],
-    references: [CollegesTable.id],
-  }),
-  approvedByUser: one(UsersTable, {
-    fields: [BootcampsTable.approvedBy],
-    references: [UsersTable.id],
-  }),
-  bootcampCourses: many(BootcampCoursesTable),
-  enrollments: many(BootcampEnrollmentsTable),
-}));
-
-// Bootcamp - Course Mapping
 export const BootcampCoursesTable = pgTable(
   "bootcamp_courses",
   {
@@ -781,17 +698,6 @@ export const BootcampCoursesTable = pgTable(
     ),
   ]
 );
-
-export const BootcampCoursesRelations = relations(BootcampCoursesTable, ({ one }) => ({
-  bootcamp: one(BootcampsTable, {
-    fields: [BootcampCoursesTable.bootcampId],
-    references: [BootcampsTable.id],
-  }),
-  course: one(CoursesTable, {
-    fields: [BootcampCoursesTable.courseId],
-    references: [CoursesTable.id],
-  }),
-}));
 
 // =====================
 // Enrollment Tables
@@ -816,10 +722,18 @@ export const EnrollmentsTable = pgTable(
     completedAt: timestamp("completed_at", { mode: "date" }),
     lastAccessedAt: timestamp("last_accessed_at", { mode: "date" }),
     
-    // Certificate
+    overallScore: integer("overall_score").default(0),
+    finalAssessmentScore: integer("final_assessment_score"),
+    averageQuizScore: integer("average_quiz_score"),
+    
     certificateEligible: boolean("certificate_eligible").default(false).notNull(),
     certificateIssued: boolean("certificate_issued").default(false).notNull(),
     certificateIssuedAt: timestamp("certificate_issued_at", { mode: "date" }),
+    
+    completedLessons: integer("completed_lessons").default(0).notNull(),
+    totalLessons: integer("total_lessons").default(0).notNull(),
+    completedAssessments: integer("completed_assessments").default(0).notNull(),
+    totalAssessments: integer("total_assessments").default(0).notNull(),
     
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -838,22 +752,6 @@ export const EnrollmentsTable = pgTable(
   ]
 );
 
-export const EnrollmentsRelations = relations(EnrollmentsTable, ({ one, many }) => ({
-  user: one(UsersTable, {
-    fields: [EnrollmentsTable.userId],
-    references: [UsersTable.id],
-  }),
-  course: one(CoursesTable, {
-    fields: [EnrollmentsTable.courseId],
-    references: [CoursesTable.id],
-  }),
-  lessonProgress: many(LessonProgressTable),
-  assignments: many(AssignmentSubmissionsTable),
-  assessments: many(AssessmentAttemptsTable),
-  certificate: one(CertificatesTable),
-}));
-
-// Bootcamp Enrollments - FIXED
 export const BootcampEnrollmentsTable = pgTable(
   "bootcamp_enrollments",
   {
@@ -886,17 +784,11 @@ export const BootcampEnrollmentsTable = pgTable(
     ),
   ]
 );
-export const BootcampEnrollmentsRelations = relations(BootcampEnrollmentsTable, ({ one }) => ({
-  user: one(UsersTable, {
-    fields: [BootcampEnrollmentsTable.userId],
-    references: [UsersTable.id],
-  }),
-  bootcamp: one(BootcampsTable, {
-    fields: [BootcampEnrollmentsTable.bootcampId],
-    references: [BootcampsTable.id],
-  }),
-}));
-// Lesson Progress Tracking
+
+// =====================
+// Progress Tracking Tables
+// =====================
+
 export const LessonProgressTable = pgTable(
   "lesson_progress",
   {
@@ -914,9 +806,16 @@ export const LessonProgressTable = pgTable(
     isCompleted: boolean("is_completed").default(false).notNull(),
     completedAt: timestamp("completed_at", { mode: "date" }),
     
-    // Video progress
     lastWatchedPosition: integer("last_watched_position").default(0),
     watchDuration: integer("watch_duration").default(0),
+    videoPercentageWatched: integer("video_percentage_watched").default(0),
+    
+    quizAttempted: boolean("quiz_attempted").default(false).notNull(),
+    quizScore: integer("quiz_score"),
+    quizPassed: boolean("quiz_passed").default(false).notNull(),
+    lastQuizAttemptId: uuid("last_quiz_attempt_id").references(() => AssessmentAttemptsTable.id),
+    
+    resourcesViewed: jsonb("resources_viewed"),
     
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -928,27 +827,13 @@ export const LessonProgressTable = pgTable(
     index("lesson_progress_user_id_idx").on(table.userId),
     index("lesson_progress_lesson_id_idx").on(table.lessonId),
     index("lesson_progress_enrollment_id_idx").on(table.enrollmentId),
+    index("lesson_progress_is_completed_idx").on(table.isCompleted),
     uniqueIndex("lesson_progress_unique_idx").on(table.userId, table.lessonId),
   ]
 );
 
-export const LessonProgressRelations = relations(LessonProgressTable, ({ one }) => ({
-  user: one(UsersTable, {
-    fields: [LessonProgressTable.userId],
-    references: [UsersTable.id],
-  }),
-  lesson: one(CourseLessonsTable, {
-    fields: [LessonProgressTable.lessonId],
-    references: [CourseLessonsTable.id],
-  }),
-  enrollment: one(EnrollmentsTable, {
-    fields: [LessonProgressTable.enrollmentId],
-    references: [EnrollmentsTable.id],
-  }),
-}));
-
 // =====================
-// Batch/Class Management
+// Batch Management Tables
 // =====================
 
 export const BatchesTable = pgTable(
@@ -1005,31 +890,6 @@ export const BatchEnrollmentsTable = pgTable(
   ]
 );
 
-export const BatchesRelations = relations(BatchesTable, ({ one, many }) => ({
-  college: one(CollegesTable, {
-    fields: [BatchesTable.collegeId],
-    references: [CollegesTable.id],
-  }),
-  department: one(DepartmentsTable, {
-    fields: [BatchesTable.departmentId],
-    references: [DepartmentsTable.id],
-  }),
-  enrollments: many(BatchEnrollmentsTable),
-  courses: many(BatchCoursesTable),
-}));
-
-export const BatchEnrollmentsRelations = relations(BatchEnrollmentsTable, ({ one }) => ({
-  batch: one(BatchesTable, {
-    fields: [BatchEnrollmentsTable.batchId],
-    references: [BatchesTable.id],
-  }),
-  user: one(UsersTable, {
-    fields: [BatchEnrollmentsTable.userId],
-    references: [UsersTable.id],
-  }),
-}));
-
-// Batch-Course Mapping
 export const BatchCoursesTable = pgTable(
   "batch_courses",
   {
@@ -1101,23 +961,6 @@ export const SessionsTable = pgTable(
   ]
 );
 
-export const SessionsRelations = relations(SessionsTable, ({ one, many }) => ({
-  course: one(CoursesTable, {
-    fields: [SessionsTable.courseId],
-    references: [CoursesTable.id],
-  }),
-  createdByUser: one(UsersTable, {
-    fields: [SessionsTable.createdBy],
-    references: [UsersTable.id],
-  }),
-  faculty: one(FacultyTable, {
-    fields: [SessionsTable.facultyId],
-    references: [FacultyTable.id],
-  }),
-  attendance: many(SessionAttendanceTable),
-}));
-
-// Session Attendance
 export const SessionAttendanceTable = pgTable(
   "session_attendance",
   {
@@ -1145,17 +988,6 @@ export const SessionAttendanceTable = pgTable(
     ),
   ]
 );
-
-export const SessionAttendanceRelations = relations(SessionAttendanceTable, ({ one }) => ({
-  session: one(SessionsTable, {
-    fields: [SessionAttendanceTable.sessionId],
-    references: [SessionsTable.id],
-  }),
-  user: one(UsersTable, {
-    fields: [SessionAttendanceTable.userId],
-    references: [UsersTable.id],
-  }),
-}));
 
 // =====================
 // Assignment Tables
@@ -1201,27 +1033,6 @@ export const AssignmentsTable = pgTable(
   ]
 );
 
-export const AssignmentsRelations = relations(AssignmentsTable, ({ one, many }) => ({
-  course: one(CoursesTable, {
-    fields: [AssignmentsTable.courseId],
-    references: [CoursesTable.id],
-  }),
-  module: one(CourseModulesTable, {
-    fields: [AssignmentsTable.moduleId],
-    references: [CourseModulesTable.id],
-  }),
-  createdByUser: one(UsersTable, {
-    fields: [AssignmentsTable.createdBy],
-    references: [UsersTable.id],
-  }),
-  faculty: one(FacultyTable, {
-    fields: [AssignmentsTable.facultyId],
-    references: [FacultyTable.id],
-  }),
-  submissions: many(AssignmentSubmissionsTable),
-}));
-
-// Assignment Submissions
 export const AssignmentSubmissionsTable = pgTable(
   "assignment_submissions",
   {
@@ -1243,7 +1054,6 @@ export const AssignmentSubmissionsTable = pgTable(
     
     submittedAt: timestamp("submitted_at", { mode: "date" }),
     
-    // Grading
     score: integer("score"),
     maxScore: integer("max_score"),
     feedback: text("feedback"),
@@ -1270,25 +1080,6 @@ export const AssignmentSubmissionsTable = pgTable(
   ]
 );
 
-export const AssignmentSubmissionsRelations = relations(AssignmentSubmissionsTable, ({ one }) => ({
-  assignment: one(AssignmentsTable, {
-    fields: [AssignmentSubmissionsTable.assignmentId],
-    references: [AssignmentsTable.id],
-  }),
-  user: one(UsersTable, {
-    fields: [AssignmentSubmissionsTable.userId],
-    references: [UsersTable.id],
-  }),
-  enrollment: one(EnrollmentsTable, {
-    fields: [AssignmentSubmissionsTable.enrollmentId],
-    references: [EnrollmentsTable.id],
-  }),
-  gradedByUser: one(UsersTable, {
-    fields: [AssignmentSubmissionsTable.gradedBy],
-    references: [UsersTable.id],
-  }),
-}));
-
 // =====================
 // Assessment/Quiz Tables
 // =====================
@@ -1303,6 +1094,11 @@ export const AssessmentsTable = pgTable(
     moduleId: uuid("module_id").references(() => CourseModulesTable.id, {
       onDelete: "cascade",
     }),
+    lessonId: uuid("lesson_id").references(() => CourseLessonsTable.id, {
+      onDelete: "cascade",
+    }),
+    
+    assessmentLevel: AssessmentLevel("assessment_level").default("LESSON_QUIZ").notNull(),
     
     title: text("title").notNull(),
     description: text("description"),
@@ -1310,8 +1106,12 @@ export const AssessmentsTable = pgTable(
     duration: integer("duration"),
     passingScore: integer("passing_score").default(60).notNull(),
     maxAttempts: integer("max_attempts"),
+    timeLimit: integer("time_limit"),
     
     isRequired: boolean("is_required").default(false).notNull(),
+    showCorrectAnswers: boolean("show_correct_answers").default(false).notNull(),
+    allowRetake: boolean("allow_retake").default(true).notNull(),
+    randomizeQuestions: boolean("randomize_questions").default(false).notNull(),
     
     createdBy: uuid("created_by")
       .notNull()
@@ -1319,6 +1119,9 @@ export const AssessmentsTable = pgTable(
     facultyId: uuid("faculty_id").references(() => FacultyTable.id, {
       onDelete: "set null",
     }),
+    
+    availableFrom: timestamp("available_from", { mode: "date" }),
+    availableUntil: timestamp("available_until", { mode: "date" }),
     
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -1329,32 +1132,15 @@ export const AssessmentsTable = pgTable(
   (table) => [
     index("assessments_course_id_idx").on(table.courseId),
     index("assessments_module_id_idx").on(table.moduleId),
+    index("assessments_lesson_id_idx").on(table.lessonId),
+    index("assessments_assessment_level_idx").on(table.assessmentLevel),
     index("assessments_faculty_id_idx").on(table.facultyId),
+    uniqueIndex("assessments_lesson_unique").on(table.lessonId).where(
+      sql`${table.lessonId} IS NOT NULL`
+    ),
   ]
 );
 
-export const AssessmentsRelations = relations(AssessmentsTable, ({ one, many }) => ({
-  course: one(CoursesTable, {
-    fields: [AssessmentsTable.courseId],
-    references: [CoursesTable.id],
-  }),
-  module: one(CourseModulesTable, {
-    fields: [AssessmentsTable.moduleId],
-    references: [CourseModulesTable.id],
-  }),
-  createdByUser: one(UsersTable, {
-    fields: [AssessmentsTable.createdBy],
-    references: [UsersTable.id],
-  }),
-  faculty: one(FacultyTable, {
-    fields: [AssessmentsTable.facultyId],
-    references: [FacultyTable.id],
-  }),
-  questions: many(AssessmentQuestionsTable),
-  attempts: many(AssessmentAttemptsTable),
-}));
-
-// Assessment Questions
 export const AssessmentQuestionsTable = pgTable(
   "assessment_questions",
   {
@@ -1372,11 +1158,13 @@ export const AssessmentQuestionsTable = pgTable(
     
     options: jsonb("options"),
     correctAnswer: text("correct_answer").notNull(),
-    
-    points: integer("points").default(1).notNull(),
     explanation: text("explanation"),
     
+    points: integer("points").default(1).notNull(),
+    negativePoints: integer("negative_points").default(0).notNull(),
+    
     sortOrder: integer("sort_order").default(0).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
     
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -1395,18 +1183,6 @@ export const AssessmentQuestionsTable = pgTable(
   ]
 );
 
-export const AssessmentQuestionsRelations = relations(AssessmentQuestionsTable, ({ one }) => ({
-  assessment: one(AssessmentsTable, {
-    fields: [AssessmentQuestionsTable.assessmentId],
-    references: [AssessmentsTable.id],
-  }),
-  questionBank: one(QuestionBanksTable, {
-    fields: [AssessmentQuestionsTable.questionBankId],
-    references: [QuestionBanksTable.id],
-  }),
-}));
-
-// Question Banks
 export const QuestionBanksTable = pgTable(
   "question_banks",
   {
@@ -1439,23 +1215,6 @@ export const QuestionBanksTable = pgTable(
   ]
 );
 
-export const QuestionBanksRelations = relations(QuestionBanksTable, ({ one, many }) => ({
-  college: one(CollegesTable, {
-    fields: [QuestionBanksTable.collegeId],
-    references: [CollegesTable.id],
-  }),
-  department: one(DepartmentsTable, {
-    fields: [QuestionBanksTable.departmentId],
-    references: [DepartmentsTable.id],
-  }),
-  createdByUser: one(UsersTable, {
-    fields: [QuestionBanksTable.createdBy],
-    references: [UsersTable.id],
-  }),
-  questions: many(AssessmentQuestionsTable),
-}));
-
-// Assessment Attempts
 export const AssessmentAttemptsTable = pgTable(
   "assessment_attempts",
   {
@@ -1471,44 +1230,44 @@ export const AssessmentAttemptsTable = pgTable(
       .references(() => EnrollmentsTable.id, { onDelete: "cascade" }),
     
     attemptNumber: integer("attempt_number").default(1).notNull(),
+    status: AttemptStatus("status").default("IN_PROGRESS").notNull(),
     
     answers: jsonb("answers"),
+    questionDetails: jsonb("question_details"),
     
-    score: integer("score").notNull(),
+    score: integer("score").default(0).notNull(),
     totalPoints: integer("total_points").notNull(),
-    percentage: integer("percentage").notNull(),
+    percentage: integer("percentage").default(0).notNull(),
     
-    passed: boolean("passed").notNull(),
+    passed: boolean("passed").default(false).notNull(),
     
     startedAt: timestamp("started_at").defaultNow().notNull(),
     completedAt: timestamp("completed_at", { mode: "date" }),
     
+    timeSpent: integer("time_spent").default(0),
+    
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index("assessment_attempts_assessment_id_idx").on(table.assessmentId),
     index("assessment_attempts_user_id_idx").on(table.userId),
     index("assessment_attempts_enrollment_id_idx").on(table.enrollmentId),
+    index("assessment_attempts_status_idx").on(table.status),
+    index("assessment_attempts_passed_idx").on(table.passed),
+    uniqueIndex("assessment_attempts_unique_idx").on(
+      table.assessmentId,
+      table.userId,
+      table.attemptNumber
+    ),
   ]
 );
 
-export const AssessmentAttemptsRelations = relations(AssessmentAttemptsTable, ({ one }) => ({
-  assessment: one(AssessmentsTable, {
-    fields: [AssessmentAttemptsTable.assessmentId],
-    references: [AssessmentsTable.id],
-  }),
-  user: one(UsersTable, {
-    fields: [AssessmentAttemptsTable.userId],
-    references: [UsersTable.id],
-  }),
-  enrollment: one(EnrollmentsTable, {
-    fields: [AssessmentAttemptsTable.enrollmentId],
-    references: [EnrollmentsTable.id],
-  }),
-}));
-
 // =====================
-// Discussion & Collaboration
+// Discussion & Forum Tables
 // =====================
 
 export const DiscussionForumsTable = pgTable(
@@ -1548,7 +1307,7 @@ export const ForumPostsTable = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => UsersTable.id, { onDelete: "cascade" }),
-    parentId: uuid("parent_id"), // For replies
+    parentId: uuid("parent_id"),
     title: text("title"),
     content: text("content").notNull(),
     isPinned: boolean("is_pinned").default(false).notNull(),
@@ -1568,36 +1327,6 @@ export const ForumPostsTable = pgTable(
     index("forum_posts_is_pinned_idx").on(table.isPinned),
   ]
 );
-
-export const DiscussionForumsRelations = relations(DiscussionForumsTable, ({ one, many }) => ({
-  course: one(CoursesTable, {
-    fields: [DiscussionForumsTable.courseId],
-    references: [CoursesTable.id],
-  }),
-  createdByUser: one(UsersTable, {
-    fields: [DiscussionForumsTable.createdBy],
-    references: [UsersTable.id],
-  }),
-  posts: many(ForumPostsTable),
-}));
-
-export const ForumPostsRelations = relations(ForumPostsTable, ({ one, many }) => ({
-  forum: one(DiscussionForumsTable, {
-    fields: [ForumPostsTable.forumId],
-    references: [DiscussionForumsTable.id],
-  }),
-  user: one(UsersTable, {
-    fields: [ForumPostsTable.userId],
-    references: [UsersTable.id],
-  }),
-  parent: one(ForumPostsTable, {
-    fields: [ForumPostsTable.parentId],
-    references: [ForumPostsTable.id],
-  }),
-  replies: many(ForumPostsTable, {
-    relationName: "post_replies"
-  }),
-}));
 
 // =====================
 // Certificate Tables
@@ -1629,10 +1358,8 @@ export const CertificatesTable = pgTable(
     
     status: CertificateStatus("status").default("PENDING").notNull(),
     
-    // Verification
     verificationCode: text("verification_code").notNull(),
     
-    // Approval workflow
     approvedBy: uuid("approved_by").references(() => UsersTable.id, {
       onDelete: "set null",
     }),
@@ -1653,25 +1380,6 @@ export const CertificatesTable = pgTable(
   ]
 );
 
-export const CertificatesRelations = relations(CertificatesTable, ({ one }) => ({
-  enrollment: one(EnrollmentsTable, {
-    fields: [CertificatesTable.enrollmentId],
-    references: [EnrollmentsTable.id],
-  }),
-  user: one(UsersTable, {
-    fields: [CertificatesTable.userId],
-    references: [UsersTable.id],
-  }),
-  course: one(CoursesTable, {
-    fields: [CertificatesTable.courseId],
-    references: [CoursesTable.id],
-  }),
-  approvedByUser: one(UsersTable, {
-    fields: [CertificatesTable.approvedBy],
-    references: [UsersTable.id],
-  }),
-}));
-
 // =====================
 // Announcement Tables
 // =====================
@@ -1685,14 +1393,11 @@ export const AnnouncementsTable = pgTable(
     
     type: AnnouncementType("type").default("PLATFORM").notNull(),
     
-    // Target audience
-    targetAudience: jsonb("target_audience"), // {roles: [], colleges: [], courses: [], batches: []}
+    targetAudience: jsonb("target_audience"),
     
-    // Scheduling
     isScheduled: boolean("is_scheduled").default(false).notNull(),
     scheduledAt: timestamp("scheduled_at", { mode: "date" }),
     
-    // Status
     isPublished: boolean("is_published").default(false).notNull(),
     publishedAt: timestamp("published_at", { mode: "date" }),
     
@@ -1700,7 +1405,6 @@ export const AnnouncementsTable = pgTable(
       .notNull()
       .references(() => UsersTable.id, { onDelete: "cascade" }),
     
-    // For college/course specific announcements
     collegeId: uuid("college_id").references(() => CollegesTable.id, {
       onDelete: "cascade",
     }),
@@ -1726,27 +1430,8 @@ export const AnnouncementsTable = pgTable(
   ]
 );
 
-export const AnnouncementsRelations = relations(AnnouncementsTable, ({ one }) => ({
-  createdByUser: one(UsersTable, {
-    fields: [AnnouncementsTable.createdBy],
-    references: [UsersTable.id],
-  }),
-  college: one(CollegesTable, {
-    fields: [AnnouncementsTable.collegeId],
-    references: [CollegesTable.id],
-  }),
-  course: one(CoursesTable, {
-    fields: [AnnouncementsTable.courseId],
-    references: [CoursesTable.id],
-  }),
-  batch: one(BatchesTable, {
-    fields: [AnnouncementsTable.batchId],
-    references: [BatchesTable.id],
-  }),
-}));
-
 // =====================
-// Admin Analytics & Reporting
+// Analytics & Reporting Tables
 // =====================
 
 export const ReportsTable = pgTable(
@@ -1757,9 +1442,9 @@ export const ReportsTable = pgTable(
     type: ReportType("type").notNull(),
     description: text("description"),
     filters: jsonb("filters"),
-    data: jsonb("data"), // Store report data for caching
+    data: jsonb("data"),
     isScheduled: boolean("is_scheduled").default(false).notNull(),
-    scheduleFrequency: text("schedule_frequency"), // DAILY, WEEKLY, MONTHLY
+    scheduleFrequency: text("schedule_frequency"),
     lastGeneratedAt: timestamp("last_generated_at", { mode: "date" }),
     createdBy: uuid("created_by")
       .notNull()
@@ -1779,15 +1464,8 @@ export const ReportsTable = pgTable(
   ]
 );
 
-export const ReportsRelations = relations(ReportsTable, ({ one }) => ({
-  createdByUser: one(UsersTable, {
-    fields: [ReportsTable.createdBy],
-    references: [UsersTable.id],
-  }),
-}));
-
 // =====================
-// CMS & Static Content Tables
+// CMS & Content Tables
 // =====================
 
 export const CMSPagesTable = pgTable(
@@ -1890,7 +1568,7 @@ export const NotificationsTable = pgTable(
 );
 
 // =====================
-// Future Payment Tables (Phase 2)
+// Payment Tables (Future)
 // =====================
 
 export const PaymentsTable = pgTable(
@@ -1910,14 +1588,12 @@ export const PaymentsTable = pgTable(
     amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
     currency: text("currency").default("INR").notNull(),
     
-    // Payment gateway details
     paymentGateway: text("payment_gateway"),
     paymentId: text("payment_id"),
     orderId: text("order_id"),
     
-    status: text("status").notNull(), // pending, completed, failed, refunded
+    status: text("status").notNull(),
     
-    // Commission details
     platformCommission: decimal("platform_commission", { precision: 10, scale: 2 }),
     collegeEarnings: decimal("college_earnings", { precision: 10, scale: 2 }),
     
@@ -1957,6 +1633,11 @@ export const PayoutsTable = pgTable(
   ]
 );
 
+// =====================
+// ALL RELATIONS (Grouped at the end)
+// =====================
+
+// User Relations
 export const UsersRelations = relations(UsersTable, ({ many, one }) => ({
   college: one(CollegesTable, {
     fields: [UsersTable.id],
@@ -2004,6 +1685,7 @@ export const FacultyProfilesRelations = relations(FacultyProfilesTable, ({ one }
   }),
 }));
 
+// College Relations
 export const CollegesRelations = relations(CollegesTable, ({ one, many }) => ({
   user: one(UsersTable, {
     fields: [CollegesTable.userId],
@@ -2052,6 +1734,421 @@ export const FacultyRelations = relations(FacultyTable, ({ one, many }) => ({
   createdSessions: many(SessionsTable),
   gradedAssignments: many(AssignmentSubmissionsTable),
 }));
+
+// Category Relations
 export const CategoriesRelations = relations(CategoriesTable, ({ many }) => ({
   courses: many(CoursesTable),
+}));
+
+// Course Relations
+export const CoursesRelations = relations(CoursesTable, ({ one, many }) => ({
+  category: one(CategoriesTable, {
+    fields: [CoursesTable.categoryId],
+    references: [CategoriesTable.id],
+  }),
+  createdByUser: one(UsersTable, {
+    fields: [CoursesTable.createdBy],
+    references: [UsersTable.id],
+  }),
+  college: one(CollegesTable, {
+    fields: [CoursesTable.collegeId],
+    references: [CollegesTable.id],
+  }),
+  department: one(DepartmentsTable, {
+    fields: [CoursesTable.departmentId],
+    references: [DepartmentsTable.id],
+  }),
+  approvedByUser: one(UsersTable, {
+    fields: [CoursesTable.approvedBy],
+    references: [UsersTable.id],
+  }),
+  learningOutcomes: many(CourseLearningOutcomesTable),
+  requirements: many(CourseRequirementsTable),
+  modules: many(CourseModulesTable),
+  enrollments: many(EnrollmentsTable),
+  assignments: many(AssignmentsTable),
+  assessments: many(AssessmentsTable),
+  sessions: many(SessionsTable),
+  bootcampCourses: many(BootcampCoursesTable),
+  certificates: many(CertificatesTable),
+  facultyAssignments: many(CourseFacultyTable),
+  discussionForums: many(DiscussionForumsTable),
+}));
+
+export const CourseLearningOutcomesRelations = relations(CourseLearningOutcomesTable, ({ one }) => ({
+  course: one(CoursesTable, {
+    fields: [CourseLearningOutcomesTable.courseId],
+    references: [CoursesTable.id],
+  }),
+}));
+
+export const CourseRequirementsRelations = relations(CourseRequirementsTable, ({ one }) => ({
+  course: one(CoursesTable, {
+    fields: [CourseRequirementsTable.courseId],
+    references: [CoursesTable.id],
+  }),
+}));
+
+export const CourseFacultyRelations = relations(CourseFacultyTable, ({ one }) => ({
+  course: one(CoursesTable, {
+    fields: [CourseFacultyTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  faculty: one(FacultyTable, {
+    fields: [CourseFacultyTable.facultyId],
+    references: [FacultyTable.id],
+  }),
+}));
+
+// Course Content Relations
+export const CourseModulesRelations = relations(CourseModulesTable, ({ one, many }) => ({
+  course: one(CoursesTable, {
+    fields: [CourseModulesTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  lessons: many(CourseLessonsTable),
+  assignments: many(AssignmentsTable),
+  assessments: many(AssessmentsTable),
+}));
+
+export const CourseLessonsRelations = relations(CourseLessonsTable, ({ one, many }) => ({
+  module: one(CourseModulesTable, {
+    fields: [CourseLessonsTable.moduleId],
+    references: [CourseModulesTable.id],
+  }),
+  course: one(CoursesTable, {
+    fields: [CourseLessonsTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  progress: many(LessonProgressTable),
+  quiz: one(AssessmentsTable, {
+    fields: [CourseLessonsTable.id],
+    references: [AssessmentsTable.lessonId],
+  }),
+  completionRules: one(LessonCompletionRulesTable, {
+    fields: [CourseLessonsTable.id],
+    references: [LessonCompletionRulesTable.lessonId],
+  }),
+}));
+
+export const LessonCompletionRulesRelations = relations(LessonCompletionRulesTable, ({ one }) => ({
+  lesson: one(CourseLessonsTable, {
+    fields: [LessonCompletionRulesTable.lessonId],
+    references: [CourseLessonsTable.id],
+  }),
+}));
+
+// Bootcamp Relations
+export const BootcampsRelations = relations(BootcampsTable, ({ one, many }) => ({
+  createdByUser: one(UsersTable, {
+    fields: [BootcampsTable.createdBy],
+    references: [UsersTable.id],
+  }),
+  college: one(CollegesTable, {
+    fields: [BootcampsTable.collegeId],
+    references: [CollegesTable.id],
+  }),
+  approvedByUser: one(UsersTable, {
+    fields: [BootcampsTable.approvedBy],
+    references: [UsersTable.id],
+  }),
+  bootcampCourses: many(BootcampCoursesTable),
+  enrollments: many(BootcampEnrollmentsTable),
+}));
+
+export const BootcampCoursesRelations = relations(BootcampCoursesTable, ({ one }) => ({
+  bootcamp: one(BootcampsTable, {
+    fields: [BootcampCoursesTable.bootcampId],
+    references: [BootcampsTable.id],
+  }),
+  course: one(CoursesTable, {
+    fields: [BootcampCoursesTable.courseId],
+    references: [CoursesTable.id],
+  }),
+}));
+
+// Enrollment Relations
+export const EnrollmentsRelations = relations(EnrollmentsTable, ({ one, many }) => ({
+  user: one(UsersTable, {
+    fields: [EnrollmentsTable.userId],
+    references: [UsersTable.id],
+  }),
+  course: one(CoursesTable, {
+    fields: [EnrollmentsTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  lessonProgress: many(LessonProgressTable),
+  assignments: many(AssignmentSubmissionsTable),
+  assessmentAttempts: many(AssessmentAttemptsTable),
+  certificate: one(CertificatesTable),
+}));
+
+export const BootcampEnrollmentsRelations = relations(BootcampEnrollmentsTable, ({ one }) => ({
+  user: one(UsersTable, {
+    fields: [BootcampEnrollmentsTable.userId],
+    references: [UsersTable.id],
+  }),
+  bootcamp: one(BootcampsTable, {
+    fields: [BootcampEnrollmentsTable.bootcampId],
+    references: [BootcampsTable.id],
+  }),
+}));
+
+export const LessonProgressRelations = relations(LessonProgressTable, ({ one }) => ({
+  user: one(UsersTable, {
+    fields: [LessonProgressTable.userId],
+    references: [UsersTable.id],
+  }),
+  lesson: one(CourseLessonsTable, {
+    fields: [LessonProgressTable.lessonId],
+    references: [CourseLessonsTable.id],
+  }),
+  enrollment: one(EnrollmentsTable, {
+    fields: [LessonProgressTable.enrollmentId],
+    references: [EnrollmentsTable.id],
+  }),
+  lastQuizAttempt: one(AssessmentAttemptsTable, {
+    fields: [LessonProgressTable.lastQuizAttemptId],
+    references: [AssessmentAttemptsTable.id],
+  }),
+}));
+
+// Batch Relations
+export const BatchesRelations = relations(BatchesTable, ({ one, many }) => ({
+  college: one(CollegesTable, {
+    fields: [BatchesTable.collegeId],
+    references: [CollegesTable.id],
+  }),
+  department: one(DepartmentsTable, {
+    fields: [BatchesTable.departmentId],
+    references: [DepartmentsTable.id],
+  }),
+  enrollments: many(BatchEnrollmentsTable),
+  courses: many(BatchCoursesTable),
+}));
+
+export const BatchEnrollmentsRelations = relations(BatchEnrollmentsTable, ({ one }) => ({
+  batch: one(BatchesTable, {
+    fields: [BatchEnrollmentsTable.batchId],
+    references: [BatchesTable.id],
+  }),
+  user: one(UsersTable, {
+    fields: [BatchEnrollmentsTable.userId],
+    references: [UsersTable.id],
+  }),
+}));
+
+// Session Relations
+export const SessionsRelations = relations(SessionsTable, ({ one, many }) => ({
+  course: one(CoursesTable, {
+    fields: [SessionsTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  createdByUser: one(UsersTable, {
+    fields: [SessionsTable.createdBy],
+    references: [UsersTable.id],
+  }),
+  faculty: one(FacultyTable, {
+    fields: [SessionsTable.facultyId],
+    references: [FacultyTable.id],
+  }),
+  attendance: many(SessionAttendanceTable),
+}));
+
+export const SessionAttendanceRelations = relations(SessionAttendanceTable, ({ one }) => ({
+  session: one(SessionsTable, {
+    fields: [SessionAttendanceTable.sessionId],
+    references: [SessionsTable.id],
+  }),
+  user: one(UsersTable, {
+    fields: [SessionAttendanceTable.userId],
+    references: [UsersTable.id],
+  }),
+}));
+
+// Assignment Relations
+export const AssignmentsRelations = relations(AssignmentsTable, ({ one, many }) => ({
+  course: one(CoursesTable, {
+    fields: [AssignmentsTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  module: one(CourseModulesTable, {
+    fields: [AssignmentsTable.moduleId],
+    references: [CourseModulesTable.id],
+  }),
+  createdByUser: one(UsersTable, {
+    fields: [AssignmentsTable.createdBy],
+    references: [UsersTable.id],
+  }),
+  faculty: one(FacultyTable, {
+    fields: [AssignmentsTable.facultyId],
+    references: [FacultyTable.id],
+  }),
+  submissions: many(AssignmentSubmissionsTable),
+}));
+
+export const AssignmentSubmissionsRelations = relations(AssignmentSubmissionsTable, ({ one }) => ({
+  assignment: one(AssignmentsTable, {
+    fields: [AssignmentSubmissionsTable.assignmentId],
+    references: [AssignmentsTable.id],
+  }),
+  user: one(UsersTable, {
+    fields: [AssignmentSubmissionsTable.userId],
+    references: [UsersTable.id],
+  }),
+  enrollment: one(EnrollmentsTable, {
+    fields: [AssignmentSubmissionsTable.enrollmentId],
+    references: [EnrollmentsTable.id],
+  }),
+  gradedByUser: one(UsersTable, {
+    fields: [AssignmentSubmissionsTable.gradedBy],
+    references: [UsersTable.id],
+  }),
+}));
+
+// Assessment Relations
+export const AssessmentsRelations = relations(AssessmentsTable, ({ one, many }) => ({
+  course: one(CoursesTable, {
+    fields: [AssessmentsTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  module: one(CourseModulesTable, {
+    fields: [AssessmentsTable.moduleId],
+    references: [CourseModulesTable.id],
+  }),
+  lesson: one(CourseLessonsTable, {
+    fields: [AssessmentsTable.lessonId],
+    references: [CourseLessonsTable.id],
+  }),
+  createdByUser: one(UsersTable, {
+    fields: [AssessmentsTable.createdBy],
+    references: [UsersTable.id],
+  }),
+  faculty: one(FacultyTable, {
+    fields: [AssessmentsTable.facultyId],
+    references: [FacultyTable.id],
+  }),
+  questions: many(AssessmentQuestionsTable),
+  attempts: many(AssessmentAttemptsTable),
+}));
+
+export const AssessmentQuestionsRelations = relations(AssessmentQuestionsTable, ({ one }) => ({
+  assessment: one(AssessmentsTable, {
+    fields: [AssessmentQuestionsTable.assessmentId],
+    references: [AssessmentsTable.id],
+  }),
+  questionBank: one(QuestionBanksTable, {
+    fields: [AssessmentQuestionsTable.questionBankId],
+    references: [QuestionBanksTable.id],
+  }),
+}));
+
+export const QuestionBanksRelations = relations(QuestionBanksTable, ({ one, many }) => ({
+  college: one(CollegesTable, {
+    fields: [QuestionBanksTable.collegeId],
+    references: [CollegesTable.id],
+  }),
+  department: one(DepartmentsTable, {
+    fields: [QuestionBanksTable.departmentId],
+    references: [DepartmentsTable.id],
+  }),
+  createdByUser: one(UsersTable, {
+    fields: [QuestionBanksTable.createdBy],
+    references: [UsersTable.id],
+  }),
+  questions: many(AssessmentQuestionsTable),
+}));
+
+export const AssessmentAttemptsRelations = relations(AssessmentAttemptsTable, ({ one }) => ({
+  assessment: one(AssessmentsTable, {
+    fields: [AssessmentAttemptsTable.assessmentId],
+    references: [AssessmentsTable.id],
+  }),
+  user: one(UsersTable, {
+    fields: [AssessmentAttemptsTable.userId],
+    references: [UsersTable.id],
+  }),
+  enrollment: one(EnrollmentsTable, {
+    fields: [AssessmentAttemptsTable.enrollmentId],
+    references: [EnrollmentsTable.id],
+  }),
+}));
+
+// Discussion Relations
+export const DiscussionForumsRelations = relations(DiscussionForumsTable, ({ one, many }) => ({
+  course: one(CoursesTable, {
+    fields: [DiscussionForumsTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  createdByUser: one(UsersTable, {
+    fields: [DiscussionForumsTable.createdBy],
+    references: [UsersTable.id],
+  }),
+  posts: many(ForumPostsTable),
+}));
+
+export const ForumPostsRelations = relations(ForumPostsTable, ({ one, many }) => ({
+  forum: one(DiscussionForumsTable, {
+    fields: [ForumPostsTable.forumId],
+    references: [DiscussionForumsTable.id],
+  }),
+  user: one(UsersTable, {
+    fields: [ForumPostsTable.userId],
+    references: [UsersTable.id],
+  }),
+  parent: one(ForumPostsTable, {
+    fields: [ForumPostsTable.parentId],
+    references: [ForumPostsTable.id],
+  }),
+  replies: many(ForumPostsTable, {
+    relationName: "post_replies"
+  }),
+}));
+
+// Certificate Relations
+export const CertificatesRelations = relations(CertificatesTable, ({ one }) => ({
+  enrollment: one(EnrollmentsTable, {
+    fields: [CertificatesTable.enrollmentId],
+    references: [EnrollmentsTable.id],
+  }),
+  user: one(UsersTable, {
+    fields: [CertificatesTable.userId],
+    references: [UsersTable.id],
+  }),
+  course: one(CoursesTable, {
+    fields: [CertificatesTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  approvedByUser: one(UsersTable, {
+    fields: [CertificatesTable.approvedBy],
+    references: [UsersTable.id],
+  }),
+}));
+
+// Announcement Relations
+export const AnnouncementsRelations = relations(AnnouncementsTable, ({ one }) => ({
+  createdByUser: one(UsersTable, {
+    fields: [AnnouncementsTable.createdBy],
+    references: [UsersTable.id],
+  }),
+  college: one(CollegesTable, {
+    fields: [AnnouncementsTable.collegeId],
+    references: [CollegesTable.id],
+  }),
+  course: one(CoursesTable, {
+    fields: [AnnouncementsTable.courseId],
+    references: [CoursesTable.id],
+  }),
+  batch: one(BatchesTable, {
+    fields: [AnnouncementsTable.batchId],
+    references: [BatchesTable.id],
+  }),
+}));
+
+// Report Relations
+export const ReportsRelations = relations(ReportsTable, ({ one }) => ({
+  createdByUser: one(UsersTable, {
+    fields: [ReportsTable.createdBy],
+    references: [UsersTable.id],
+  }),
 }));

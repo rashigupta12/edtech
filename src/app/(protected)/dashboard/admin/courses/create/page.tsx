@@ -1,4 +1,4 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/(protected)/dashboard/admin/courses/create/page.tsx
 "use client";
 
@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, Plus, X, ChevronDown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { ArrowLeft, Save, Plus, X, ChevronDown, FileText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
@@ -32,6 +33,34 @@ type Category = {
   name: string;
 };
 
+type Question = {
+  id?: string;
+  questionText: string;
+  questionType: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER";
+  options?: string[];
+  correctAnswer: string;
+  points?: number;
+  difficulty?: "EASY" | "MEDIUM" | "HARD";
+  explanation?: string;
+};
+
+type Assessment = {
+  id?: string;
+  title: string;
+  description?: string;
+  assessmentLevel: "LESSON_QUIZ" | "MODULE_ASSESSMENT" | "COURSE_FINAL";
+  passingScore: number;
+  maxAttempts?: number;
+  timeLimit?: number;
+  isRequired: boolean;
+  showCorrectAnswers: boolean;
+  allowRetake: boolean;
+  randomizeQuestions: boolean;
+  availableFrom?: string;
+  availableUntil?: string;
+  questions: Question[];
+};
+
 type Lesson = {
   id?: string;
   title: string;
@@ -39,10 +68,12 @@ type Lesson = {
   contentType: "VIDEO" | "ARTICLE" | "QUIZ";
   videoUrl?: string;
   articleContent?: string;
-  quizUrl?: string;
   videoDuration?: number;
   isFree: boolean;
   sortOrder: number;
+  hasQuiz: boolean;
+  quizRequired: boolean;
+  quiz?: Assessment;
 };
 
 type Module = {
@@ -51,7 +82,13 @@ type Module = {
   description: string;
   sortOrder: number;
   lessons: Lesson[];
+  hasAssessment: boolean;
+  assessmentRequired: boolean;
+  minimumPassingScore: number;
+  requireAllLessonsComplete: boolean;
+  moduleAssessment?: Assessment;
 };
+
 export default function CreateCoursePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -67,6 +104,10 @@ export default function CreateCoursePage() {
       description: "",
       sortOrder: 0,
       lessons: [],
+      hasAssessment: false,
+      assessmentRequired: true,
+      minimumPassingScore: 60,
+      requireAllLessonsComplete: true,
     },
   ]);
 
@@ -89,12 +130,40 @@ export default function CreateCoursePage() {
     discountPrice: "",
     maxStudents: "",
     status: "DRAFT",
+    hasFinalAssessment: true,
+    finalAssessmentRequired: true,
+    minimumCoursePassingScore: 60,
+    requireAllModulesComplete: true,
+    requireAllAssessmentsPassed: true,
   });
 
   // Dynamic arrays
   const [learningOutcomes, setLearningOutcomes] = useState<string[]>([""]);
   const [requirements, setRequirements] = useState<string[]>([""]);
   const [expandedModules, setExpandedModules] = useState<number[]>([]);
+  const [showAddQuiz, setShowAddQuiz] = useState<string | null>(null);
+  const [showAddModuleAssessment, setShowAddModuleAssessment] = useState<
+    string | null
+  >(null);
+  const [editingAssessment, setEditingAssessment] = useState<{
+    type: "lesson" | "module" | "course";
+    moduleIndex?: number;
+    lessonIndex?: number;
+  } | null>(null);
+
+  // Course final assessment
+  const [courseFinalAssessment, setCourseFinalAssessment] =
+    useState<Assessment>({
+      title: "Final Course Assessment",
+      description: "Complete this final assessment to finish the course",
+      assessmentLevel: "COURSE_FINAL",
+      passingScore: 60,
+      isRequired: true,
+      showCorrectAnswers: false,
+      allowRetake: true,
+      randomizeQuestions: false,
+      questions: [],
+    });
 
   // Fetch colleges and categories
   useEffect(() => {
@@ -139,10 +208,7 @@ export default function CreateCoursePage() {
     lessonIndex: number,
     url: string
   ) => {
-    // Update the lesson with the uploaded video URL
     updateLesson(moduleIndex, lessonIndex, "videoUrl", url);
-
-    // Track the uploaded URL for reference
     const key = `${moduleIndex}-${lessonIndex}`;
     setUploadedVideoUrls((prev) => ({
       ...prev,
@@ -150,7 +216,10 @@ export default function CreateCoursePage() {
     }));
   };
 
-  const handleFieldChange = (field: string, value: string | boolean) => {
+  const handleFieldChange = (
+    field: string,
+    value: string | boolean | number
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -190,6 +259,10 @@ export default function CreateCoursePage() {
         description: "",
         sortOrder: modules.length,
         lessons: [],
+        hasAssessment: false,
+        assessmentRequired: true,
+        minimumPassingScore: 60,
+        requireAllLessonsComplete: true,
       },
     ]);
   };
@@ -198,15 +271,12 @@ export default function CreateCoursePage() {
     setModules(modules.filter((_, i) => i !== index));
   };
 
-  const updateModule = (
-    index: number,
-    field: "title" | "description",
-    value: string
-  ) => {
+  const updateModule = (index: number, field: keyof Module, value: any) => {
     const updated = [...modules];
-    updated[index][field] = value;
+    (updated[index] as any)[field] = value;
     setModules(updated);
   };
+
   const addLesson = (moduleIndex: number) => {
     const updatedModules = [...modules];
     updatedModules[moduleIndex].lessons.push({
@@ -215,6 +285,8 @@ export default function CreateCoursePage() {
       contentType: "VIDEO",
       isFree: false,
       sortOrder: updatedModules[moduleIndex].lessons.length,
+      hasQuiz: false,
+      quizRequired: false,
     });
     setModules(updatedModules);
   };
@@ -236,6 +308,188 @@ export default function CreateCoursePage() {
     const updatedModules = [...modules];
     (updatedModules[moduleIndex].lessons[lessonIndex] as any)[field] = value;
     setModules(updatedModules);
+  };
+
+  const toggleQuizForLesson = (moduleIndex: number, lessonIndex: number) => {
+    const updatedModules = [...modules];
+    const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
+
+    if (!lesson.hasQuiz) {
+      // Add quiz
+      lesson.hasQuiz = true;
+      lesson.quiz = {
+        title: `${lesson.title} Quiz`,
+        description: "Test your knowledge from this lesson",
+        assessmentLevel: "LESSON_QUIZ",
+        passingScore: 60,
+        isRequired: false,
+        showCorrectAnswers: true,
+        allowRetake: true,
+        randomizeQuestions: false,
+        questions: [],
+      };
+    } else {
+      // Remove quiz
+      lesson.hasQuiz = false;
+      lesson.quizRequired = false;
+      lesson.quiz = undefined;
+    }
+
+    setModules(updatedModules);
+  };
+
+  const toggleModuleAssessment = (moduleIndex: number) => {
+    const updatedModules = [...modules];
+    const module = updatedModules[moduleIndex];
+
+    if (!module.hasAssessment) {
+      // Add module assessment
+      module.hasAssessment = true;
+      module.moduleAssessment = {
+        title: `${module.title} Assessment`,
+        description: "Module assessment to test your understanding",
+        assessmentLevel: "MODULE_ASSESSMENT",
+        passingScore: module.minimumPassingScore || 60,
+        isRequired: module.assessmentRequired,
+        showCorrectAnswers: false,
+        allowRetake: true,
+        randomizeQuestions: true,
+        questions: [],
+      };
+    } else {
+      // Remove module assessment
+      module.hasAssessment = false;
+      module.moduleAssessment = undefined;
+    }
+
+    setModules(updatedModules);
+  };
+
+  const updateAssessment = (
+    type: "lesson" | "module" | "course",
+    field: keyof Assessment | "questions", // Move required parameter up
+    value: any, // Move required parameter up
+    moduleIndex?: number, // Optional parameters at the end
+    lessonIndex?: number // Optional parameters at the end
+  ) => {
+    if (
+      type === "lesson" &&
+      moduleIndex !== undefined &&
+      lessonIndex !== undefined
+    ) {
+      const updatedModules = [...modules];
+      const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
+      if (lesson.quiz) {
+        (lesson.quiz as any)[field] = value;
+        setModules(updatedModules);
+      }
+    } else if (type === "module" && moduleIndex !== undefined) {
+      const updatedModules = [...modules];
+      const module = updatedModules[moduleIndex];
+      if (module.moduleAssessment) {
+        (module.moduleAssessment as any)[field] = value;
+        setModules(updatedModules);
+      }
+    } else if (type === "course") {
+      setCourseFinalAssessment((prev) => ({ ...prev, [field]: value }));
+    }
+  };
+
+  const addQuestion = (
+    type: "lesson" | "module" | "course",
+    moduleIndex?: number,
+    lessonIndex?: number
+  ) => {
+    const newQuestion: Question = {
+      questionText: "",
+      questionType: "MULTIPLE_CHOICE",
+      options: ["", "", "", ""],
+      correctAnswer: "",
+      points: 1,
+      difficulty: "MEDIUM",
+    };
+
+    updateAssessment(
+      type,
+      "questions",
+      type === "lesson" &&
+        moduleIndex !== undefined &&
+        lessonIndex !== undefined
+        ? [
+            ...(modules[moduleIndex].lessons[lessonIndex].quiz?.questions ||
+              []),
+            newQuestion,
+          ]
+        : type === "module" && moduleIndex !== undefined
+        ? [
+            ...(modules[moduleIndex].moduleAssessment?.questions || []),
+            newQuestion,
+          ]
+        : [...courseFinalAssessment.questions, newQuestion],
+      moduleIndex,
+      lessonIndex
+    );
+  };
+
+  const updateQuestion = (
+    type: "lesson" | "module" | "course",
+    questionIndex: number,
+    field: keyof Question,
+    value: any,
+    moduleIndex?: number,
+    lessonIndex?: number
+  ) => {
+    let questions: Question[] = [];
+
+    if (
+      type === "lesson" &&
+      moduleIndex !== undefined &&
+      lessonIndex !== undefined
+    ) {
+      questions = [
+        ...(modules[moduleIndex].lessons[lessonIndex].quiz?.questions || []),
+      ];
+    } else if (type === "module" && moduleIndex !== undefined) {
+      questions = [...(modules[moduleIndex].moduleAssessment?.questions || [])];
+    } else if (type === "course") {
+      questions = [...courseFinalAssessment.questions];
+    }
+
+    if (questionIndex < questions.length) {
+      (questions[questionIndex] as any)[field] = value;
+      updateAssessment(type, "questions", questions, moduleIndex, lessonIndex);
+    }
+  };
+
+  const removeQuestion = (
+    type: "lesson" | "module" | "course",
+    questionIndex: number, // Move required parameter up
+    moduleIndex?: number,
+    lessonIndex?: number
+  ) => {
+    let questions: Question[] = [];
+
+    if (
+      type === "lesson" &&
+      moduleIndex !== undefined &&
+      lessonIndex !== undefined
+    ) {
+      questions =
+        modules[moduleIndex].lessons[lessonIndex].quiz?.questions || [];
+    } else if (type === "module" && moduleIndex !== undefined) {
+      questions = modules[moduleIndex].moduleAssessment?.questions || [];
+    } else if (type === "course") {
+      questions = courseFinalAssessment.questions;
+    }
+
+    const updatedQuestions = questions.filter((_, i) => i !== questionIndex);
+    updateAssessment(
+      type,
+      "questions",
+      updatedQuestions,
+      moduleIndex,
+      lessonIndex
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -268,6 +522,11 @@ export default function CreateCoursePage() {
         ? Number(formData.discountPrice)
         : null,
       maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
+      hasFinalAssessment: formData.hasFinalAssessment,
+      finalAssessmentRequired: formData.finalAssessmentRequired,
+      minimumCoursePassingScore: Number(formData.minimumCoursePassingScore),
+      requireAllModulesComplete: formData.requireAllModulesComplete,
+      requireAllAssessmentsPassed: formData.requireAllAssessmentsPassed,
     };
 
     try {
@@ -313,6 +572,10 @@ export default function CreateCoursePage() {
                 body: JSON.stringify({
                   title: module.title,
                   description: module.description,
+                  hasAssessment: module.hasAssessment,
+                  assessmentRequired: module.assessmentRequired,
+                  minimumPassingScore: module.minimumPassingScore,
+                  requireAllLessonsComplete: module.requireAllLessonsComplete,
                   sortOrder: i,
                 }),
               }
@@ -321,11 +584,30 @@ export default function CreateCoursePage() {
             const moduleData = await moduleRes.json();
 
             if (moduleData.success) {
+              // Add module assessment if exists
+              if (module.hasAssessment && module.moduleAssessment) {
+                // For module assessment:
+                // For module assessment
+                // For module assessment
+                await fetch(
+                  `/api/courses?id=${courseId}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${moduleData.data.id}`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      ...module.moduleAssessment,
+                      createdBy,
+                      questions: module.moduleAssessment?.questions || [],
+                    }),
+                  }
+                );
+              }
+
               // Add lessons for this module
               for (let j = 0; j < module.lessons.length; j++) {
                 const lesson = module.lessons[j];
                 if (lesson.title.trim()) {
-                  await fetch(
+                  const lessonRes = await fetch(
                     `/api/courses?id=${courseId}&lessons=true&moduleId=${moduleData.data.id}`,
                     {
                       method: "POST",
@@ -336,17 +618,53 @@ export default function CreateCoursePage() {
                         contentType: lesson.contentType,
                         videoUrl: lesson.videoUrl || null,
                         articleContent: lesson.articleContent || null,
-                        quizUrl: lesson.quizUrl || null,
                         videoDuration: lesson.videoDuration || null,
                         isFree: lesson.isFree,
+                        hasQuiz: lesson.hasQuiz,
+                        quizRequired: lesson.quizRequired,
                         sortOrder: j,
                       }),
                     }
                   );
+
+                  const lessonData = await lessonRes.json();
+
+                  if (lessonData.success && lesson.hasQuiz && lesson.quiz) {
+                    // Add lesson quiz
+                    await fetch(
+                      `/api/courses?id=${courseId}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lessonData.data.id}`,
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          ...lesson.quiz,
+                          createdBy,
+                          questions: lesson.quiz?.questions || [],
+                        }),
+                      }
+                    );
+                  }
                 }
               }
             }
           }
+        }
+
+        // Add course final assessment
+        if (formData.hasFinalAssessment) {
+          // For course final assessment
+          await fetch(
+            `/api/courses?id=${courseId}&assessments=true&assessmentLevel=COURSE_FINAL`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...courseFinalAssessment,
+                createdBy,
+                questions: courseFinalAssessment.questions,
+              }),
+            }
+          );
         }
 
         Swal.fire({
@@ -376,14 +694,376 @@ export default function CreateCoursePage() {
       setLoading(false);
     }
   };
+
   const toggleModule = (index: number) => {
     setExpandedModules((prev) =>
       prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
     );
   };
+
+  const renderAssessmentEditor = () => {
+    if (!editingAssessment) return null;
+
+    const { type, moduleIndex, lessonIndex } = editingAssessment;
+
+    let assessment: Assessment | undefined;
+    let title = "";
+
+    if (
+      type === "lesson" &&
+      moduleIndex !== undefined &&
+      lessonIndex !== undefined
+    ) {
+      assessment = modules[moduleIndex]?.lessons[lessonIndex]?.quiz;
+      title = `${modules[moduleIndex]?.lessons[lessonIndex]?.title} Quiz`;
+    } else if (type === "module" && moduleIndex !== undefined) {
+      assessment = modules[moduleIndex]?.moduleAssessment;
+      title = `${modules[moduleIndex]?.title} Assessment`;
+    } else if (type === "course") {
+      assessment = courseFinalAssessment;
+      title = "Final Course Assessment";
+    }
+
+    if (!assessment) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">Edit {title}</h3>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setEditingAssessment(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <Label>Assessment Title</Label>
+                <Input
+                  value={assessment.title}
+                  onChange={(e) =>
+                    updateAssessment(
+                      type,
+                      "title",
+                      e.target.value,
+                      moduleIndex,
+                      lessonIndex
+                    )
+                  }
+                  placeholder="Assessment title"
+                />
+              </div>
+
+              <div>
+                <Label>Description</Label>
+                <Textarea
+                  value={assessment.description || ""}
+                  onChange={(e) =>
+                    updateAssessment(
+                      type,
+                      "description",
+                      e.target.value,
+                      moduleIndex,
+                      lessonIndex
+                    )
+                  }
+                  placeholder="Assessment description"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Passing Score (%)</Label>
+                  <Input
+                    type="number"
+                    value={assessment.passingScore}
+                    onChange={(e) =>
+                      updateAssessment(
+                        type,
+                        "passingScore",
+                        Number(e.target.value),
+                        moduleIndex,
+                        lessonIndex
+                      )
+                    }
+                    min={0}
+                    max={100}
+                  />
+                </div>
+
+                <div>
+                  <Label>Time Limit (minutes, optional)</Label>
+                  <Input
+                    type="number"
+                    value={assessment.timeLimit || ""}
+                    onChange={(e) =>
+                      updateAssessment(
+                        type,
+                        "timeLimit",
+                        e.target.value ? Number(e.target.value) : undefined,
+                        moduleIndex,
+                        lessonIndex
+                      )
+                    }
+                    placeholder="No limit"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Questions ({assessment.questions.length})</Label>
+                  <Button
+                    type="button"
+                    onClick={() => addQuestion(type, moduleIndex, lessonIndex)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Question
+                  </Button>
+                </div>
+
+                {assessment.questions.map((question, qIndex) => (
+                  <div key={qIndex} className="border rounded p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <Label>Question {qIndex + 1}</Label>
+                        <Textarea
+                          value={question.questionText}
+                          onChange={(e) =>
+                            updateQuestion(
+                              type,
+                              qIndex,
+                              "questionText",
+                              e.target.value,
+                              moduleIndex,
+                              lessonIndex
+                            )
+                          }
+                          placeholder="Enter question text..."
+                          rows={2}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          removeQuestion(type, qIndex, moduleIndex, lessonIndex)
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Question Type</Label>
+                        <Select
+                          value={question.questionType}
+                          onValueChange={(
+                            value:
+                              | "MULTIPLE_CHOICE"
+                              | "TRUE_FALSE"
+                              | "SHORT_ANSWER"
+                          ) =>
+                            updateQuestion(
+                              type,
+                              qIndex,
+                              "questionType",
+                              value,
+                              moduleIndex,
+                              lessonIndex
+                            )
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MULTIPLE_CHOICE">
+                              Multiple Choice
+                            </SelectItem>
+                            <SelectItem value="TRUE_FALSE">
+                              True/False
+                            </SelectItem>
+                            <SelectItem value="SHORT_ANSWER">
+                              Short Answer
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Points</Label>
+                        <Input
+                          type="number"
+                          value={question.points || 1}
+                          onChange={(e) =>
+                            updateQuestion(
+                              type,
+                              qIndex,
+                              "points",
+                              Number(e.target.value),
+                              moduleIndex,
+                              lessonIndex
+                            )
+                          }
+                          min={1}
+                        />
+                      </div>
+                    </div>
+
+                    {question.questionType === "MULTIPLE_CHOICE" && (
+                      <div className="space-y-2">
+                        <Label>Options</Label>
+                        {(question.options || []).map((option, optionIndex) => (
+                          <div
+                            key={optionIndex}
+                            className="flex items-center gap-2"
+                          >
+                            <Input
+                              value={option}
+                              onChange={(e) => {
+                                const newOptions = [
+                                  ...(question.options || []),
+                                ];
+                                newOptions[optionIndex] = e.target.value;
+                                updateQuestion(
+                                  type,
+                                  qIndex,
+                                  "options",
+                                  newOptions,
+                                  moduleIndex,
+                                  lessonIndex
+                                );
+                              }}
+                              placeholder={`Option ${optionIndex + 1}`}
+                            />
+                            <input
+                              type="radio"
+                              name={`correct-${qIndex}`}
+                              checked={question.correctAnswer === option}
+                              onChange={() =>
+                                updateQuestion(
+                                  type,
+                                  qIndex,
+                                  "correctAnswer",
+                                  option,
+                                  moduleIndex,
+                                  lessonIndex
+                                )
+                              }
+                              className="h-4 w-4"
+                            />
+                            <Label>Correct</Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {question.questionType === "TRUE_FALSE" && (
+                      <div className="space-y-2">
+                        <Label>Correct Answer</Label>
+                        <Select
+                          value={question.correctAnswer}
+                          onValueChange={(value) =>
+                            updateQuestion(
+                              type,
+                              qIndex,
+                              "correctAnswer",
+                              value,
+                              moduleIndex,
+                              lessonIndex
+                            )
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="true">True</SelectItem>
+                            <SelectItem value="false">False</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {question.questionType === "SHORT_ANSWER" && (
+                      <div>
+                        <Label>Correct Answer</Label>
+                        <Input
+                          value={question.correctAnswer}
+                          onChange={(e) =>
+                            updateQuestion(
+                              type,
+                              qIndex,
+                              "correctAnswer",
+                              e.target.value,
+                              moduleIndex,
+                              lessonIndex
+                            )
+                          }
+                          placeholder="Expected answer"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <Label>Explanation (optional)</Label>
+                      <Textarea
+                        value={question.explanation || ""}
+                        onChange={(e) =>
+                          updateQuestion(
+                            type,
+                            qIndex,
+                            "explanation",
+                            e.target.value,
+                            moduleIndex,
+                            lessonIndex
+                          )
+                        }
+                        placeholder="Explanation for the answer"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingAssessment(null)}
+                >
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setEditingAssessment(null)}
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className=" mx-auto ">
         {/* Header */}
         <div className="mb-8">
           <Link
@@ -587,6 +1267,115 @@ export default function CreateCoursePage() {
                       handleFieldChange("maxStudents", e.target.value)
                     }
                     placeholder="50"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Course Completion Settings */}
+          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-green-50 border-b">
+              <CardTitle className="text-xl text-gray-900">
+                Course Completion Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-medium">Final Assessment</Label>
+                    <p className="text-sm text-gray-500">
+                      Add a final assessment for the course
+                    </p>
+                  </div>
+                  <Switch
+                    checked={formData.hasFinalAssessment}
+                    onCheckedChange={(checked) =>
+                      handleFieldChange("hasFinalAssessment", checked)
+                    }
+                  />
+                </div>
+
+                {formData.hasFinalAssessment && (
+                  <div className="border rounded p-4 space-y-4 bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="font-medium">
+                          Final Assessment Required
+                        </Label>
+                        <p className="text-sm text-gray-500">
+                          Students must pass final assessment to complete course
+                        </p>
+                      </div>
+                      <Switch
+                        checked={formData.finalAssessmentRequired}
+                        onCheckedChange={(checked) =>
+                          handleFieldChange("finalAssessmentRequired", checked)
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Minimum Passing Score for Course</Label>
+                      <Input
+                        type="number"
+                        value={formData.minimumCoursePassingScore}
+                        onChange={(e) =>
+                          handleFieldChange(
+                            "minimumCoursePassingScore",
+                            Number(e.target.value)
+                          )
+                        }
+                        min={0}
+                        max={100}
+                        placeholder="60"
+                      />
+                    </div>
+
+                    <Button
+                      type="button"
+                      onClick={() => setEditingAssessment({ type: "course" })}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Configure Final Assessment
+                    </Button>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-medium">
+                      Require All Modules Complete
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      Students must complete all modules to finish course
+                    </p>
+                  </div>
+                  <Switch
+                    checked={formData.requireAllModulesComplete}
+                    onCheckedChange={(checked) =>
+                      handleFieldChange("requireAllModulesComplete", checked)
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-medium">
+                      Require All Assessments Passed
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      Students must pass all required assessments
+                    </p>
+                  </div>
+                  <Switch
+                    checked={formData.requireAllAssessmentsPassed}
+                    onCheckedChange={(checked) =>
+                      handleFieldChange("requireAllAssessmentsPassed", checked)
+                    }
                   />
                 </div>
               </div>
@@ -808,16 +1597,29 @@ export default function CreateCoursePage() {
                         Module {moduleIndex + 1}
                       </Label>
                     </div>
-                    {modules.length > 1 && (
+                    <div className="flex items-center gap-2">
                       <Button
                         type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeModule(moduleIndex)}
+                        onClick={() => toggleModuleAssessment(moduleIndex)}
+                        variant={module.hasAssessment ? "default" : "outline"}
+                        size="sm"
                       >
-                        <X className="h-4 w-4" />
+                        <FileText className="h-4 w-4 mr-2" />
+                        {module.hasAssessment
+                          ? "Assessment Added"
+                          : "Add Assessment"}
                       </Button>
-                    )}
+                      {modules.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeModule(moduleIndex)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   <Input
@@ -835,6 +1637,72 @@ export default function CreateCoursePage() {
                     placeholder="Module description (optional)..."
                     rows={2}
                   />
+
+                  {module.hasAssessment && (
+                    <div className="border rounded p-3 space-y-3 bg-blue-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                          <Label className="font-medium text-blue-800">
+                            Module Assessment
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Button
+                            type="button"
+                            onClick={() =>
+                              setEditingAssessment({
+                                type: "module",
+                                moduleIndex,
+                              })
+                            }
+                            variant="outline"
+                            size="sm"
+                          >
+                            Configure
+                          </Button>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`module-required-${moduleIndex}`}
+                              checked={module.assessmentRequired}
+                              onChange={(e) =>
+                                updateModule(
+                                  moduleIndex,
+                                  "assessmentRequired",
+                                  e.target.checked
+                                )
+                              }
+                              className="rounded"
+                            />
+                            <Label
+                              htmlFor={`module-required-${moduleIndex}`}
+                              className="text-sm"
+                            >
+                              Required
+                            </Label>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm">Minimum Passing Score</Label>
+                        <Input
+                          type="number"
+                          value={module.minimumPassingScore}
+                          onChange={(e) =>
+                            updateModule(
+                              moduleIndex,
+                              "minimumPassingScore",
+                              Number(e.target.value)
+                            )
+                          }
+                          min={0}
+                          max={100}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Lessons Section */}
                   {expandedModules.includes(moduleIndex) && (
@@ -863,18 +1731,26 @@ export default function CreateCoursePage() {
                             <Label className="text-xs font-medium">
                               Lesson {lessonIndex + 1}
                             </Label>
-                            {module.lessons.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() =>
-                                  removeLesson(moduleIndex, lessonIndex)
-                                }
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {lesson.hasQuiz && (
+                                <div className="flex items-center gap-1 text-blue-600">
+                                  <FileText className="h-3 w-3" />
+                                  <span className="text-xs">Quiz</span>
+                                </div>
+                              )}
+                              {module.lessons.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() =>
+                                    removeLesson(moduleIndex, lessonIndex)
+                                  }
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
                           </div>
 
                           <Input
@@ -906,7 +1782,7 @@ export default function CreateCoursePage() {
                             className="text-sm"
                           />
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
                               <Label
                                 htmlFor={`content-type-${moduleIndex}-${lessonIndex}`}
@@ -916,9 +1792,7 @@ export default function CreateCoursePage() {
                               </Label>
                               <Select
                                 value={lesson.contentType}
-                                onValueChange={(
-                                  value: "VIDEO" | "ARTICLE" | "QUIZ"
-                                ) =>
+                                onValueChange={(value: "VIDEO" | "ARTICLE") =>
                                   updateLesson(
                                     moduleIndex,
                                     lessonIndex,
@@ -935,7 +1809,6 @@ export default function CreateCoursePage() {
                                   <SelectItem value="ARTICLE">
                                     Article
                                   </SelectItem>
-                                  <SelectItem value="QUIZ">Quiz</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -962,13 +1835,81 @@ export default function CreateCoursePage() {
                                 Free Lesson
                               </Label>
                             </div>
+
+                            <div className="flex items-center gap-2 pt-6">
+                              <input
+                                type="checkbox"
+                                id={`has-quiz-${moduleIndex}-${lessonIndex}`}
+                                checked={lesson.hasQuiz}
+                                onChange={() =>
+                                  toggleQuizForLesson(moduleIndex, lessonIndex)
+                                }
+                                className="rounded"
+                              />
+                              <Label
+                                htmlFor={`has-quiz-${moduleIndex}-${lessonIndex}`}
+                                className="text-xs"
+                              >
+                                Add Quiz
+                              </Label>
+                            </div>
                           </div>
+
+                          {lesson.hasQuiz && (
+                            <div className="border rounded p-3 space-y-2 bg-blue-50">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-3 w-3 text-blue-600" />
+                                  <Label className="text-xs font-medium text-blue-800">
+                                    Lesson Quiz
+                                  </Label>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingAssessment({
+                                        type: "lesson",
+                                        moduleIndex,
+                                        lessonIndex,
+                                      })
+                                    }
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 text-xs"
+                                  >
+                                    Configure Quiz
+                                  </Button>
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="checkbox"
+                                      id={`quiz-required-${moduleIndex}-${lessonIndex}`}
+                                      checked={lesson.quizRequired}
+                                      onChange={(e) =>
+                                        updateLesson(
+                                          moduleIndex,
+                                          lessonIndex,
+                                          "quizRequired",
+                                          e.target.checked
+                                        )
+                                      }
+                                      className="rounded h-3 w-3"
+                                    />
+                                    <Label
+                                      htmlFor={`quiz-required-${moduleIndex}-${lessonIndex}`}
+                                      className="text-xs"
+                                    >
+                                      Required
+                                    </Label>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
                           {lesson.contentType === "VIDEO" && (
                             <div className="space-y-3">
                               <Label className="text-xs">Video Content</Label>
-
-                              {/* URL Input (for external videos like YouTube) */}
                               <Input
                                 value={lesson.videoUrl || ""}
                                 onChange={(e) =>
@@ -982,12 +1923,9 @@ export default function CreateCoursePage() {
                                 placeholder="YouTube URL or leave empty for upload..."
                                 className="text-sm"
                               />
-
                               <div className="text-xs text-gray-500">
                                 - OR -
                               </div>
-
-                              {/* File Upload Component */}
                               <FileUpload
                                 onUploadComplete={(url) =>
                                   handleVideoUploadComplete(
@@ -1001,8 +1939,6 @@ export default function CreateCoursePage() {
                                 label="Upload Video File"
                                 value={lesson.videoUrl || ""}
                               />
-
-                              {/* Duration input for uploaded videos */}
                               {lesson.videoUrl &&
                                 lesson.videoUrl.includes(
                                   "s3.amazonaws.com"
@@ -1048,21 +1984,6 @@ export default function CreateCoursePage() {
                               className="text-sm"
                             />
                           )}
-                          {lesson.contentType === "QUIZ" && (
-                            <Input
-                              value={lesson.quizUrl || ""}
-                              onChange={(e) =>
-                                updateLesson(
-                                  moduleIndex,
-                                  lessonIndex,
-                                  "quizUrl",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Quiz URL..."
-                              className="text-sm"
-                            />
-                          )}
                         </div>
                       ))}
                     </div>
@@ -1071,6 +1992,7 @@ export default function CreateCoursePage() {
               ))}
             </CardContent>
           </Card>
+
           {/* Additional Info */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-50 border-b">
@@ -1110,6 +2032,9 @@ export default function CreateCoursePage() {
           </div>
         </form>
       </div>
+
+      {/* Assessment Editor Modal */}
+      {renderAssessmentEditor()}
     </div>
   );
 }
