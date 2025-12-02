@@ -22,6 +22,7 @@ import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { useCurrentUser } from "@/hooks/auth";
 import { FileUpload } from "@/components/Videoupload";
+import { NumberInput } from "@/components/ui/number-input";
 
 type College = {
   id: string;
@@ -95,6 +96,9 @@ export default function CreateCoursePage() {
   const [colleges, setColleges] = useState<College[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const user = useCurrentUser();
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryLoading, setNewCategoryLoading] = useState(false);
   const [uploadedVideoUrls, setUploadedVideoUrls] = useState<
     Record<string, string>
   >({});
@@ -189,19 +193,14 @@ export default function CreateCoursePage() {
 
     fetchData();
   }, []);
-
-  // Auto-generate slug from title
-  useEffect(() => {
-    if (formData.title && !formData.slug) {
-      const slug = formData.title
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, "")
-        .replace(/[\s_-]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      setFormData((prev) => ({ ...prev, slug }));
-    }
-  }, [formData.title]);
+  const generateSlug = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, "") // Remove special characters
+      .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with hyphens
+      .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
+  };
 
   const handleVideoUploadComplete = (
     moduleIndex: number,
@@ -215,12 +214,59 @@ export default function CreateCoursePage() {
       [key]: url,
     }));
   };
+  const createNewCategory = async () => {
+    if (!newCategoryName.trim()) return;
+
+    setNewCategoryLoading(true);
+    try {
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newCategoryName.trim(),
+          isActive: true,
+          sortOrder: categories.length,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setCategories([...categories, data.data]);
+        setFormData((prev) => ({ ...prev, categoryId: data.data.id }));
+        setShowNewCategory(false);
+        setNewCategoryName("");
+        Swal.fire({
+          icon: "success",
+          title: "Category Created!",
+          text: "New category has been added successfully",
+          timer: 1500,
+        });
+      }
+    } catch (error) {
+      console.error("Error creating category:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to create category",
+      });
+    } finally {
+      setNewCategoryLoading(false);
+    }
+  };
 
   const handleFieldChange = (
     field: string,
     value: string | boolean | number
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+
+    // Auto-generate slug when title changes and slug is empty
+    if (field === "title" && typeof value === "string") {
+      if (value.trim() && !formData.slug) {
+        const generatedSlug = generateSlug(value);
+        setFormData((prev) => ({ ...prev, slug: generatedSlug }));
+      }
+    }
   };
 
   const addLearningOutcome = () => {
@@ -586,9 +632,6 @@ export default function CreateCoursePage() {
             if (moduleData.success) {
               // Add module assessment if exists
               if (module.hasAssessment && module.moduleAssessment) {
-                // For module assessment:
-                // For module assessment
-                // For module assessment
                 await fetch(
                   `/api/courses?id=${courseId}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${moduleData.data.id}`,
                   {
@@ -1101,7 +1144,10 @@ export default function CreateCoursePage() {
                   <Input
                     id="title"
                     value={formData.title}
-                    onChange={(e) => handleFieldChange("title", e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      handleFieldChange("title", value);
+                    }}
                     placeholder="Web Development Bootcamp"
                     required
                   />
@@ -1149,23 +1195,69 @@ export default function CreateCoursePage() {
 
                 <div>
                   <Label htmlFor="categoryId">Category *</Label>
-                  <Select
-                    value={formData.categoryId}
-                    onValueChange={(value) =>
-                      handleFieldChange("categoryId", value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
+                  <div className="space-y-2">
+                    <Select
+                      value={formData.categoryId}
+                      onValueChange={(value) => {
+                        if (value === "new-category") {
+                          setShowNewCategory(true);
+                        } else {
+                          handleFieldChange("categoryId", value);
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                        <SelectItem
+                          value="new-category"
+                          className="text-blue-600 font-medium"
+                        >
+                          + Create New Category
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                      </SelectContent>
+                    </Select>
+
+                    {showNewCategory && (
+                      <div className="flex gap-2">
+                        <Input
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          placeholder="Enter new category name"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") createNewCategory();
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          onClick={createNewCategory}
+                          disabled={
+                            newCategoryLoading || !newCategoryName.trim()
+                          }
+                          size="sm"
+                        >
+                          {newCategoryLoading ? "Adding..." : "Add"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setShowNewCategory(false);
+                            setNewCategoryName("");
+                          }}
+                          size="sm"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -1240,7 +1332,7 @@ export default function CreateCoursePage() {
                       <SelectItem value="APPROVED">Approved</SelectItem>
                       <SelectItem value="REJECTED">Rejected</SelectItem>
                       <SelectItem value="PUBLISHED">Published</SelectItem>
-                      <SelectItem value="ARCHIVED">Archived</SelectItem>
+                      {/* <SelectItem value="ARCHIVED">Archived</SelectItem> */}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1259,9 +1351,9 @@ export default function CreateCoursePage() {
 
                 <div>
                   <Label htmlFor="maxStudents">Max Students</Label>
-                  <Input
+                  <NumberInput
                     id="maxStudents"
-                    type="number"
+                   
                     value={formData.maxStudents}
                     onChange={(e) =>
                       handleFieldChange("maxStudents", e.target.value)
