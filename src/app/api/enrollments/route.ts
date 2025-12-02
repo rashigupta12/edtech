@@ -37,8 +37,7 @@ const errorResponse = (message: string, code = 'ERROR', status = 400): NextRespo
 // CONTROLLERS - COURSE ENROLLMENTS
 // ===========================
 
-// LIST USER'S ENROLLMENTS
-// LIST USER'S ENROLLMENTS
+// Update this function in your enrollments API
 const listUserEnrollments = async (userId: string) => {
   const enrollments = await db
     .select({
@@ -78,16 +77,35 @@ const listUserEnrollments = async (userId: string) => {
           )
         );
 
-      // Calculate percentage
+      // Calculate percentage (ensure it doesn't exceed 100%)
       let actualProgress = enrollment.progress;
       if (totalLessons.count > 0) {
-        actualProgress = Math.round((completedLessons.count / totalLessons.count) * 100);
+        const calculatedProgress = Math.round((completedLessons.count / totalLessons.count) * 100);
+        // Cap at 100%
+        actualProgress = Math.min(calculatedProgress, 100);
         
         // Update enrollment progress in database if different
         if (actualProgress !== enrollment.progress) {
           await db
             .update(EnrollmentsTable)
-            .set({ progress: actualProgress })
+            .set({ 
+              progress: actualProgress,
+              completedLessons: completedLessons.count,
+              totalLessons: totalLessons.count,
+              updatedAt: new Date()
+            })
+            .where(eq(EnrollmentsTable.id, enrollment.id));
+        }
+      } else {
+        // If no lessons, progress should be 0
+        actualProgress = 0;
+        if (enrollment.progress !== 0) {
+          await db
+            .update(EnrollmentsTable)
+            .set({ 
+              progress: 0,
+              updatedAt: new Date()
+            })
             .where(eq(EnrollmentsTable.id, enrollment.id));
         }
       }
@@ -95,6 +113,8 @@ const listUserEnrollments = async (userId: string) => {
       return {
         ...enrollment,
         progress: actualProgress,
+        completedLessons: completedLessons.count,
+        totalLessons: totalLessons.count
       };
     })
   );

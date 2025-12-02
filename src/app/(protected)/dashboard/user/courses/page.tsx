@@ -10,7 +10,6 @@ import { useCurrentUser } from "@/hooks/auth";
 import {
   BookOpen,
   PlayCircle,
-  
   ChevronRight,
   BarChart3,
   Calendar,
@@ -61,46 +60,32 @@ export default function UserCoursesPage() {
       try {
         setLoading(true);
 
-        // Fetch enrollments
-        const res1 = await fetch(`/api/enrollments?userId=${userId}`);
-        const data1 = await res1.json();
-        const enrollmentsData = data1.data || [];
+        // Fetch enrollments with accurate progress (single API call)
+        const res = await fetch(`/api/enrollments?userId=${userId}`);
+        const data = await res.json();
 
-        // For each enrollment, fetch the actual progress
-        const enrollmentsWithProgress = await Promise.all(
-          enrollmentsData.map(async (enrollment: CourseEnrollment) => {
-            try {
-              // Fetch progress from the progress API
-              const progressRes = await fetch(
-                `/api/progress?userId=${userId}&courseId=${enrollment.courseId}`
-              );
-              if (progressRes.ok) {
-                const progressData = await progressRes.json();
-                return {
-                  ...enrollment,
-                  progress:
-                    progressData.data?.progressPercentage ||
-                    enrollment.progress,
-                };
-              }
-              return enrollment;
-            } catch (error) {
-              console.error("Error fetching progress:", error);
-              return enrollment;
-            }
-          })
-        );
+        if (data.success) {
+          const enrollmentsData = data.data || [];
 
-        setEnrollments(enrollmentsWithProgress);
+          // Filter out any enrollments with progress > 100%
+          const validEnrollments = enrollmentsData.map(
+            (enrollment: CourseEnrollment) => ({
+              ...enrollment,
+              progress: Math.min(enrollment.progress, 100), // Cap at 100%
+            })
+          );
 
-        // Fetch stats
+          setEnrollments(validEnrollments);
+        }
+
+        // Fetch stats separately
         const res2 = await fetch(
           `/api/enrollments?stats=true&userId=${userId}`
         );
         const data2 = await res2.json();
         setStats(data2.data || { total: 0, active: 0, completed: 0 });
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching data:", err);
       } finally {
         setLoading(false);
       }
@@ -296,8 +281,8 @@ export default function UserCoursesPage() {
                   Start Your Learning Journey
                 </h3>
                 <p className="text-gray-600 max-w-md mx-auto mb-8">
-                  You haven&apos;t enrolled in any courses yet. Explore our catalog
-                  and begin your path to knowledge.
+                  You haven&apos;t enrolled in any courses yet. Explore our
+                  catalog and begin your path to knowledge.
                 </p>
                 <Button
                   className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl px-8 py-6 text-lg"
@@ -322,7 +307,8 @@ export default function UserCoursesPage() {
                     <div className="lg:w-80 relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 min-h-[240px]">
                       {course.courseThumbnail ? (
                         <img
-                          src={course.courseThumbnail}
+                          // src={course.courseThumbnail}
+                          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTc9APxkj0xClmrU3PpMZglHQkx446nQPG6lA&s"
                           alt={course.courseTitle}
                           className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
@@ -414,47 +400,50 @@ export default function UserCoursesPage() {
 
                           {/* Action Buttons */}
                           <div className="flex pt-2 gap-4">
-  {/* Start / Continue Button */}
-  <div>
-    <Button
-      size="sm"
-      className="group bg-gradient-to-r from-green-600 to-emerald-700 
+                            {/* Start / Continue Button */}
+                            <div>
+                              <Button
+                                size="sm"
+                                className="group bg-gradient-to-r from-green-600 to-emerald-700 
       hover:from-green-700 hover:to-emerald-800 text-white shadow-md 
       hover:shadow-lg px-6 py-2 text-[15px]"
-      onClick={() =>
-        router.push(`/dashboard/user/courses/${course.courseId}/learn`)
-      }
-    >
-      {course.progress === 0 ? (
-        <>
-          <PlayCircle className="h-5 w-5 mr-2" />
-          Start
-        </>
-      ) : (
-        <>
-          <ChevronRight className="h-5 w-5 mr-2 group-hover:translate-x-1 transition-transform" />
-          Continue
-        </>
-      )}
-    </Button>
-  </div>
+                                onClick={() =>
+                                  router.push(
+                                    `/dashboard/user/courses/${course.courseId}/learn`
+                                  )
+                                }
+                              >
+                                {course.progress === 0 ? (
+                                  <>
+                                    <PlayCircle className="h-5 w-5 mr-2" />
+                                    Start
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronRight className="h-5 w-5 mr-2 group-hover:translate-x-1 transition-transform" />
+                                    Continue
+                                  </>
+                                )}
+                              </Button>
+                            </div>
 
-  {/* Details Button */}
-  <div>
-    <Button
-      size="sm"
-      variant="outline"
-      className="border-gray-300 hover:border-emerald-500 hover:bg-emerald-50 
+                            {/* Details Button */}
+                            <div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-gray-300 hover:border-emerald-500 hover:bg-emerald-50 
       text-gray-700 hover:text-emerald-700 px-10 py-2 text-[15px]"
-      onClick={() =>
-        router.push(`/dashboard/user/courses/${course.courseId}`)
-      }
-    >
-      Details
-    </Button>
-  </div>
-</div>
-
+                                onClick={() =>
+                                  router.push(
+                                    `/dashboard/user/courses/${course.courseId}`
+                                  )
+                                }
+                              >
+                                Details
+                              </Button>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Quick Links */}
