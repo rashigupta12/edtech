@@ -1035,6 +1035,7 @@ const deleteLesson = async (id: string) => {
 };
 
 // GET COURSE CURRICULUM WITH LESSONS
+// GET COURSE CURRICULUM WITH LESSONS (Updated to include assessment questions)
 const getCourseCurriculumWithLessons = async (id: string) => {
   const [course] = await db
     .select()
@@ -1052,6 +1053,37 @@ const getCourseCurriculumWithLessons = async (id: string) => {
     .from(CourseModulesTable)
     .where(eq(CourseModulesTable.courseId, id))
     .orderBy(CourseModulesTable.sortOrder);
+
+  // Helper function to get assessment with questions
+  const getAssessmentWithQuestions = async (assessmentId: string) => {
+    if (!assessmentId) return null;
+    
+    // Get assessment details
+    const [assessment] = await db
+      .select()
+      .from(AssessmentsTable)
+      .where(eq(AssessmentsTable.id, assessmentId))
+      .limit(1);
+
+    if (!assessment) return null;
+
+    // Get questions for this assessment
+    const questions = await db
+      .select()
+      .from(AssessmentQuestionsTable)
+      .where(
+        and(
+          eq(AssessmentQuestionsTable.assessmentId, assessmentId),
+          eq(AssessmentQuestionsTable.isActive, true)
+        )
+      )
+      .orderBy(AssessmentQuestionsTable.sortOrder);
+
+    return {
+      ...assessment,
+      questions: questions || [],
+    };
+  };
 
   // Get lessons for each module with completion rules
   const modulesWithLessons = await Promise.all(
@@ -1101,6 +1133,25 @@ const getCourseCurriculumWithLessons = async (id: string) => {
                 )
               )
               .limit(1);
+
+            // Get questions for lesson quiz
+            if (quiz) {
+              const questions = await db
+                .select()
+                .from(AssessmentQuestionsTable)
+                .where(
+                  and(
+                    eq(AssessmentQuestionsTable.assessmentId, quiz.id),
+                    eq(AssessmentQuestionsTable.isActive, true)
+                  )
+                )
+                .orderBy(AssessmentQuestionsTable.sortOrder);
+
+              quiz = {
+                ...quiz,
+                questions: questions || [],
+              };
+            }
           }
 
           return {
@@ -1111,7 +1162,7 @@ const getCourseCurriculumWithLessons = async (id: string) => {
         })
       );
 
-      // Get module assessment if exists
+      // Get module assessment with questions if exists
       let moduleAssessment = null;
       if (module.hasAssessment) {
         [moduleAssessment] = await db
@@ -1124,6 +1175,25 @@ const getCourseCurriculumWithLessons = async (id: string) => {
             )
           )
           .limit(1);
+
+        if (moduleAssessment) {
+          // Get questions for module assessment
+          const questions = await db
+            .select()
+            .from(AssessmentQuestionsTable)
+            .where(
+              and(
+                eq(AssessmentQuestionsTable.assessmentId, moduleAssessment.id),
+                eq(AssessmentQuestionsTable.isActive, true)
+              )
+            )
+            .orderBy(AssessmentQuestionsTable.sortOrder);
+
+          moduleAssessment = {
+            ...moduleAssessment,
+            questions: questions || [],
+          };
+        }
       }
 
       return {
@@ -1134,7 +1204,7 @@ const getCourseCurriculumWithLessons = async (id: string) => {
     })
   );
 
-  // Get course final assessment
+  // Get course final assessment with questions
   let finalAssessment = null;
   if (course.hasFinalAssessment) {
     [finalAssessment] = await db
@@ -1147,6 +1217,25 @@ const getCourseCurriculumWithLessons = async (id: string) => {
         )
       )
       .limit(1);
+
+    if (finalAssessment) {
+      // Get questions for final assessment
+      const questions = await db
+        .select()
+        .from(AssessmentQuestionsTable)
+        .where(
+          and(
+            eq(AssessmentQuestionsTable.assessmentId, finalAssessment.id),
+            eq(AssessmentQuestionsTable.isActive, true)
+          )
+        )
+        .orderBy(AssessmentQuestionsTable.sortOrder);
+
+      finalAssessment = {
+        ...finalAssessment,
+        questions: questions || [],
+      };
+    }
   }
 
   const curriculum = {

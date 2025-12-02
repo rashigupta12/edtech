@@ -15,6 +15,9 @@ import {
   Calendar,
   Target,
   Sparkles,
+  Award,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,6 +32,14 @@ interface CourseEnrollment {
   progress: number;
   enrolledAt: string;
   lastAccessedAt: string | null;
+  completedAt: string | null;
+  overallScore: number | null;
+  certificateEligible: boolean;
+  certificateIssued: boolean;
+  completedLessons: number;
+  totalLessons: number;
+  completedAssessments: number;
+  totalAssessments: number;
 }
 
 interface Stats {
@@ -49,6 +60,7 @@ export default function UserCoursesPage() {
     completed: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) {
@@ -56,70 +68,109 @@ export default function UserCoursesPage() {
       return;
     }
 
-    async function fetchData() {
-      try {
-        setLoading(true);
-
-        // Fetch enrollments with accurate progress (single API call)
-        const res = await fetch(`/api/enrollments?userId=${userId}`);
-        const data = await res.json();
-
-        if (data.success) {
-          const enrollmentsData = data.data || [];
-
-          // Filter out any enrollments with progress > 100%
-          const validEnrollments = enrollmentsData.map(
-            (enrollment: CourseEnrollment) => ({
-              ...enrollment,
-              progress: Math.min(enrollment.progress, 100), // Cap at 100%
-            })
-          );
-
-          setEnrollments(validEnrollments);
-        }
-
-        // Fetch stats separately
-        const res2 = await fetch(
-          `/api/enrollments?stats=true&userId=${userId}`
-        );
-        const data2 = await res2.json();
-        setStats(data2.data || { total: 0, active: 0, completed: 0 });
-      } catch (err) {
-        console.error("Error fetching data:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
+    fetchEnrollments();
   }, [userId]);
 
-  // Function to manually calculate progress if needed
-  const calculateProgress = async (courseId: string) => {
+  const fetchEnrollments = async () => {
+    if (!userId) return;
+
     try {
-      const response = await fetch(
-        `/api/progress?userId=${userId}&courseId=${courseId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        return data.data?.progressPercentage || 0;
+      setLoading(true);
+
+      // Fetch enrollments with progress
+      const res = await fetch(`/api/enrollments?userId=${userId}`);
+      const data = await res.json();
+
+      if (data.success) {
+        const enrollmentsData = data.data || [];
+        setEnrollments(enrollmentsData);
       }
-    } catch (error) {
-      console.error("Error calculating progress:", error);
+
+      // Fetch stats
+      const res2 = await fetch(`/api/enrollments?stats=true&userId=${userId}`);
+      const data2 = await res2.json();
+      setStats(data2.data || { total: 0, active: 0, completed: 0 });
+    } catch (err) {
+      console.error("Error fetching data:", err);
+    } finally {
+      setLoading(false);
     }
-    return 0;
   };
 
   // Refresh progress for a specific course
-  const refreshProgress = async (courseId: string) => {
-    const progress = await calculateProgress(courseId);
-    setEnrollments((prev) =>
-      prev.map((enrollment) =>
-        enrollment.courseId === courseId
-          ? { ...enrollment, progress }
-          : enrollment
-      )
-    );
+  const refreshProgress = async (courseId: string, enrollmentId: string) => {
+    if (!userId) return;
+    
+    setRefreshing(courseId);
+    try {
+      // Trigger progress recalculation
+      const response = await fetch(`/api/progress?userId=${userId}&courseId=${courseId}`);
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update local state with new progress
+        setEnrollments((prev) =>
+          prev.map((enrollment) =>
+            enrollment.courseId === courseId
+              ? { 
+                  ...enrollment, 
+                  progress: data.data?.overallProgress || enrollment.progress,
+                  completedLessons: data.data?.completedLessons || enrollment.completedLessons,
+                  totalLessons: data.data?.totalLessons || enrollment.totalLessons,
+                  completedAssessments: data.data?.completedAssessments || enrollment.completedAssessments,
+                  totalAssessments: data.data?.totalAssessments || enrollment.totalAssessments,
+                }
+              : enrollment
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error refreshing progress:", error);
+    } finally {
+      setRefreshing(null);
+    }
+  };
+
+  // Get completion status text
+  const getCompletionStatus = (enrollment: CourseEnrollment) => {
+    if (enrollment.status === "COMPLETED") {
+      return "Course Completed";
+    }
+    
+    const lessonText = `${enrollment.completedLessons}/${enrollment.totalLessons} lessons`;
+    const assessmentText = enrollment.totalAssessments > 0 
+      ? ` • ${enrollment.completedAssessments}/${enrollment.totalAssessments} assessments`
+      : "";
+    
+    return `Progress: ${lessonText}${assessmentText}`;
+  };
+
+  // Get badge variant based on status
+  const getStatusBadgeVariant = (status: CourseEnrollment["status"]) => {
+    switch (status) {
+      case "COMPLETED":
+        return "default";
+      case "ACTIVE":
+        return "secondary";
+      case "DROPPED":
+        return "destructive";
+      default:
+        return "outline";
+    }
+  };
+
+  // Get badge text based on status
+  const getStatusBadgeText = (status: CourseEnrollment["status"]) => {
+    switch (status) {
+      case "COMPLETED":
+        return "Completed";
+      case "ACTIVE":
+        return "In Progress";
+      case "DROPPED":
+        return "Dropped";
+      default:
+        return "Expired";
+    }
   };
 
   // Show skeleton while loading
@@ -269,6 +320,14 @@ export default function UserCoursesPage() {
                 Manage and track your enrolled courses
               </p>
             </div>
+            <Button
+              variant="outline"
+              onClick={fetchEnrollments}
+              className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+              disabled={loading}
+            >
+              Refresh
+            </Button>
           </div>
 
           {enrollments.length === 0 ? (
@@ -308,7 +367,7 @@ export default function UserCoursesPage() {
                       {course.courseThumbnail ? (
                         <img
                           // src={course.courseThumbnail}
-                          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTc9APxkj0xClmrU3PpMZglHQkx446nQPG6lA&s"
+                          src ="https://blog.zegocloud.com/wp-content/uploads/2024/03/types-of-web-development-services.jpg"
                           alt={course.courseTitle}
                           className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
@@ -322,6 +381,7 @@ export default function UserCoursesPage() {
                       )}
                       <div className="absolute top-4 left-4">
                         <Badge
+                          variant={getStatusBadgeVariant(course.status)}
                           className={`
                             px-3 py-1.5 text-sm font-medium rounded-full shadow-md
                             ${
@@ -335,10 +395,28 @@ export default function UserCoursesPage() {
                             }
                           `}
                         >
-                          {course.status.charAt(0) +
-                            course.status.slice(1).toLowerCase()}
+                          {getStatusBadgeText(course.status)}
                         </Badge>
                       </div>
+                      
+                      {/* Certificate Badge */}
+                      {course.certificateIssued && (
+                        <div className="absolute top-4 right-4">
+                          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md">
+                            <Award className="h-3 w-3 mr-1" />
+                            Certified
+                          </Badge>
+                        </div>
+                      )}
+                      
+                      {/* Score Badge */}
+                      {course.overallScore && (
+                        <div className="absolute bottom-4 left-4">
+                          <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md">
+                            Score: {course.overallScore}%
+                          </Badge>
+                        </div>
+                      )}
                     </div>
 
                     {/* Course Details */}
@@ -359,10 +437,26 @@ export default function UserCoursesPage() {
                                   }
                                 )}
                               </span>
+                              {course.completedAt && (
+                                <>
+                                  <span className="text-gray-400">•</span>
+                                  <Clock className="h-4 w-4 text-emerald-400" />
+                                  <span className="text-sm text-emerald-600">
+                                    Completed{" "}
+                                    {new Date(course.completedAt).toLocaleDateString(
+                                      "en-US",
+                                      { month: "short", day: "numeric" }
+                                    )}
+                                  </span>
+                                </>
+                              )}
                             </div>
                             <h3 className="text-2xl font-bold text-gray-900">
                               {course.courseTitle}
                             </h3>
+                            <p className="text-gray-600 text-sm">
+                              {getCompletionStatus(course)}
+                            </p>
                             {course.lastAccessedAt && (
                               <p className="text-gray-600 text-sm">
                                 Last accessed:{" "}
@@ -382,9 +476,36 @@ export default function UserCoursesPage() {
                               <span className="font-medium text-gray-900">
                                 Learning Progress
                               </span>
-                              <span className="text-lg font-bold text-gray-900">
-                                {course.progress}%
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-gray-900">
+                                  {course.progress}%
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => refreshProgress(course.courseId, course.id)}
+                                  disabled={refreshing === course.courseId}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  {refreshing === course.courseId ? (
+                                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+                                  ) : (
+                                    <svg
+                                      className="h-3 w-3 text-gray-500"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                      />
+                                    </svg>
+                                  )}
+                                </Button>
+                              </div>
                             </div>
                             <div className="space-y-2">
                               <Progress
@@ -395,6 +516,24 @@ export default function UserCoursesPage() {
                                 <span className="text-gray-500">0%</span>
                                 <span className="text-gray-500">100%</span>
                               </div>
+                            </div>
+                            
+                            {/* Detailed Progress */}
+                            <div className="grid grid-cols-2 gap-2 pt-2">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                <span className="text-sm text-gray-700">
+                                  {course.completedLessons}/{course.totalLessons} lessons
+                                </span>
+                              </div>
+                              {course.totalAssessments > 0 && (
+                                <div className="flex items-center gap-2">
+                                  <Target className="h-4 w-4 text-blue-500" />
+                                  <span className="text-sm text-gray-700">
+                                    {course.completedAssessments}/{course.totalAssessments} assessments
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -417,6 +556,11 @@ export default function UserCoursesPage() {
                                   <>
                                     <PlayCircle className="h-5 w-5 mr-2" />
                                     Start
+                                  </>
+                                ) : course.status === "COMPLETED" ? (
+                                  <>
+                                    <Award className="h-5 w-5 mr-2" />
+                                    Review
                                   </>
                                 ) : (
                                   <>
@@ -443,6 +587,25 @@ export default function UserCoursesPage() {
                                 Details
                               </Button>
                             </div>
+                            
+                            {/* Certificate Button */}
+                            {course.certificateEligible && !course.certificateIssued && (
+                              <div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-amber-300 text-amber-700 hover:bg-amber-50 px-6"
+                                  onClick={() =>
+                                    router.push(
+                                      `/dashboard/user/courses/${course.courseId}/certificate`
+                                    )
+                                  }
+                                >
+                                  <Award className="h-4 w-4 mr-2" />
+                                  Get Certificate
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -468,12 +631,24 @@ export default function UserCoursesPage() {
                             className="w-full justify-start text-gray-600 hover:text-green-700 hover:bg-emerald-50"
                             onClick={() =>
                               router.push(
-                                `/dashboard/user/courses/${course.courseId}/announcements`
+                                `/dashboard/user/courses/${course.courseId}/assessments`
                               )
                             }
                           >
-                            <ChevronRight className="h-4 w-4 mr-2" />
-                            Announcements
+                            <Target className="h-4 w-4 mr-2" />
+                            Assessments
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start text-gray-600 hover:text-green-700 hover:bg-emerald-50"
+                            onClick={() =>
+                              router.push(
+                                `/dashboard/user/courses/${course.courseId}/progress`
+                              )
+                            }
+                          >
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            Progress
                           </Button>
                         </div>
                       </div>
