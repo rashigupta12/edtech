@@ -689,7 +689,7 @@ export default function CourseDetailPage() {
                   View Syllabus
                 </Link>
               </Button>
-              {hasAssessments && (
+              {/* {hasAssessments && (
                 <Button 
                   variant="outline" 
                   className="w-full justify-start bg-white border-blue-300 hover:bg-blue-50 text-blue-900 hover:text-blue-900" 
@@ -710,7 +710,7 @@ export default function CourseDetailPage() {
                   <BarChart3 className="mr-2 h-4 w-4 text-emerald-600" />
                   Progress Report
                 </Link>
-              </Button>
+              </Button> */}
               {enrollment?.certificateEligible && (
                 <Button 
                   variant="outline" 

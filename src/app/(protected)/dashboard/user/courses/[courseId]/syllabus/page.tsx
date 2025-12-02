@@ -21,7 +21,10 @@ import {
   FileText,
   Video,
   AlertCircle,
-  BarChart3
+  BarChart3,
+  Bookmark,
+  Layers,
+  GraduationCap
 } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/auth';
 
@@ -204,12 +207,12 @@ export default function SyllabusPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-8  min-h-screen">
-        <Skeleton className="h-12 w-80 " />
-        <Skeleton className="h-48 w-full " />
+      <div className="p-6 space-y-8 min-h-screen">
+        <Skeleton className="h-12 w-80" />
+        <Skeleton className="h-48 w-full" />
         <div className="space-y-6">
           {[1, 2, 3].map(i => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl " />
+            <Skeleton key={i} className="h-32 w-full rounded-xl" />
           ))}
         </div>
       </div>
@@ -217,38 +220,40 @@ export default function SyllabusPage() {
   }
 
   return (
-    <div className="p-6 w-full mx-auto space-y-8 min-h-screen">
+    <div className="p-6 w-full mx-auto space-y-8 min-h-screen max-w-7xl">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-        <div>
+        <div className="space-y-3">
           <Button
             variant="ghost"
-            className="mb-4 hover:bg-emerald-100 text-emerald-900"
+            className="pl-0 hover:bg-transparent text-gray-600 hover:text-gray-900"
             onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}
           >
             <ChevronLeft className="mr-2 h-4 w-4" />
             Back to Course
           </Button>
-          <h1 className="text-3xl font-bold text-emerald-900">
-            {curriculum?.courseTitle || 'Course'} Syllabus
-          </h1>
-          <p className="text-emerald-700 mt-2">
-            Complete overview of all modules, lessons, and assessments
-          </p>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {curriculum?.courseTitle || 'Course'} Syllabus
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Track your progress through all modules, lessons, and assessments
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-3">
-          <Button 
+          {/* <Button 
             onClick={() => router.push(`/dashboard/user/courses/${courseId}/assessments`)}
             variant="outline"
-            className="border-blue-300 text-blue-700 hover:bg-blue-50"
+            className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
           >
             <Target className="mr-2 h-4 w-4" />
             View Assessments
-          </Button>
+          </Button> */}
           <Button 
             onClick={() => router.push(`/dashboard/user/courses/${courseId}/learn`)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="bg-green-600 hover:bg-green-700 text-white"
           >
             <PlayCircle className="mr-2 h-5 w-5" />
             Continue Learning
@@ -258,44 +263,44 @@ export default function SyllabusPage() {
 
       {/* Summary Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-white border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-white border border-gray-200 shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-emerald-100 rounded-lg">
-                <BookOpen className="h-6 w-6 text-emerald-600" />
+              <div className="p-2 bg-green-50 rounded-lg">
+                <BookOpen className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-emerald-700">Modules</p>
-                <p className="text-2xl font-bold text-emerald-900">{curriculum?.modules.length || 0}</p>
+                <p className="text-sm text-gray-600">Modules</p>
+                <p className="text-2xl font-bold text-gray-900">{curriculum?.modules.length || 0}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-white border border-gray-200 shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Award className="h-6 w-6 text-blue-600" />
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <Layers className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-blue-700">Lessons</p>
-                <p className="text-2xl font-bold text-blue-900">{totalLessons}</p>
+                <p className="text-sm text-gray-600">Lessons</p>
+                <p className="text-2xl font-bold text-gray-900">{totalLessons}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-white border border-gray-200 shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-purple-100 rounded-lg">
+              <div className="p-2 bg-purple-50 rounded-lg">
                 <Target className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-purple-700">Assessments</p>
-                <p className="text-2xl font-bold text-purple-900">{totalAssessments()}</p>
-                <p className="text-xs text-purple-600 mt-1">
+                <p className="text-sm text-gray-600">Assessments</p>
+                <p className="text-2xl font-bold text-gray-900">{totalAssessments()}</p>
+                <p className="text-xs text-gray-500 mt-1">
                   {completedAssessments()} completed
                 </p>
               </div>
@@ -303,16 +308,16 @@ export default function SyllabusPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="bg-white border border-gray-200 shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-amber-100 rounded-lg">
+              <div className="p-2 bg-amber-50 rounded-lg">
                 <BarChart3 className="h-6 w-6 text-amber-600" />
               </div>
               <div>
-                <p className="text-sm text-amber-700">Overall Progress</p>
-                <p className="text-2xl font-bold text-amber-900">{progress?.progressPercentage || 0}%</p>
-                <p className="text-xs text-amber-600 mt-1">
+                <p className="text-sm text-gray-600">Overall Progress</p>
+                <p className="text-2xl font-bold text-gray-900">{progress?.progressPercentage || 0}%</p>
+                <p className="text-xs text-gray-500 mt-1">
                   {progress?.completedLessons || 0}/{progress?.totalLessons || 0} lessons
                 </p>
               </div>
@@ -322,39 +327,49 @@ export default function SyllabusPage() {
       </div>
 
       {/* Progress Overview */}
-      <Card className="bg-white border-emerald-200 shadow-sm">
-        <CardContent className="pt-6">
+      <Card className="bg-white border border-gray-200 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-green-600" />
+            Learning Progress
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="space-y-6">
-            <div>
-              <div className="flex justify-between text-sm mb-2 text-emerald-900">
-                <span className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  Course Progress
-                </span>
-                <span className="font-semibold">{progress?.progressPercentage || 0}%</span>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-700 font-medium">Course Progress</span>
+                <span className="font-semibold text-gray-900">{progress?.progressPercentage || 0}%</span>
               </div>
-              <Progress value={progress?.progressPercentage || 0} className="h-3" />
+              <div className="w-full bg-gray-100 rounded-full h-2.5">
+                <div 
+                  className="bg-green-600 h-2.5 rounded-full" 
+                  style={{ width: `${progress?.progressPercentage || 0}%` }}
+                />
+              </div>
             </div>
 
-            <div>
-              <div className="flex justify-between text-sm mb-2 text-blue-900">
-                <span className="flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  Assessment Progress
-                </span>
-                <span className="font-semibold">{assessmentProgress}%</span>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-700 font-medium">Assessment Progress</span>
+                <span className="font-semibold text-gray-900">{assessmentProgress}%</span>
               </div>
-              <Progress value={assessmentProgress} className="h-3 bg-blue-100" />
+              <div className="w-full bg-gray-100 rounded-full h-2.5">
+                <div 
+                  className="bg-blue-600 h-2.5 rounded-full" 
+                  style={{ width: `${assessmentProgress}%` }}
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-emerald-200">
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
               <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-900">{progress?.completedLessons || 0}</div>
-                <div className="text-sm text-emerald-600">Lessons Completed</div>
+                <div className="text-2xl font-bold text-gray-900">{progress?.completedLessons || 0}</div>
+                <div className="text-sm text-gray-600">Lessons Completed</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-900">{completedAssessments()}</div>
-                <div className="text-sm text-purple-600">Assessments Passed</div>
+                <div className="text-2xl font-bold text-gray-900">{completedAssessments()}</div>
+                <div className="text-sm text-gray-600">Assessments Passed</div>
               </div>
             </div>
           </div>
@@ -364,8 +379,8 @@ export default function SyllabusPage() {
       {/* Curriculum Accordion */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-emerald-900">Course Curriculum</h2>
-          <Badge variant="outline" className="border-emerald-600 text-emerald-700">
+          <h2 className="text-2xl font-bold text-gray-900">Course Curriculum</h2>
+          <Badge variant="secondary" className="bg-gray-100 text-gray-700">
             {totalLessons} lessons • {totalAssessments()} assessments
           </Badge>
         </div>
@@ -377,23 +392,23 @@ export default function SyllabusPage() {
             const hasQuizLessons = module.lessons.filter(l => l.hasQuiz).length;
 
             return (
-              <Card key={module.id} className="bg-white border-emerald-200 shadow-sm overflow-hidden">
+              <Card key={module.id} className="bg-white border border-gray-200 shadow-sm overflow-hidden">
                 <AccordionItem value={module.id} className="border-0">
-                  <AccordionTrigger className="px-6 py-5 hover:no-underline">
+                  <AccordionTrigger className="px-6 py-5 hover:no-underline hover:bg-gray-50/50">
                     <div className="flex items-center justify-between w-full pr-4">
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center font-bold text-emerald-700 relative">
+                        <div className="h-12 w-12 rounded-lg bg-green-50 flex items-center justify-center font-bold text-green-700 relative border border-green-100">
                           {idx + 1}
                           {moduleProgress === 100 && (
-                            <div className="absolute -top-1 -right-1 h-5 w-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                            <div className="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
                               <CheckCircle className="h-3 w-3 text-white" />
                             </div>
                           )}
                         </div>
                         <div className="text-left">
-                          <h3 className="font-semibold text-lg text-emerald-900">{module.title}</h3>
+                          <h3 className="font-semibold text-lg text-gray-900">{module.title}</h3>
                           {module.description && (
-                            <p className="text-sm text-emerald-700 mt-1 line-clamp-1">
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-1">
                               {module.description}
                             </p>
                           )}
@@ -403,18 +418,18 @@ export default function SyllabusPage() {
                       <div className="flex items-center gap-4">
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="border-emerald-600 text-emerald-700 bg-emerald-50">
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-700">
                               {module.lessons.length} lessons
                             </Badge>
                             {hasQuizLessons > 0 && (
-                              <Badge variant="outline" className="border-blue-600 text-blue-700 bg-blue-50">
+                              <Badge variant="secondary" className="bg-blue-50 text-blue-700">
                                 {hasQuizLessons} quizzes
                               </Badge>
                             )}
                           </div>
                           <Badge 
                             variant={moduleProgress === 100 ? 'default' : 'secondary'}
-                            className={moduleProgress === 100 ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800'}
+                            className={moduleProgress === 100 ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-800'}
                           >
                             {moduleProgress}% complete
                           </Badge>
@@ -423,26 +438,26 @@ export default function SyllabusPage() {
                     </div>
                   </AccordionTrigger>
 
-                  <AccordionContent className="px-6 pb-6 bg-emerald-50/30">
+                  <AccordionContent className="px-6 pb-6 bg-gray-50/50">
                     {/* Module Description */}
                     {module.description && (
                       <>
-                        <p className="text-emerald-700 mb-4">{module.description}</p>
-                        <Separator className="mb-6 bg-emerald-200" />
+                        <p className="text-gray-700 mb-4">{module.description}</p>
+                        <Separator className="mb-6 bg-gray-200" />
                       </>
                     )}
 
                     {/* Module Assessment Info */}
                     {module.hasAssessment && (
                       <div className={`mb-6 p-4 rounded-lg border ${
-                        moduleAssessmentStatus?.passed ? 'bg-emerald-50 border-emerald-200' :
+                        moduleAssessmentStatus?.passed ? 'bg-green-50 border-green-200' :
                         moduleAssessmentStatus?.attempted ? 'bg-amber-50 border-amber-200' :
                         'bg-blue-50 border-blue-200'
                       }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <Target className={`h-6 w-6 ${
-                              moduleAssessmentStatus?.passed ? 'text-emerald-600' :
+                            <Target className={`h-5 w-5 ${
+                              moduleAssessmentStatus?.passed ? 'text-green-600' :
                               moduleAssessmentStatus?.attempted ? 'text-amber-600' : 'text-blue-600'
                             }`} />
                             <div>
@@ -463,9 +478,9 @@ export default function SyllabusPage() {
                               variant={moduleAssessmentStatus?.passed ? 'default' : 
                                       moduleAssessmentStatus?.attempted ? 'secondary' : 'outline'}
                               className={
-                                moduleAssessmentStatus?.passed ? 'bg-emerald-500 hover:bg-emerald-600 text-white' :
+                                moduleAssessmentStatus?.passed ? 'bg-green-600 hover:bg-green-700 text-white' :
                                 moduleAssessmentStatus?.attempted ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' :
-                                'border-blue-300 text-blue-700'
+                                'border-blue-300 text-blue-700 bg-white'
                               }
                             >
                               {moduleAssessmentStatus?.passed ? 'Passed' : 
@@ -495,12 +510,17 @@ export default function SyllabusPage() {
                     )}
 
                     {/* Module Progress */}
-                    <div className="mb-6 bg-white p-4 rounded-lg border border-emerald-200">
-                      <div className="flex justify-between text-sm mb-2 text-emerald-900">
-                        <span>Module Progress</span>
-                        <span className="font-semibold">{moduleProgress}%</span>
+                    <div className="mb-6 bg-white p-4 rounded-lg border border-gray-200">
+                      <div className="flex justify-between text-sm mb-2 text-gray-700">
+                        <span className="font-medium">Module Progress</span>
+                        <span className="font-semibold text-gray-900">{moduleProgress}%</span>
                       </div>
-                      <Progress value={moduleProgress} className="h-2 bg-emerald-100" />
+                      <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full" 
+                          style={{ width: `${moduleProgress}%` }}
+                        />
+                      </div>
                     </div>
 
                     {/* Lessons */}
@@ -513,25 +533,25 @@ export default function SyllabusPage() {
                         return (
                           <div
                             key={lesson.id}
-                            className="flex items-center justify-between p-4 rounded-lg border border-emerald-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 transition"
+                            className="flex items-center justify-between p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition"
                           >
                             <div className="flex items-center gap-4 flex-1">
                               {isCompleted ? (
-                                <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                                  <CheckCircle className="h-5 w-5 text-emerald-600" />
+                                <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center border border-green-200">
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
                                 </div>
                               ) : (
-                                <div className="h-8 w-8 rounded-full border-2 border-emerald-300 flex items-center justify-center text-sm font-medium text-emerald-700">
+                                <div className="h-8 w-8 rounded-full border-2 border-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
                                   {lessonIdx + 1}
                                 </div>
                               )}
 
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-emerald-900 truncate">{lesson.title}</p>
-                                <div className="flex items-center gap-3 mt-1 text-xs text-emerald-700">
+                                <p className="font-medium text-gray-900 truncate">{lesson.title}</p>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
                                   <Badge 
-                                    variant="outline" 
-                                    className="text-xs border-emerald-600 text-emerald-700 bg-emerald-50 flex items-center gap-1"
+                                    variant="secondary" 
+                                    className="text-xs bg-gray-100 text-gray-700 flex items-center gap-1"
                                   >
                                     {getContentTypeIcon(lesson.contentType)}
                                     {lesson.contentType}
@@ -544,10 +564,10 @@ export default function SyllabusPage() {
                                   )}
                                   {lesson.hasQuiz && (
                                     <Badge 
-                                      variant="outline" 
-                                      className={`text-xs border-blue-600 text-blue-700 bg-blue-50 flex items-center gap-1 ${
-                                        lessonProgress?.quizPassed ? 'border-emerald-600 text-emerald-700 bg-emerald-50' :
-                                        lessonProgress?.quizAttempted ? 'border-amber-600 text-amber-700 bg-amber-50' : ''
+                                      variant="secondary" 
+                                      className={`text-xs flex items-center gap-1 ${
+                                        lessonProgress?.quizPassed ? 'bg-green-100 text-green-700' :
+                                        lessonProgress?.quizAttempted ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-700'
                                       }`}
                                     >
                                       <Target className="h-3 w-3" />
@@ -570,7 +590,7 @@ export default function SyllabusPage() {
                               onClick={() =>
                                 router.push(`/dashboard/user/courses/${courseId}/learn?lesson=${lesson.id}`)
                               }
-                              className="bg-white border-emerald-300 hover:bg-emerald-50 text-emerald-900 whitespace-nowrap"
+                              className="bg-white border-gray-300 hover:bg-gray-50 text-gray-700 whitespace-nowrap hover:border-gray-400"
                             >
                               {isCompleted ? 'Review' : 'Start'}
                               <PlayCircle className="ml-2 h-4 w-4" />
@@ -583,16 +603,16 @@ export default function SyllabusPage() {
                     {/* Module Actions */}
                     <div className="mt-6 flex gap-3">
                       <Button
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                         onClick={() => router.push(`/dashboard/user/courses/${courseId}/modules/${module.id}`)}
                       >
                         <BookOpen className="mr-2 h-4 w-4" />
-                        View Module Details
+                        Module Details
                       </Button>
                       {module.hasAssessment && (
                         <Button
                           variant="outline"
-                          className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                          className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
                           onClick={() => {
                             if (module.moduleAssessment) {
                               router.push(`/dashboard/user/courses/${courseId}/learn?assessment=${module.moduleAssessment.id}`);
@@ -614,10 +634,10 @@ export default function SyllabusPage() {
 
       {/* Final Assessment */}
       {curriculum?.finalAssessment && (
-        <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200 shadow-sm">
-          <CardHeader className="border-b border-purple-200">
-            <CardTitle className="text-purple-900 flex items-center gap-2">
-              <div className="p-2 bg-white rounded-lg">
+        <Card className="bg-white border border-gray-200 shadow-sm">
+          <CardHeader className="border-b border-gray-200">
+            <CardTitle className="text-gray-900 flex items-center gap-2">
+              <div className="p-2 bg-purple-50 rounded-lg">
                 <Award className="h-5 w-5 text-purple-600" />
               </div>
               Final Course Assessment
@@ -626,8 +646,8 @@ export default function SyllabusPage() {
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div className="space-y-3">
-                <h3 className="text-xl font-semibold text-purple-900">{curriculum.finalAssessment.title}</h3>
-                <div className="flex items-center gap-4 text-sm text-purple-700">
+                <h3 className="text-xl font-semibold text-gray-900">{curriculum.finalAssessment.title}</h3>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-2">
                     <Target className="h-4 w-4" />
                     <span>Passing Score: {curriculum.finalAssessment.passingScore}%</span>
@@ -645,24 +665,24 @@ export default function SyllabusPage() {
                 </div>
                 {progress?.finalAssessmentStatus && (
                   <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${
-                    progress.finalAssessmentStatus.passed ? 'bg-emerald-100 text-emerald-800' :
-                    progress.finalAssessmentStatus.attempted ? 'bg-amber-100 text-amber-800' :
-                    'bg-purple-100 text-purple-800'
+                    progress.finalAssessmentStatus.passed ? 'bg-green-100' :
+                    progress.finalAssessmentStatus.attempted ? 'bg-amber-100' :
+                    'bg-gray-100'
                   }`}>
                     <Badge 
                       variant={progress.finalAssessmentStatus.passed ? 'default' : 
                               progress.finalAssessmentStatus.attempted ? 'secondary' : 'outline'}
                       className={
-                        progress.finalAssessmentStatus.passed ? 'bg-emerald-500 hover:bg-emerald-600 text-white' :
+                        progress.finalAssessmentStatus.passed ? 'bg-green-600 hover:bg-green-700 text-white' :
                         progress.finalAssessmentStatus.attempted ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' :
-                        'border-purple-300 text-purple-700'
+                        'border-gray-300 text-gray-700 bg-white'
                       }
                     >
                       {progress.finalAssessmentStatus.passed ? 'Passed' : 
                        progress.finalAssessmentStatus.attempted ? 'Attempted' : 'Not Attempted'}
                     </Badge>
                     {progress.finalAssessmentStatus.latestScore && (
-                      <span className="text-sm">
+                      <span className="text-sm text-gray-600">
                         Score: {progress.finalAssessmentStatus.latestScore}%
                       </span>
                     )}
@@ -670,16 +690,16 @@ export default function SyllabusPage() {
                 )}
               </div>
               <Button
-                className="bg-purple-600 hover:bg-purple-700 text-white"
+                className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => router.push(`/dashboard/user/courses/${courseId}/learn?assessment=${curriculum.finalAssessment?.id}`)}
                 disabled={!curriculum.finalAssessment.isRequired && curriculum.finalAssessment.isRequired === undefined}
               >
-                {progress?.finalAssessmentStatus?.passed ? 'Review Assessment' : 'Take Final Assessment'}
+                {progress?.finalAssessmentStatus?.passed ? 'Review' : 'Take Assessment'}
               </Button>
             </div>
             {!curriculum.finalAssessment.isRequired && (
-              <div className="mt-4 p-3 bg-white rounded-lg border border-purple-200">
-                <p className="text-sm text-purple-700">
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-sm text-gray-600">
                   <span className="font-medium">Note:</span> This final assessment is optional but recommended for 
                   comprehensive learning evaluation.
                 </p>
@@ -690,50 +710,50 @@ export default function SyllabusPage() {
       )}
 
       {/* Completion Requirements */}
-      <Card className="bg-white border-emerald-200 shadow-sm">
-        <CardHeader className="border-b border-emerald-200">
-          <CardTitle className="text-emerald-900 flex items-center gap-2">
-            <div className="p-2 bg-emerald-100 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-emerald-600" />
+      <Card className="bg-white border border-gray-200 shadow-sm">
+        <CardHeader className="border-b border-gray-200">
+          <CardTitle className="text-gray-900 flex items-center gap-2">
+            <div className="p-2 bg-green-50 rounded-lg">
+              <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
             Course Completion Requirements
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-3">
-              <h4 className="font-semibold text-emerald-900">Learning Requirements</h4>
-              <ul className="space-y-2 text-sm text-emerald-800">
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
-                  Complete all required lessons
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-4">
+              <h4 className="font-semibold text-gray-900">Learning Requirements</h4>
+              <ul className="space-y-3 text-sm text-gray-700">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span>Complete all required lessons</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
-                  Watch video content fully (if applicable)
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span>Watch video content fully (if applicable)</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
-                  Pass all required lesson quizzes
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span>Pass all required lesson quizzes</span>
                 </li>
               </ul>
             </div>
-            <div className="space-y-3">
-              <h4 className="font-semibold text-purple-900">Assessment Requirements</h4>
-              <ul className="space-y-2 text-sm text-purple-800">
-                <li className="flex items-start gap-2">
-                  <Target className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                  Pass all required module assessments
+            <div className="space-y-4">
+              <h4 className="font-semibold text-gray-900">Assessment Requirements</h4>
+              <ul className="space-y-3 text-sm text-gray-700">
+                <li className="flex items-start gap-3">
+                  <Target className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <span>Pass all required module assessments</span>
                 </li>
                 {curriculum?.finalAssessment?.isRequired && (
-                  <li className="flex items-start gap-2">
-                    <Award className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                    Pass the final course assessment
+                  <li className="flex items-start gap-3">
+                    <Award className="h-5 w-5 text-purple-500 mt-0.5 flex-shrink-0" />
+                    <span>Pass the final course assessment</span>
                   </li>
                 )}
-                <li className="flex items-start gap-2">
-                  <BarChart3 className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                  Achieve minimum overall passing score
+                <li className="flex items-start gap-3">
+                  <BarChart3 className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <span>Achieve minimum overall passing score</span>
                 </li>
               </ul>
             </div>
