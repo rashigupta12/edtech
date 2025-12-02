@@ -1,6 +1,6 @@
 "use client";
 
-import { EyeOff, Eye } from "lucide-react";
+import { EyeOff, Eye, GraduationCap } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -158,17 +158,18 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-50">
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg border border-slate-200">
         {/* Logo Section */}
-        <div className="flex flex-col items-center space-y-2">
-          <Link href="/">
-            <div className="flex items-center gap-2">
-              <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow">
-                <span className="text-white font-bold text-xl">F</span>
-              </div>
+       <div className="p-2 border-b border-emerald-100 bg-gradient-to-r from-emerald-50/50 to-green-50/50">
+          <div className="flex items-center gap-3 justify-center">
+            <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl">
+              <GraduationCap className="h-6 w-6 text-white" />
             </div>
-          </Link>
-          <h1 className="bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent font-bold text-xl">
-            Futuretek
-          </h1>
+            <div>
+              <div className="text-xl font-bold bg-gradient-to-r from-emerald-700 to-green-800 bg-clip-text text-transparent">
+                EduTech
+              </div>
+              <div className="text-xs text-emerald-600 font-medium">Learn & Grow</div>
+            </div>
+          </div>
         </div>
 
         {/* Login Header */}
@@ -291,7 +292,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={isPending || !form.watch('email') || !form.watch('password')}
-              className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-300 transform hover:scale-[0.99] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full h-12 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-medium hover:from-green-700 hover:to-green-800 transition-all duration-300 transform hover:scale-[0.99] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isPending ? (
                 <span className="flex items-center justify-center">

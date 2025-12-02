@@ -156,7 +156,7 @@ const RegisterForm = ({ text, role }: RegisterFormProps) => {
       <Card className="w-full max-w-md border border-slate-200 shadow-lg">
         <CardHeader>
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-blue-800">Hello!</h2>
+            <h2 className="text-3xl font-bold text-green-800">Hello!</h2>
             <p className="mt-2 text-sm text-slate-600">{text}</p>
           </div>
         </CardHeader>
@@ -363,7 +363,7 @@ const RegisterForm = ({ text, role }: RegisterFormProps) => {
                 text={isPending ? "Creating Account..." : "Register"}
                 classes={`h-12 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ${
                   isFormValid && !isPending
-                    ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                    ? "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
                 width="full_width"
