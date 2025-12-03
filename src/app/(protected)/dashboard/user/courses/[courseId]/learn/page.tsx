@@ -54,7 +54,6 @@ import {
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import ReactPlayer from "react-player";
 
 export interface ProgressResponse {
   enrollmentId: string;
@@ -244,6 +243,73 @@ export default function CourseLearnPage() {
   const handleStartAssessment = (assessment: Assessment) => {
     setSelectedAssessment(assessment);
     setShowStartDialog(true);
+  };
+  // Add this helper function to handle all video types
+  const getVideoPlayerUrl = (videoUrl: string | null): string | null => {
+    if (!videoUrl) return null;
+
+    // YouTube URLs
+    if (videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be")) {
+      let videoId = "";
+
+      // Handle different YouTube URL formats
+      if (videoUrl.includes("youtu.be/")) {
+        // Short URL: https://youtu.be/VIDEO_ID
+        videoId = videoUrl.split("youtu.be/")[1]?.split("?")[0] || "";
+      } else if (videoUrl.includes("youtube.com/watch")) {
+        // Regular URL: https://www.youtube.com/watch?v=VIDEO_ID
+        const url = new URL(videoUrl);
+        videoId = url.searchParams.get("v") || "";
+      } else if (videoUrl.includes("youtube.com/embed/")) {
+        // Already embed URL, just add autoplay=0
+        return `${videoUrl}${videoUrl.includes("?") ? "&" : "?"}autoplay=0`;
+      }
+
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
+      }
+    }
+
+    // Vimeo URLs
+    if (videoUrl.includes("vimeo.com")) {
+      const videoId = videoUrl.split("vimeo.com/")[1]?.split("?")[0] || "";
+      if (videoId) {
+        return `https://player.vimeo.com/video/${videoId}?autoplay=0&title=0&byline=0&portrait=0`;
+      }
+    }
+
+    // Direct video files (including AWS S3) - Use as-is with autoplay disabled
+    if (
+      videoUrl.endsWith(".mp4") ||
+      videoUrl.endsWith(".webm") ||
+      videoUrl.endsWith(".ogg") ||
+      videoUrl.endsWith(".mov") ||
+      videoUrl.endsWith(".avi") ||
+      videoUrl.endsWith(".wmv") ||
+      videoUrl.includes(".mp4?") ||
+      videoUrl.includes(".webm?")
+    ) {
+      return videoUrl; // Direct video files will be handled by browser's video player
+    }
+
+    // AWS S3 URLs or other cloud storage
+    if (
+      videoUrl.includes("amazonaws.com") ||
+      videoUrl.includes("storage.googleapis.com") ||
+      videoUrl.includes("blob.core.windows.net") ||
+      videoUrl.includes("digitaloceanspaces.com")
+    ) {
+      // Check if it looks like a video file
+      const isLikelyVideo =
+        /\.(mp4|webm|ogg|mov|avi|wmv|mkv|flv)(\?.*)?$/i.test(videoUrl);
+      if (isLikelyVideo) {
+        return videoUrl; // Use direct URL
+      }
+    }
+
+    // If we can't determine the type, return the original URL
+    // It might still work if the platform supports iframe embedding
+    return videoUrl;
   };
 
   const confirmStartAssessment = async () => {
@@ -1410,7 +1476,7 @@ export default function CourseLearnPage() {
 
     return (
       <div className="space-y-6">
-        {/* Lesson Header */}
+        {/* Lesson Header - Keep this same */}
         <Card className="border-gray-200 bg-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -1481,58 +1547,165 @@ export default function CourseLearnPage() {
           </CardContent>
         </Card>
 
-        {/* Lesson Content */}
+        {/* UPDATED: Lesson Content - Video in iframe */}
         {lesson.contentType === "VIDEO" ? (
           <Card className="border-gray-200 bg-white">
             <CardContent className="p-6">
-              <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                {formattedVideoUrl ? (
-                  <ReactPlayer
-                    url={formattedVideoUrl}
-                    width="100%"
-                    height="100%"
-                    controls
-                    playing={false}
-                    onProgress={({
-                      playedSeconds,
-                    }: {
-                      playedSeconds: number;
-                    }) => {
-                      setPlayerPosition(playedSeconds);
-                      handleProgressUpdate(playedSeconds);
-                    }}
-                    onEnded={() => {
-                      markLessonComplete(lesson.id);
-                    }}
-                    onError={(e: any) => {
-                      console.error("ReactPlayer error:", e);
-                    }}
-                    progressInterval={1000}
-                    config={{
-                      youtube: {
-                        playerVars: {
-                          modestbranding: 1,
-                          rel: 0,
-                          origin: window.location.origin,
-                        },
-                        embedOptions: {
-                          host: "https://www.youtube-nocookie.com",
-                        },
-                      },
-                    }}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <Video className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                      <p className="text-gray-500">Video URL not available</p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <Video className="h-6 w-6 text-blue-600" />
+                    <div>
+                      <h3 className="font-bold text-lg text-gray-900">
+                        Video Lesson
+                      </h3>
+                      {lesson.videoDuration && (
+                        <p className="text-sm text-gray-600">
+                          Duration: {Math.floor(lesson.videoDuration / 60)}:
+                          {String(lesson.videoDuration % 60).padStart(2, "0")}
+                        </p>
+                      )}
                     </div>
+                  </div>
+                  <a
+                    href={lesson.videoUrl || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Open in new tab
+                  </a>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg">
+                    <Button
+                      onClick={() => markLessonComplete(lesson.id)}
+                      variant="outline"
+                      className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Mark Complete
+                    </Button>
+                  </div>
+                </div>
+
+                {lesson.videoUrl ? (
+                  <>
+                    {/* Video Player */}
+                    <div className="aspect-video bg-black rounded-lg overflow-hidden border border-gray-300">
+                      {(() => {
+                        const embedUrl = getVideoPlayerUrl(lesson.videoUrl);
+
+                        // For direct video files (AWS S3, MP4, etc.)
+                        if (
+                          embedUrl &&
+                          (embedUrl.includes(".mp4") ||
+                            embedUrl.includes(".webm") ||
+                            embedUrl.includes(".ogg") ||
+                            embedUrl.includes(".mov") ||
+                            embedUrl.includes("amazonaws.com"))
+                        ) {
+                          // Use HTML5 video player for direct video files
+                          return (
+                            <video
+                              key={embedUrl}
+                              className="w-full h-full"
+                              controls
+                              controlsList="nodownload"
+                              disablePictureInPicture
+                              onContextMenu={(e) => e.preventDefault()}
+                              preload="metadata"
+                            >
+                              <source src={embedUrl} type="video/mp4" />
+                              <source src={embedUrl} type="video/webm" />
+                              <source src={embedUrl} type="video/ogg" />
+                              Your browser does not support the video tag.
+                              <a
+                                href={embedUrl}
+                                className="text-blue-600 underline"
+                              >
+                                Download video
+                              </a>
+                            </video>
+                          );
+                        }
+
+                        // For YouTube, Vimeo, or other embeddable URLs
+                        if (embedUrl) {
+                          return (
+                            <iframe
+                              src={`${embedUrl}${
+                                embedUrl.includes("?") ? "&" : "?"
+                              }autoplay=0`}
+                              className="w-full h-full"
+                              title={lesson.title}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                              allowFullScreen
+                              referrerPolicy="strict-origin-when-cross-origin"
+                            />
+                          );
+                        }
+
+                        return (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100">
+                            <Video className="h-16 w-16 text-gray-400 mb-4" />
+                            <p className="text-gray-600 mb-4">
+                              Video cannot be embedded
+                            </p>
+                            <a
+                              href={lesson.videoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                            >
+                              Open Video
+                            </a>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Video Info Section */}
+                    <div className="mt-4 space-y-4">
+                      {/* Video Type Badge */}
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {(() => {
+                            const url = lesson.videoUrl.toLowerCase();
+                            if (url.includes("youtube")) return "YouTube";
+                            if (url.includes("vimeo")) return "Vimeo";
+                            if (url.includes("amazonaws.com")) return "AWS S3";
+                            if (url.includes(".mp4")) return "MP4 Video";
+                            if (url.includes(".webm")) return "WebM Video";
+                            return "Video Content";
+                          })()}
+                        </Badge>
+                        {lesson.videoDuration && (
+                          <div className="flex items-center gap-1 text-sm text-gray-600">
+                            <Clock className="h-3 w-3" />
+                            {Math.floor(lesson.videoDuration / 60)}:
+                            {String(lesson.videoDuration % 60).padStart(2, "0")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                    <Video className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                    <p className="text-gray-600 font-medium">
+                      Video not available
+                    </p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      The video content for this lesson is currently
+                      unavailable.
+                    </p>
                   </div>
                 )}
               </div>
             </CardContent>
           </Card>
         ) : lesson.contentType === "ARTICLE" ? (
+          // Keep article content same
           <Card className="border-gray-200 bg-white">
             <CardContent className="p-6">
               <div className="prose prose-sm md:prose-base max-w-none">
@@ -1562,6 +1735,7 @@ export default function CourseLearnPage() {
             </CardContent>
           </Card>
         ) : lesson.contentType === "QUIZ" ? (
+          // Keep quiz content same
           <Card className="border-gray-200 bg-white">
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-6">
@@ -1623,7 +1797,7 @@ export default function CourseLearnPage() {
           </Card>
         ) : null}
 
-        {/* Navigation */}
+        {/* Navigation - Keep same */}
         <Card className="border-gray-200 bg-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">

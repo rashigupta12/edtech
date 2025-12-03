@@ -6,7 +6,6 @@ import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import StudentProfileForm from '@/components/student/StudentProfileForm';
 
-
 type StudentProfile = {
   id: string;
   dateOfBirth: Date | null;
@@ -69,22 +68,18 @@ export default function StudentProfilePage() {
       const response = await fetch('/api/student');
       
       if (response.status === 404) {
-        // Profile doesn't exist yet
         setStudentProfile(null);
         setViewMode('create');
         return;
       }
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch student profile');
-      }
+      if (!response.ok) throw new Error('Failed to fetch student profile');
 
       const data = await response.json();
       setStudentProfile(data.student);
       setViewMode('view');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error fetching student profile:', err);
     } finally {
       setLoading(false);
     }
@@ -95,9 +90,7 @@ export default function StudentProfilePage() {
       setLoading(true);
       const response = await fetch('/api/student', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
@@ -109,10 +102,8 @@ export default function StudentProfilePage() {
       const data = await response.json();
       setStudentProfile(data.profile);
       setViewMode('view');
-      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create profile');
-      console.error('Error creating profile:', err);
     } finally {
       setLoading(false);
     }
@@ -123,9 +114,7 @@ export default function StudentProfilePage() {
       setLoading(true);
       const response = await fetch('/api/student', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
@@ -137,66 +126,50 @@ export default function StudentProfilePage() {
       const data = await response.json();
       setStudentProfile(data.profile);
       setViewMode('view');
-      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update profile');
-      console.error('Error updating profile:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    if (studentProfile) {
-      setViewMode('view');
-    } else {
-      setViewMode('create');
-    }
+    setViewMode(studentProfile ? 'view' : 'create');
   };
 
   const formatDate = (date: Date | null) => {
-    if (!date) return 'N/A';
+    if (!date) return 'Not provided';
     return format(new Date(date), 'dd MMM yyyy');
   };
 
-  const renderSection = (title: string, content: React.ReactNode) => (
-    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
-        {title}
-      </h3>
-      <div className="space-y-4">
-        {content}
-      </div>
-    </div>
-  );
-
+  // Loading State
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-green-600"></div>
       </div>
     );
   }
 
+  // Create / Edit Mode → Use the green form
   if (viewMode === 'create' || viewMode === 'edit') {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">
-              {viewMode === 'create' ? 'Create Student Profile' : 'Edit Student Profile'}
+              {viewMode === 'create' ? 'Create Your Profile' : 'Edit Profile'}
             </h1>
             <p className="text-gray-600 mt-2">
-              {viewMode === 'create' 
-                ? 'Complete your student profile to get started'
-                : 'Update your student profile information'
-              }
+              {viewMode === 'create'
+                ? 'Complete your student profile to unlock all features'
+                : 'Keep your information up to date'}
             </p>
           </div>
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700">{error}</p>
+              <p className="text-red-700 font-medium">{error}</p>
             </div>
           )}
 
@@ -213,279 +186,196 @@ export default function StudentProfilePage() {
     );
   }
 
+  // No Profile Yet → Welcome Screen
   if (!studentProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="mb-6">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-semibold text-gray-800 mb-2">
-              Welcome, {session?.user?.name}!
-            </h2>
-            <p className="text-gray-600 mb-6">
-              You haven't created your student profile yet. Please complete your profile to access all features.
-            </p>
+        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H9a2 2 0 01-2-2v-1a6 6 0 1112 0v1a2 2 0 01-2 2z" />
+            </svg>
           </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            Welcome, {session?.user?.name}!
+          </h2>
+          <p className="text-gray-600 mb-8">
+            Complete your student profile to get personalized opportunities and access all features.
+          </p>
           <button
             onClick={() => setViewMode('create')}
-            className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200"
+            className="w-full px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition shadow-md"
           >
-            Create Student Profile
+            Create Your Profile
           </button>
         </div>
       </div>
     );
   }
 
+  // View Mode → Single Clean Green-Accented Card
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header with User Info */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Student Profile
-              </h1>
-              <p className="text-gray-600 mt-2">
-                View and manage your academic and professional information
-              </p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="font-medium text-gray-900">{session?.user?.name}</p>
-                <p className="text-sm text-gray-500">{session?.user?.email}</p>
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 ">
+        {/* Header */}
+        {/* <div className="mb-8 text-center md:text-left ">
+          <h1 className="text-3xl font-bold text-gray-900">Your Profile</h1>
+          <p className="text-gray-600 mt-2">All your academic and professional details in one place</p>
+        </div> */}
+
+        {/* Main Profile Card */}
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+          {/* User Header */}
+          <div className="bg-green-50 border border-green-200  p-6">
+            <div className="flex flex-col md:flex-row items-center gap-5">
+              <div className="w-20 h-20 bg-white/100 backdrop-blur-sm rounded-full flex items-center justify-center text-3xl font-bold">
+                {session?.user?.name?.charAt(0).toUpperCase()}
               </div>
-              {session?.user?.image ? (
-                <img
-                  src={session.user.image}
-                  alt="Profile"
-                  className="w-12 h-12 rounded-full"
-                />
-              ) : (
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold">
-                    {session?.user?.name?.charAt(0).toUpperCase()}
-                  </span>
+              <div className="text-center md:text-left">
+                <h2 className="text-2xl font-bold">{session?.user?.name}</h2>
+                <p className="opacity-90">{session?.user?.email}</p>
+                {studentProfile.institution && (
+                  <p className="text-sm mt-1 opacity-80">
+                    {studentProfile.institution} • {studentProfile.specialization || 'Student'}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 md:p-8 space-y-8">
+            {/* Personal Info */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">Personal Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+                <div>
+                  <span className="text-gray-500">Date of Birth</span>
+                  <p className="font-medium text-gray-900">{formatDate(studentProfile.dateOfBirth)}</p>
                 </div>
-              )}
+                <div>
+                  <span className="text-gray-500">Gender</span>
+                  <p className="font-medium text-gray-900">{studentProfile.gender || 'Not specified'}</p>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Personal Information */}
-        {renderSection('Personal Information', (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Contact */}
             <div>
-              <label className="block text-sm font-medium text-gray-500">
-                Date of Birth
-              </label>
-              <p className="mt-1 text-gray-900">
-                {formatDate(studentProfile.dateOfBirth)}
-              </p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">Contact & Location</h3>
+              <div className="space-y-3 text-sm">
+                {studentProfile.address && (
+                  <div>
+                    <span className="text-gray-500">Address</span>
+                    <p className="font-medium text-gray-900">{studentProfile.address}</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <span className="text-gray-500">City</span>
+                    <p className="font-medium">{studentProfile.city || '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">State</span>
+                    <p className="font-medium">{studentProfile.state || '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">PIN</span>
+                    <p className="font-medium">{studentProfile.pinCode || '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Country</span>
+                    <p className="font-medium">{studentProfile.country}</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500">
-                Gender
-              </label>
-              <p className="mt-1 text-gray-900">
-                {studentProfile.gender || 'N/A'}
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500">
-                Country
-              </label>
-              <p className="mt-1 text-gray-900">
-                {studentProfile.country}
-              </p>
-            </div>
-          </div>
-        ))}
 
-        {/* Contact Information */}
-        {renderSection('Contact Information', (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-500">
-                Address
-              </label>
-              <p className="mt-1 text-gray-900">
-                {studentProfile.address || 'N/A'}
-              </p>
-            </div>
+            {/* Academic */}
             <div>
-              <label className="block text-sm font-medium text-gray-500">
-                City
-              </label>
-              <p className="mt-1 text-gray-900">
-                {studentProfile.city || 'N/A'}
-              </p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">Academic Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+                <div>
+                  <span className="text-gray-500">Education Level</span>
+                  <p className="font-medium text-gray-900">{studentProfile.educationLevel || 'Not specified'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Current Semester</span>
+                  <p className="font-medium text-gray-900">{studentProfile.currentSemester || '—'}</p>
+                </div>
+                <div className="md:col-span-2">
+                  <span className="text-gray-500">Institution</span>
+                  <p className="font-medium text-gray-900">{studentProfile.institution || 'Not specified'}</p>
+                </div>
+                <div className="md:col-span-2">
+                  <span className="text-gray-500">Specialization</span>
+                  <p className="font-medium text-gray-900">{studentProfile.specialization || 'Not specified'}</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500">
-                State
-              </label>
-              <p className="mt-1 text-gray-900">
-                {studentProfile.state || 'N/A'}
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500">
-                PIN Code
-              </label>
-              <p className="mt-1 text-gray-900">
-                {studentProfile.pinCode || 'N/A'}
-              </p>
-            </div>
-          </div>
-        ))}
 
-        {/* Academic Information */}
-        {renderSection('Academic Information', (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-500">
-                Education Level
-              </label>
-              <p className="mt-1 text-gray-900">
-                {studentProfile.educationLevel || 'N/A'}
-              </p>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-500">
-                Institution
-              </label>
-              <p className="mt-1 text-gray-900">
-                {studentProfile.institution || 'N/A'}
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500">
-                Current Semester
-              </label>
-              <p className="mt-1 text-gray-900">
-                {studentProfile.currentSemester || 'N/A'}
-              </p>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-500">
-                Specialization
-              </label>
-              <p className="mt-1 text-gray-900">
-                {studentProfile.specialization || 'N/A'}
-              </p>
-            </div>
-          </div>
-        ))}
-
-        {/* Skills */}
-        {studentProfile.skills && studentProfile.skills.length > 0 && renderSection('Skills', (
-          <div>
-            <div className="flex flex-wrap gap-2">
-              {studentProfile.skills.map((skill, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {/* Professional Links */}
-        {renderSection('Professional Links', (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {studentProfile.linkedinUrl && (
+            {/* Skills */}
+            {studentProfile.skills && studentProfile.skills.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-gray-500">
-                  LinkedIn
-                </label>
-                <a
-                  href={studentProfile.linkedinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 text-blue-600 hover:text-blue-800 hover:underline break-all"
-                >
-                  {studentProfile.linkedinUrl}
-                </a>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">Skills</h3>
+                <div className="flex flex-wrap gap-2">
+                  {studentProfile.skills.map((skill, i) => (
+                    <span
+                      key={i}
+                      className="px-3 py-1.5 bg-green-100 text-green-800 text-sm font-medium rounded-full"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
-            {studentProfile.githubUrl && (
+
+            {/* Links */}
+            {(studentProfile.linkedinUrl || studentProfile.githubUrl || studentProfile.resumeUrl) && (
               <div>
-                <label className="block text-sm font-medium text-gray-500">
-                  GitHub
-                </label>
-                <a
-                  href={studentProfile.githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 text-blue-600 hover:text-blue-800 hover:underline break-all"
-                >
-                  {studentProfile.githubUrl}
-                </a>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">Professional Links</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-sm">
+                  {studentProfile.linkedinUrl && (
+                    <a href={studentProfile.linkedinUrl} target="_blank" rel="noopener noreferrer"
+                       className="text-green-600 hover:text-green-700 underline">
+                      LinkedIn Profile
+                    </a>
+                  )}
+                  {studentProfile.githubUrl && (
+                    <a href={studentProfile.githubUrl} target="_blank" rel="noopener noreferrer"
+                       className="text-green-600 hover:text-green-700 underline">
+                      GitHub Profile
+                    </a>
+                  )}
+                  {studentProfile.resumeUrl && (
+                    <a href={studentProfile.resumeUrl} target="_blank" rel="noopener noreferrer"
+                       className="text-green-600 hover:text-green-700 underline font-medium">
+                      View Resume
+                    </a>
+                  )}
+                </div>
               </div>
             )}
-            {studentProfile.resumeUrl && (
-              <div>
-                <label className="block text-sm font-medium text-gray-500">
-                  Resume
-                </label>
-                <a
-                  href={studentProfile.resumeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 text-blue-600 hover:text-blue-800 hover:underline"
-                >
-                  Download Resume
-                </a>
+
+            {/* Timeline */}
+            {/* <div className="pt-4 border-t border-gray-200">
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>Created: {formatDate(studentProfile.createdAt)}</span>
+                <span>Updated: {formatDate(studentProfile.updatedAt)}</span>
               </div>
-            )}
+            </div> */}
           </div>
-        ))}
 
-        {/* Timeline */}
-        {renderSection('Timeline', (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-500">
-                Created At
-              </label>
-              <p className="mt-1 text-gray-900">
-                {formatDate(studentProfile.createdAt)}
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500">
-                Last Updated
-              </label>
-              <p className="mt-1 text-gray-900">
-                {formatDate(studentProfile.updatedAt)}
-              </p>
-            </div>
+          {/* Action Buttons */}
+          <div className="bg-gray-50 px-6 py-5 border-t border-gray-200 flex justify-end gap-3">
+          
+            <button
+              onClick={() => setViewMode('edit')}
+              className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+            >
+              Edit Profile
+            </button>
           </div>
-        ))}
-
-        {/* Action Buttons */}
-        <div className="flex justify-end space-x-4 mt-8">
-          <button
-            onClick={() => window.print()}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition duration-200"
-          >
-            Print Profile
-          </button>
-          <button
-            onClick={() => setViewMode('edit')}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200"
-          >
-            Edit Profile
-          </button>
         </div>
       </div>
     </div>
