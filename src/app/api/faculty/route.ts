@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
             name: UsersTable.name,
             email: UsersTable.email,
             profileImage: UsersTable.profileImage,
+            mobile:UsersTable.mobile,
           },
           profile: FacultyProfilesTable,
           department: {
@@ -90,11 +91,13 @@ export async function GET(request: NextRequest) {
           name: UsersTable.name,
           email: UsersTable.email,
           profileImage: UsersTable.profileImage,
+          mobile:UsersTable.mobile,
         },
         permissions: {
           canCreateCourses: FacultyTable.canCreateCourses,
           canApproveContent: FacultyTable.canApproveContent,
           canManageStudents: FacultyTable.canManageStudents,
+            canScheduleSessions: FacultyTable.canScheduleSessions,
         },
       })
       .from(FacultyTable)
@@ -125,7 +128,11 @@ export async function POST(request: NextRequest) {
       designation,
       employmentType,
       joiningDate,
-      permissions,
+      // Extract permissions directly from body (not from permissions object)
+      canCreateCourses,
+      canApproveContent,
+      canManageStudents,
+      canScheduleSessions,
     } = body;
 
     // Validation
@@ -147,10 +154,11 @@ export async function POST(request: NextRequest) {
         designation,
         employmentType: employmentType || "FULL_TIME",
         joiningDate: joiningDate ? new Date(joiningDate) : undefined,
-        canCreateCourses: permissions?.canCreateCourses || false,
-        canApproveContent: permissions?.canApproveContent || false,
-        canManageStudents: permissions?.canManageStudents || false,
-        canScheduleSessions: permissions?.canScheduleSessions || true,
+        // Use the extracted permission fields directly
+        canCreateCourses: canCreateCourses ?? false,
+        canApproveContent: canApproveContent ?? false,
+        canManageStudents: canManageStudents ?? false,
+        canScheduleSessions: canScheduleSessions ?? true,
       })
       .returning();
 

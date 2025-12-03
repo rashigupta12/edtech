@@ -182,7 +182,7 @@ const navConfigs = {
         { title: "All Courses", href: "/dashboard/college/courses", icon: List },
         {
           title: "Add course",
-          href: "/dashboard/college/create",
+          href: "/dashboard/college/courses/create",
           icon: Ticket,
         },
       ],

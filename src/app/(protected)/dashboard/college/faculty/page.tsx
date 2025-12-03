@@ -4,7 +4,8 @@ import { useCurrentUser } from "@/hooks/auth";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import Swal from "sweetalert2";
 import {
   Table,
   TableBody,
@@ -14,7 +15,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Search, Crown, Edit, Trash2, Save, X, CheckSquare, Square } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Search,
+  Crown,
+  Edit,
+  Trash2,
+  Save,
+  X,
+  Users,
+  ArrowLeft,
+  Lock,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -30,7 +43,11 @@ const facultyRoles = [
   { value: "ASSISTANT_PROFESSOR", label: "Assistant Professor" },
   { value: "ASSOCIATE_PROFESSOR", label: "Associate Professor" },
   { value: "PROFESSOR", label: "Professor" },
-  { value: "HOD", label: "Head of Department", icon: <Crown className="w-3 h-3 inline ml-1" /> },
+  {
+    value: "HOD",
+    label: "Head of Department",
+    icon: <Crown className="w-3 h-3 inline ml-1" />,
+  },
   { value: "VISITING_FACULTY", label: "Visiting Faculty" },
 ];
 
@@ -50,12 +67,18 @@ const FacultyPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const [openAddModal, setOpenAddModal] = useState(false);
-  const [editingFaculty, setEditingFaculty] = useState<any | null>(null);
+  const [openForm, setOpenForm] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingFacultyId, setEditingFacultyId] = useState<string | null>(null);
 
-  const [addForm, setAddForm] = useState({
-    name: "", email: "", mobile: "", password: "",
-    departmentId: "", facultyRole: "LECTURER", designation: "Lecturer",
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    mobile: "",
+    password: "",
+    departmentId: "",
+    facultyRole: "LECTURER",
+    designation: "Lecturer",
     permissions: {
       canCreateCourses: false,
       canApproveContent: false,
@@ -64,14 +87,42 @@ const FacultyPage = () => {
     },
   });
 
-  const [editForm, setEditForm] = useState({
-    departmentId: "", facultyRole: "LECTURER", designation: "",
-    permissions: { canCreateCourses: false, canApproveContent: false, canManageStudents: false, canScheduleSessions: true },
+  const [validationErrors, setValidationErrors] = useState({
+    email: "",
+    mobile: "",
+    password: "",
   });
+
+  // Validation functions
+  const validateEmail = (email: string): string => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) return "Email is required";
+    if (!emailRegex.test(email)) return "Please enter a valid email address";
+    return "";
+  };
+
+  const validateMobile = (mobile: string): string => {
+    const mobileRegex = /^\d{0,10}$/;
+    if (mobile && !mobileRegex.test(mobile)) return "Only digits allowed";
+    if (mobile.length > 10) return "Max 10 digits allowed";
+    return "";
+  };
+
+  const validatePassword = (password: string): string => {
+    if (!password) return "Password is required";
+    if (password.length < 8) return "At least 8 characters required";
+    if (!/(?=.*[a-z])/.test(password)) return "Requires lowercase letter";
+    if (!/(?=.*[A-Z])/.test(password)) return "Requires uppercase letter";
+    if (!/(?=.*\d)/.test(password)) return "Requires a number";
+    if (!/(?=.*[@$!%*?&])/.test(password)) return "Requires special character";
+    return "";
+  };
 
   const fetchCollegeId = async () => {
     if (!user?.id) return;
-    const res = await fetch(`/api/colleges?userId=${user.id}`, { cache: "no-store" });
+    const res = await fetch(`/api/colleges?userId=${user.id}`, {
+      cache: "no-store",
+    });
     const data = await res.json();
     if (data.success) setCollegeId(data.data.id);
   };
@@ -90,292 +141,800 @@ const FacultyPage = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchCollegeId(); }, [user]);
-  useEffect(() => { if (collegeId) loadData(); }, [collegeId]);
+  useEffect(() => {
+    fetchCollegeId();
+  }, [user]);
+  
+  useEffect(() => {
+    if (collegeId) loadData();
+  }, [collegeId]);
 
-  // CREATE Faculty
-  const handleAddSubmit = async () => {
-    if (!addForm.name || !addForm.email || !addForm.password) {
-      alert("Name, Email, and Password are required");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const userRes = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: addForm.name,
-          email: addForm.email,
-          password: addForm.password,
-          mobile: addForm.mobile || null,
-          role: "FACULTY",
-        }),
-      });
-      const userData = await userRes.json();
-      if (!userRes.ok) throw new Error(userData.error || "Failed to create user");
-
-      const facultyRes = await fetch("/api/faculty", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          collegeId,
-          userId: userData.jyotishi.id,
-          departmentId: addForm.departmentId || null,
-          facultyRole: addForm.facultyRole,
-          designation: addForm.designation,
-          employmentType: "FULL_TIME",
-          ...addForm.permissions, // Send permissions
-        }),
-      });
-
-      if (!facultyRes.ok) throw new Error("Failed to assign faculty role");
-
-      alert("Faculty added successfully!");
-      setOpenAddModal(false);
-      setAddForm({
-        name: "", email: "", mobile: "", password: "",
-        departmentId: "", facultyRole: "LECTURER", designation: "Lecturer",
-        permissions: { canCreateCourses: false, canApproveContent: false, canManageStudents: false, canScheduleSessions: true },
-      });
-      loadData();
-    } catch (err: any) {
-      alert(err.message || "Failed to add faculty");
-    } finally {
-      setSubmitting(false);
-    }
+  // Open form in ADD mode
+  const openAddForm = () => {
+    setIsEditMode(false);
+    setEditingFacultyId(null);
+    setFormData({
+      name: "",
+      email: "",
+      mobile: "",
+      password: "",
+      departmentId: "",
+      facultyRole: "LECTURER",
+      designation: "Lecturer",
+      permissions: {
+        canCreateCourses: false,
+        canApproveContent: false,
+        canManageStudents: false,
+        canScheduleSessions: true,
+      },
+    });
+    setValidationErrors({
+      email: "",
+      mobile: "",
+      password: "",
+    });
+    setOpenForm(true);
   };
 
-  // EDIT Faculty
-  const startEdit = (faculty: any) => {
-    setEditingFaculty(faculty);
-    setEditForm({
+  // Open form in EDIT mode
+  const openEditForm = (faculty: any) => {
+    setIsEditMode(true);
+    setEditingFacultyId(faculty.id);
+    setFormData({
+      name: faculty.user?.name || "",
+      email: faculty.user?.email || "",
+      mobile: faculty.user?.mobile || "",
+      password: "", // Password not shown in edit mode
       departmentId: faculty.departmentId || "",
       facultyRole: faculty.facultyRole || "LECTURER",
       designation: faculty.designation || "Lecturer",
       permissions: {
-        canCreateCourses: faculty.canCreateCourses || false,
-        canApproveContent: faculty.canApproveContent || false,
-        canManageStudents: faculty.canManageStudents || false,
-        canScheduleSessions: faculty.canScheduleSessions !== false,
+        canCreateCourses: faculty.permissions?.canCreateCourses || false,
+        canApproveContent: faculty.permissions?.canApproveContent || false,
+        canManageStudents: faculty.permissions?.canManageStudents || false,
+        canScheduleSessions: faculty.permissions?.canScheduleSessions !== false,
       },
     });
+    setValidationErrors({
+      email: "",
+      mobile: "",
+      password: "",
+    });
+    setOpenForm(true);
   };
 
-const saveEdit = async () => {
-  if (!editingFaculty) return;
-  try {
-    const res = await fetch(`/api/faculty?id=${editingFaculty.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        departmentId: editForm.departmentId || null,
-        facultyRole: editForm.facultyRole,
-        designation: editForm.designation,
-        // Send permissions as individual fields, not as an object
-        canCreateCourses: editForm.permissions.canCreateCourses,
-        canApproveContent: editForm.permissions.canApproveContent,
-        canManageStudents: editForm.permissions.canManageStudents,
-        canScheduleSessions: editForm.permissions.canScheduleSessions,
-      }),
-    });
+  // Close form
+  const closeForm = () => {
+    setOpenForm(false);
+    setIsEditMode(false);
+    setEditingFacultyId(null);
+  };
+
+  // Handle input changes with validation
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
     
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.error?.message || "Update failed");
+    if (field === 'email' && !isEditMode) {
+      setValidationErrors(prev => ({ ...prev, email: validateEmail(value) }));
     }
-    
-    const result = await res.json();
-    setEditingFaculty(null);
-    loadData();
-    alert("Faculty updated successfully!");
-  } catch (err: any) {
-    alert("Failed to update faculty: " + err.message);
-  }
-};
+    if (field === 'mobile' && !isEditMode) {
+      // Limit to 10 digits
+      const limitedValue = value.slice(0, 10);
+      if (value.length <= 10) {
+        setFormData(prev => ({ ...prev, mobile: limitedValue }));
+        setValidationErrors(prev => ({ ...prev, mobile: validateMobile(limitedValue) }));
+      }
+    }
+    if (field === 'password' && !isEditMode) {
+      setValidationErrors(prev => ({ ...prev, password: validatePassword(value) }));
+    }
+  };
+
+  // Check if form has validation errors
+  const hasValidationErrors = () => {
+    return Object.values(validationErrors).some(error => error !== "");
+  };
+
+  // Handle form submission
+  const handleSubmit = async () => {
+    if (isEditMode) {
+      // EDIT mode submission
+      if (!editingFacultyId) return;
+      
+      setSubmitting(true);
+      try {
+        const facultyRes = await fetch(`/api/faculty?id=${editingFacultyId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            collegeId,
+            departmentId: formData.departmentId || null,
+            facultyRole: formData.facultyRole,
+            designation: formData.designation,
+            employmentType: "FULL_TIME",
+            permissions: formData.permissions,
+          }),
+        });
+
+        if (!facultyRes.ok) {
+          const errorData = await facultyRes.json();
+          throw new Error(errorData.error?.message || "Failed to update faculty");
+        }
+
+        closeForm();
+        loadData();
+        Swal.fire({
+          icon: "success",
+          title: "Updated!",
+          text: "Faculty updated successfully",
+          timer: 2000,
+          showConfirmButton: false,
+          confirmButtonColor: "#059669",
+        });
+      } catch (err: any) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Failed to update faculty: " + err.message,
+          confirmButtonColor: "#059669",
+        });
+      } finally {
+        setSubmitting(false);
+      }
+    } else {
+      // ADD mode submission
+      // Basic required field validation
+      if (!formData.name || !formData.email || !formData.password) {
+        Swal.fire({
+          icon: "warning",
+          title: "Required",
+          text: "Name, Email, and Password are required",
+          confirmButtonColor: "#059669",
+        });
+        return;
+      }
+
+      // Validation errors check
+      if (hasValidationErrors()) {
+        Swal.fire({
+          icon: "warning",
+          title: "Validation Error",
+          text: "Please fix the validation errors before submitting",
+          confirmButtonColor: "#059669",
+        });
+        return;
+      }
+
+      // Final validation before submitting
+      const emailError = validateEmail(formData.email);
+      const passwordError = validatePassword(formData.password);
+      const mobileError = validateMobile(formData.mobile);
+
+      if (emailError || passwordError || mobileError) {
+        setValidationErrors({
+          email: emailError,
+          mobile: mobileError,
+          password: passwordError,
+        });
+        Swal.fire({
+          icon: "warning",
+          title: "Validation Error",
+          text: "Please fix the validation errors before submitting",
+          confirmButtonColor: "#059669",
+        });
+        return;
+      }
+      
+      setSubmitting(true);
+      try {
+        const userRes = await fetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            mobile: formData.mobile || null,
+            role: "FACULTY",
+          }),
+        });
+        const userData = await userRes.json();
+        if (!userRes.ok) throw new Error(userData.error || "Failed to create user");
+
+        const facultyRes = await fetch("/api/faculty", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            collegeId,
+            userId: userData.jyotishi.id,
+            departmentId: formData.departmentId || null,
+            facultyRole: formData.facultyRole,
+            designation: formData.designation,
+            employmentType: "FULL_TIME",
+            ...formData.permissions,
+          }),
+        });
+
+        if (!facultyRes.ok) throw new Error("Failed to assign faculty role");
+
+        closeForm();
+        loadData();
+        Swal.fire({
+          icon: "success",
+          title: "Success!",
+          text: "Faculty added successfully",
+          timer: 2000,
+          showConfirmButton: false,
+          confirmButtonColor: "#059669",
+        });
+      } catch (err: any) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: err.message || "Failed to add faculty",
+          confirmButtonColor: "#059669",
+        });
+      } finally {
+        setSubmitting(false);
+      }
+    }
+  };
 
   // DELETE Faculty
-  const deleteFaculty = async (facultyId: string) => {
-    if (!confirm("Delete this faculty member permanently?")) return;
+  const deleteFaculty = async (facultyId: string, facultyName: string) => {
+    const result = await Swal.fire({
+      title: "Delete Faculty?",
+      html: `Are you sure you want to delete <strong>"${facultyName}"</strong>?<br>This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
-      await fetch(`/api/faculty?id=${facultyId}`, { method: "DELETE" });
-      loadData();
+      const res = await fetch(`/api/faculty?id=${facultyId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Deleted!",
+          text: "Faculty has been deleted successfully.",
+          timer: 2000,
+          showConfirmButton: false,
+          confirmButtonColor: "#059669",
+        });
+        loadData();
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Delete Failed",
+          text: data.error?.message || "Failed to delete faculty",
+          confirmButtonColor: "#059669",
+        });
+      }
     } catch (err) {
-      alert("Failed to delete");
+      console.error("Delete error:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "An error occurred while deleting the faculty.",
+        confirmButtonColor: "#059669",
+      });
     }
   };
 
-  const filtered = facultyList.filter(f =>
-    f.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    f.user?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered = facultyList.filter(
+    (f) =>
+      f.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      f.user?.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <Card className="shadow-lg">
-        <CardHeader>
-          <div className="flex justify-between items-center gap-4">
-            <CardTitle className="text-2xl font-bold">Faculty Management</CardTitle>
-            <Button onClick={() => setOpenAddModal(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Add Faculty
-            </Button>
-          </div>
-          <div className="mt-4 relative max-w-md">
-            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-            <Input placeholder="Search faculty..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin" /></div>
-          ) : filtered.length === 0 ? (
-            <p className="text-center py-12 text-muted-foreground">No faculty found</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((f) => {
-                 
-                  const roleLabel = facultyRoles.find(r => r.value === f.facultyRole)?.label || f.facultyRole;
-
-                  return (
-                    <TableRow key={f.id}>
-                      <TableCell className="font-medium">{f.user?.name}</TableCell>
-                      <TableCell>{f.user?.email}</TableCell>
-                      <TableCell>{f.departmentName || "—"}</TableCell>
-                      <TableCell>
-                        {editingFaculty?.id === f.id ? (
-                          <Select value={editForm.facultyRole} onValueChange={v => {
-                            const role = facultyRoles.find(r => r.value === v);
-                            setEditForm({ ...editForm, facultyRole: v, designation: role?.label || "Lecturer" });
-                          }}>
-                            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {facultyRoles.map(r => (
-                                <SelectItem key={r.value} value={r.value}>{r.label} {r.icon}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Badge variant={f.facultyRole === "HOD" ? "default" : "secondary"}>
-                            {roleLabel}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingFaculty?.id === f.id ? (
-                          <div className="space-y-2">
-                            {permissionsList.map(p => (
-                              <div key={p.key} className="flex items-center space-x-2">
-                                <Checkbox
-                                  checked={editForm.permissions[p.key as keyof typeof editForm.permissions]}
-                                  onCheckedChange={(checked) => setEditForm({
-                                    ...editForm,
-                                    permissions: { ...editForm.permissions, [p.key]: checked }
-                                  })}
-                                />
-                                <Label className="text-xs">{p.label}</Label>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-xs space-y-1">
-                            {f.canCreateCourses && <Badge variant="outline">Create</Badge>}
-                            {f.canApproveContent && <Badge variant="outline">Approve</Badge>}
-                            {f.canManageStudents && <Badge variant="outline">Students</Badge>}
-                            {f.canScheduleSessions && <Badge variant="outline">Schedule</Badge>}
-                            {!f.canCreateCourses && !f.canApproveContent && !f.canManageStudents && !f.canScheduleSessions && "—"}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="flex gap-2">
-                        {editingFaculty?.id === f.id ? (
-                          <>
-                            <Button size="sm" onClick={saveEdit}><Save className="w-4 h-4" /></Button>
-                            <Button size="sm" variant="outline" onClick={() => setEditingFaculty(null)}><X className="w-4 h-4" /></Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button size="sm" variant="ghost" onClick={() => startEdit(f)}><Edit className="w-4 h-4" /></Button>
-                            <Button size="sm" variant="ghost" className="text-red-600" onClick={() => deleteFaculty(f.id)}><Trash2 className="w-4 h-4" /></Button>
-                          </>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Add Faculty Modal */}
-      {openAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 max-h-screen overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">Add New Faculty</h2>
-
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <Input placeholder="Full Name" value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} disabled={submitting} />
-              <Input type="email" placeholder="Email Address" value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} disabled={submitting} />
-              <Input placeholder="Mobile (optional)" value={addForm.mobile} onChange={e => setAddForm({ ...addForm, mobile: e.target.value })} disabled={submitting} />
-              <Input type="password" placeholder="Password" value={addForm.password} onChange={e => setAddForm({ ...addForm, password: e.target.value })} disabled={submitting} />
+    <div className="p-6 max-w-7xl mx-auto relative">
+      {/* Main Content */}
+      <div className={`transition-all duration-300 ${openForm ? "mr-96" : ""}`}>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Faculty Management
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Manage your college faculty members
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <Select value={addForm.departmentId} onValueChange={v => setAddForm({ ...addForm, departmentId: v })} disabled={submitting}>
-                <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
-                <SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code})</SelectItem>)}</SelectContent>
-              </Select>
+            <div className="flex items-center gap-4">
+              <div className="relative max-w-md w-full sm:w-auto">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Input
+                  placeholder="Search faculty..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 w-full"
+                />
+              </div>
 
-              <Select value={addForm.facultyRole} onValueChange={v => {
-                const role = facultyRoles.find(r => r.value === v);
-                setAddForm({ ...addForm, facultyRole: v, designation: role?.label || "Lecturer" });
-              }} disabled={submitting}>
-                <SelectTrigger><SelectValue placeholder="Faculty Role" /></SelectTrigger>
-                <SelectContent>{facultyRoles.map(r => <SelectItem key={r.value} value={r.value}>{r.label} {r.icon}</SelectItem>)}</SelectContent>
-              </Select>
+              <Button
+                onClick={openAddForm}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4" />
+                Add Faculty
+              </Button>
             </div>
+          </div>
 
-            <div className="mb-6">
-              <h3 className="font-medium mb-3">Permissions</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {permissionsList.map(p => (
-                  <div key={p.key} className="flex items-center space-x-3">
-                    <Checkbox
-                      id={p.key}
-                      checked={addForm.permissions[p.key as keyof typeof addForm.permissions]}
-                      onCheckedChange={(checked) => setAddForm({
-                        ...addForm,
-                        permissions: { ...addForm.permissions, [p.key]: checked }
-                      })}
-                      disabled={submitting}
-                    />
-                    <Label htmlFor={p.key} className="cursor-pointer">{p.label}</Label>
+          {/* Faculty Table */}
+          <Card className="bg-white border-gray-200 shadow-sm overflow-hidden">
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-10">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Users className="w-8 h-8 text-gray-400" />
                   </div>
-                ))}
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {searchTerm ? "No faculty found" : "No faculty added yet"}
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    {searchTerm
+                      ? "Try adjusting your search criteria"
+                      : "Click 'Add Faculty' to get started"}
+                  </p>
+                  {searchTerm ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => setSearchTerm("")}
+                      className="border-gray-300"
+                    >
+                      Clear Search
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={openAddForm}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Faculty
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-gray-100">
+                      <TableRow>
+                        <TableHead className="font-semibold text-gray-700">Name</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Email</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Mobile</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Department</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Role</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Permissions</TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtered.map((f) => {
+                        const roleLabel =
+                          facultyRoles.find((r) => r.value === f.facultyRole)
+                            ?.label || f.facultyRole;
+
+                        return (
+                          <TableRow key={f.id} className="hover:bg-gray-50/50">
+                            <TableCell className="font-medium text-gray-900">
+                              {f.user?.name}
+                            </TableCell>
+                            <TableCell className="text-gray-600">
+                              {f.user?.email}
+                            </TableCell>
+                            <TableCell className="text-gray-600">
+                              {f.user?.mobile || "—"}
+                            </TableCell>
+                            <TableCell className="text-gray-600">
+                              {f.departmentName || "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                className={
+                                  f.facultyRole === "HOD"
+                                    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                                    : "bg-gray-100 text-gray-700 border-gray-200"
+                                }
+                              >
+                                {roleLabel}
+                                {f.facultyRole === "HOD" && (
+                                  <Crown className="w-3 h-3 inline ml-1" />
+                                )}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-1">
+                                {f.permissions?.canCreateCourses && (
+                                  <Badge variant="outline" className="text-xs w-fit">Create course</Badge>
+                                )}
+                                {f.permissions?.canApproveContent && (
+                                  <Badge variant="outline" className="text-xs w-fit">Approve Content</Badge>
+                                )}
+                                {f.permissions?.canManageStudents && (
+                                  <Badge variant="outline" className="text-xs w-fit">Manage Students</Badge>
+                                )}
+                                {f.permissions?.canScheduleSessions && (
+                                  <Badge variant="outline" className="text-xs w-fit">Schedule Sessions</Badge>
+                                )}
+                                {!f.permissions?.canCreateCourses &&
+                                  !f.permissions?.canApproveContent &&
+                                  !f.permissions?.canManageStudents &&
+                                  !f.permissions?.canScheduleSessions && (
+                                    <span className="text-gray-400 text-sm">—</span>
+                                  )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right space-x-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openEditForm(f)}
+                                className="hover:bg-emerald-50 hover:text-emerald-700"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => deleteFaculty(f.id, f.user?.name || "this faculty")}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Single Form Panel (for both Add and Edit) */}
+      <div
+        className={`fixed top-0 right-0 h-full w-96 bg-white border-l border-gray-200 shadow-xl z-50 transform transition-transform duration-300 ${
+          openForm ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="h-full flex flex-col">
+          {/* Form Header */}
+          <div className="border-b border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                {isEditMode ? (
+                  <>
+                    <Edit className="w-5 h-5 text-emerald-600" />
+                    Edit Faculty
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-5 h-5 text-emerald-600" />
+                    Add New Faculty
+                  </>
+                )}
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeForm}
+                className="hover:bg-gray-100"
+                disabled={submitting}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Form Content */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="space-y-4">
+              {/* Name Field */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Full Name {!isEditMode && "*"}
+                </label>
+                <Input
+                  placeholder="e.g., Dr. John Doe"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  disabled={isEditMode || submitting}
+                  className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                    isEditMode ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""
+                  }`}
+                />
+                {isEditMode && (
+                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    Name cannot be edited
+                  </p>
+                )}
+              </div>
+
+              {/* Email Field */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Email Address {!isEditMode && "*"}
+                </label>
+                <Input
+                  type="email"
+                  placeholder="faculty@example.com"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  disabled={isEditMode || submitting}
+                  className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                    isEditMode ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""
+                  } ${validationErrors.email && !isEditMode ? "border-red-300 focus:border-red-500" : ""}`}
+                />
+                {!isEditMode && validationErrors.email && (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors.email}</p>
+                )}
+                {isEditMode && (
+                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    Email cannot be edited
+                  </p>
+                )}
+              </div>
+
+              {/* Mobile Field */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Mobile Number
+                </label>
+                <Input
+                  placeholder="Enter mobile no."
+                  value={formData.mobile}
+                  onChange={(e) => handleInputChange('mobile', e.target.value)}
+                  disabled={isEditMode || submitting}
+                  maxLength={10}
+                  className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                    isEditMode ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""
+                  } ${validationErrors.mobile && !isEditMode ? "border-red-300 focus:border-red-500" : ""}`}
+                />
+                {!isEditMode && validationErrors.mobile && (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors.mobile}</p>
+                )}
+                {isEditMode && (
+                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    Mobile number cannot be edited
+                  </p>
+                )}
+              </div>
+
+              {/* Password Field - Only shown in ADD mode */}
+              {!isEditMode && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Password *
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder="Enter password"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    disabled={submitting}
+                    className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                      validationErrors.password ? "border-red-300 focus:border-red-500" : ""
+                    }`}
+                  />
+                  {validationErrors.password && (
+                    <div className="text-xs text-red-500 mt-1 space-y-1">
+                      {validationErrors.password === "Password is required" ? (
+                        <p>Password is required</p>
+                      ) : (
+                        <>
+                          <p className="font-medium">Password requirements:</p>
+                          <div className="pl-2">
+                            {validationErrors.password.includes("8 characters") && (
+                              <div className="flex items-center gap-1">
+                                <div className={`w-1.5 h-1.5 rounded-full ${formData.password.length >= 8 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span>At least 8 characters</span>
+                              </div>
+                            )}
+                            {validationErrors.password.includes("lowercase") && (
+                              <div className="flex items-center gap-1">
+                                <div className={`w-1.5 h-1.5 rounded-full ${/(?=.*[a-z])/.test(formData.password) ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span>One lowercase letter</span>
+                              </div>
+                            )}
+                            {validationErrors.password.includes("uppercase") && (
+                              <div className="flex items-center gap-1">
+                                <div className={`w-1.5 h-1.5 rounded-full ${/(?=.*[A-Z])/.test(formData.password) ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span>One uppercase letter</span>
+                              </div>
+                            )}
+                            {validationErrors.password.includes("number") && (
+                              <div className="flex items-center gap-1">
+                                <div className={`w-1.5 h-1.5 rounded-full ${/(?=.*\d)/.test(formData.password) ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span>One number</span>
+                              </div>
+                            )}
+                            {validationErrors.password.includes("special") && (
+                              <div className="flex items-center gap-1">
+                                <div className={`w-1.5 h-1.5 rounded-full ${/(?=.*[@$!%*?&])/.test(formData.password) ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span>One special character (!@#$%*?&)</span>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Department Field */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Department
+                </label>
+                <Select
+                  value={formData.departmentId}
+                  onValueChange={(v) => setFormData({ ...formData, departmentId: v })}
+                  disabled={submitting}
+                >
+                  <SelectTrigger className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500">
+                    <SelectValue placeholder="Select Department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name} ({d.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Faculty Role Field */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Faculty Role
+                </label>
+                <Select
+                  value={formData.facultyRole}
+                  onValueChange={(v) => {
+                    const role = facultyRoles.find((r) => r.value === v);
+                    setFormData({
+                      ...formData,
+                      facultyRole: v,
+                      designation: role?.label || "Lecturer",
+                    });
+                  }}
+                  disabled={submitting}
+                >
+                  <SelectTrigger className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500">
+                    <SelectValue placeholder="Select Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {facultyRoles.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label} {r.icon}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Designation Field */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Designation
+                </label>
+                <Input
+                  value={formData.designation}
+                  onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                  disabled={submitting}
+                  className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Permissions */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-3 block">
+                  Permissions
+                </label>
+                <div className="space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                  {permissionsList.map((p) => (
+                    <div key={p.key} className="flex items-center space-x-3">
+                      <Checkbox
+                        id={p.key}
+                        checked={formData.permissions[p.key as keyof typeof formData.permissions]}
+                        onCheckedChange={(checked) =>
+                          setFormData({
+                            ...formData,
+                            permissions: {
+                              ...formData.permissions,
+                              [p.key]: checked,
+                            },
+                          })
+                        }
+                        disabled={submitting}
+                        className="border-gray-300"
+                      />
+                      <Label
+                        htmlFor={p.key}
+                        className="cursor-pointer text-sm text-gray-700"
+                      >
+                        {p.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
+          </div>
 
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setOpenAddModal(false)} disabled={submitting}>Cancel</Button>
-              <Button onClick={handleAddSubmit} disabled={submitting}>
-                {submitting ? <>Creating...</> : "Create Faculty"}
+          {/* Form Footer */}
+          <div className="border-t border-gray-200 p-4">
+            <div className="flex gap-3">
+              <Button
+                onClick={handleSubmit}
+                disabled={submitting || (!isEditMode && hasValidationErrors())}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-gray-400"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    {isEditMode ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {isEditMode ? "Update Faculty" : "Create Faculty"}
+                  </>
+                )}
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={closeForm}
+                className="border-gray-300"
+                disabled={submitting}
+              >
+                {isEditMode ? (
+                  <>
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Cancel
+                  </>
+                ) : (
+                  "Cancel"
+                )}
               </Button>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Overlay when form is open */}
+      {openForm && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={closeForm}
+        />
       )}
     </div>
   );

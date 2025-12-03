@@ -36,12 +36,11 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
-
 type Assessment = {
   id: string;
   title: string;
   description: string | null;
-  assessmentLevel: 'LESSON_QUIZ' | 'MODULE_ASSESSMENT' | 'COURSE_FINAL';
+  assessmentLevel: "LESSON_QUIZ" | "MODULE_ASSESSMENT" | "COURSE_FINAL";
   passingScore: number;
   questions?: Question[];
 };
@@ -51,7 +50,7 @@ type Question = {
   questionText: string;
   questionType: string;
   options: string[];
-  correctAnswer:string;
+  correctAnswer: string;
 };
 type LearningOutcome = {
   id: string;
@@ -123,7 +122,7 @@ export default function ViewCoursePage() {
   const [showModuleForm, setShowModuleForm] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
-const [expandedAssessments, setExpandedAssessments] = useState<string[]>([]);
+  const [expandedAssessments, setExpandedAssessments] = useState<string[]>([]);
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
   const [moduleForm, setModuleForm] = useState({
     title: "",
@@ -182,32 +181,36 @@ const [expandedAssessments, setExpandedAssessments] = useState<string[]>([]);
   };
 
   const fetchAssessments = async () => {
-  try {
-    const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
-    const response = await res.json();
-    
-    if (response.success) {
-      const assessmentsData = response.data?.assessments || [];
-      
-      // Fetch questions for each assessment
-      const assessmentsWithQuestions = await Promise.all(
-        assessmentsData.map(async (assessment: Assessment) => {
-          const questionsRes = await fetch(`/api/assessments?id=${assessment.id}&questions=true`);
-          const questionsData = await questionsRes.json();
-          
-          return {
-            ...assessment,
-            questions: questionsData.success ? questionsData.data?.questions || [] : []
-          };
-        })
-      );
-      
-      setAssessments(assessmentsWithQuestions);
+    try {
+      const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
+      const response = await res.json();
+
+      if (response.success) {
+        const assessmentsData = response.data?.assessments || [];
+
+        // Fetch questions for each assessment
+        const assessmentsWithQuestions = await Promise.all(
+          assessmentsData.map(async (assessment: Assessment) => {
+            const questionsRes = await fetch(
+              `/api/assessments?id=${assessment.id}&questions=true`
+            );
+            const questionsData = await questionsRes.json();
+
+            return {
+              ...assessment,
+              questions: questionsData.success
+                ? questionsData.data?.questions || []
+                : [],
+            };
+          })
+        );
+
+        setAssessments(assessmentsWithQuestions);
+      }
+    } catch (err) {
+      console.error("Failed to fetch assessments:", err);
     }
-  } catch (err) {
-    console.error('Failed to fetch assessments:', err);
-  }
-};
+  };
   const fetchModulesWithLessons = async () => {
     try {
       // First get modules
@@ -242,7 +245,7 @@ const [expandedAssessments, setExpandedAssessments] = useState<string[]>([]);
     if (params.id) {
       fetchCourse();
       fetchCurriculum();
-      fetchAssessments(); 
+      fetchAssessments();
     }
   }, [params.id]);
 
@@ -297,13 +300,13 @@ const [expandedAssessments, setExpandedAssessments] = useState<string[]>([]);
         : [...prev, moduleId]
     );
   };
-const toggleAssessment = (assessmentId: string) => {
-  setExpandedAssessments(prev =>
-    prev.includes(assessmentId)
-      ? prev.filter(id => id !== assessmentId)
-      : [...prev, assessmentId]
-  );
-};
+  const toggleAssessment = (assessmentId: string) => {
+    setExpandedAssessments((prev) =>
+      prev.includes(assessmentId)
+        ? prev.filter((id) => id !== assessmentId)
+        : [...prev, assessmentId]
+    );
+  };
   const handleApprove = async () => {
     try {
       const res = await fetch(`/api/courses?id=${params.id}&approve=true`, {
@@ -886,186 +889,322 @@ const toggleAssessment = (assessmentId: string) => {
               </CardContent>
             </Card>
 
-            
-{/* Assessments Section */}
-<Card className="border-green-100 shadow-sm">
-  <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
-    <div className="flex items-center gap-2">
-      <div className="p-2 bg-green-100 rounded-lg">
-        <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
-      <div>
-        <CardTitle className="text-green-900">Assessments & Quizzes</CardTitle>
-        <CardDescription className="text-green-700">
-          {assessments.length} assessment{assessments.length !== 1 ? 's' : ''} • Total {assessments.reduce((acc, a) => acc + (a.questions?.length || 0), 0)} questions
-        </CardDescription>
-      </div>
-    </div>
-  </CardHeader>
-  <CardContent className="p-6">
-    {assessments.length === 0 ? (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full  flex items-center justify-center">
-          <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        </div>
-        <p className="text-gray-600 mb-2">No assessments added yet</p>
-        <p className="text-sm text-gray-500">Add assessments to test student knowledge</p>
-      </div>
-    ) : (
-      <div className="space-y-4">
-        {assessments.map((assessment) => (
-          <div 
-            key={assessment.id} 
-            className="border border-green-200 rounded-lg overflow-hidden bg-white  transition-all duration-200 hover:shadow-md"
-          >
-            {/* Assessment Header */}
-            <div 
-              className="flex items-center justify-between p-4 cursor-pointer  transition-colors"
-              onClick={() => toggleAssessment(assessment.id)}
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-2 rounded-lg">
-                  {assessment.assessmentLevel === 'LESSON_QUIZ' && (
-                    <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  )}
-                  {assessment.assessmentLevel === 'MODULE_ASSESSMENT' && (
-                    <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                  )}
-                  {assessment.assessmentLevel === 'COURSE_FINAL' && (
-                    <svg className="h-5 w-5 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge 
-                      className={`
-                        ${assessment.assessmentLevel === 'LESSON_QUIZ' ? 'bg-green-100 text-green-800 border-green-200' : ''}
-                        ${assessment.assessmentLevel === 'MODULE_ASSESSMENT' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : ''}
-                        ${assessment.assessmentLevel === 'COURSE_FINAL' ? 'bg-green-200 text-green-900 border-green-300' : ''}
-                      `}
+            {/* Assessments Section */}
+            <Card className="border-green-100 shadow-sm">
+              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <svg
+                      className="h-5 w-5 text-green-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                     >
-                      {assessment.assessmentLevel.replace(/_/g, ' ')}
-                    </Badge>
-                    <span className="text-xs px-2 py-1 rounded">
-                      Passing: {assessment.passingScore}%
-                    </span>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
                   </div>
-                  <h4 className="font-semibold ">{assessment.title}</h4>
-                  {assessment.description && (
-                    <p className="text-sm  mt-1">{assessment.description}</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="text-sm font-medium">
-                    {assessment.questions?.length || 0} questions
+                  <div>
+                    <CardTitle className="text-green-900">
+                      Assessments & Quizzes
+                    </CardTitle>
+                    <CardDescription className="text-green-700">
+                      {assessments.length} assessment
+                      {assessments.length !== 1 ? "s" : ""} • Total{" "}
+                      {assessments.reduce(
+                        (acc, a) => acc + (a.questions?.length || 0),
+                        0
+                      )}{" "}
+                      questions
+                    </CardDescription>
                   </div>
-                  <div className="text-xs ">
-                    Click to {expandedAssessments.includes(assessment.id) ? 'collapse' : 'expand'}
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {assessments.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full  flex items-center justify-center">
+                      <svg
+                        className="h-8 w-8 text-green-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-gray-600 mb-2">
+                      No assessments added yet
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Add assessments to test student knowledge
+                    </p>
                   </div>
-                </div>
-                <ChevronDown className={`h-5 w-5  transition-transform duration-200 ${
-                  expandedAssessments.includes(assessment.id) ? 'rotate-180' : ''
-                }`} />
-              </div>
-            </div>
-            
-            {/* Questions Section */}
-            {expandedAssessments.includes(assessment.id) && (
-              <div className="border-t border-green-100  p-6">
-                <div className="mb-4 flex items-center justify-between">
-                  <h5 className="font-semibold">Questions Preview</h5>
-                  <Badge variant="outline" className="border-green-200 text-green-700">
-                    {assessment.questions?.length || 0} total
-                  </Badge>
-                </div>
-                <div className="space-y-4">
-                  {assessment.questions?.map((question, index) => (
-                    <div key={question.id} className="bg-white border border-green-200 rounded-lg p-4">
-                      <div className="flex gap-6 items-center mb-3">
-                        <div className="flex items-center gap-3">
-                         
-                          <h6 className="font-medium text-green-900">Q{index + 1}</h6>
-                        </div>
-                        <div>
-                        <p className="text-gray-800">{question.questionText}</p>
-                        </div>
-                        <Badge 
-                          variant="outline" 
-                          className="border-green-200 text-green-700 "
+                ) : (
+                  <div className="space-y-4">
+                    {assessments.map((assessment) => (
+                      <div
+                        key={assessment.id}
+                        className="border border-green-200 rounded-lg overflow-hidden bg-white  transition-all duration-200 hover:shadow-md"
+                      >
+                        {/* Assessment Header */}
+                        <div
+                          className="flex items-center justify-between p-4 cursor-pointer  transition-colors"
+                          onClick={() => toggleAssessment(assessment.id)}
                         >
-                          {question.questionType.replace(/_/g, ' ')}
-                        </Badge>
-                      </div>
-                      
-                      
-                      <div className="ml-11 space-y-2">
-                        {question.questionType === 'MULTIPLE_CHOICE' && question.options && (
-                          <div className="space-y-2">
-                            {question.options.map((option: string, optIndex: number) => (
-                              <div 
-                                key={optIndex} 
-                                className={`flex items-center gap-3 p-2 rounded border ${question.correctAnswer === option ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200'}`}
-                              >
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${question.correctAnswer === option ? 'border-green-500 bg-green-500' : 'border-gray-400'}`}>
-                                  {question.correctAnswer === option && (
-                                    <div className="w-2 h-2 rounded-full bg-white"></div>
-                                  )}
-                                </div>
-                                <span className={`text-sm ${question.correctAnswer === option ? 'text-green-800 font-medium' : 'text-gray-700'}`}>
-                                  {option}
-                                </span>
-                                {question.correctAnswer === option && (
-                                  <Badge className="bg-green-100 text-green-800 border-green-200 text-xs ml-auto">
-                                    Correct
-                                  </Badge>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {question.questionType === 'TRUE_FALSE' && (
-                          <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                            <div className="w-8 h-8 bg-green-100 text-green-800 rounded-full flex items-center justify-center">
-                              ✓
+                          <div className="flex items-center gap-4">
+                            <div className="p-2 rounded-lg">
+                              {assessment.assessmentLevel === "LESSON_QUIZ" && (
+                                <svg
+                                  className="h-5 w-5 text-green-600"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                                  />
+                                </svg>
+                              )}
+                              {assessment.assessmentLevel ===
+                                "MODULE_ASSESSMENT" && (
+                                <svg
+                                  className="h-5 w-5 text-emerald-600"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                                  />
+                                </svg>
+                              )}
+                              {assessment.assessmentLevel ===
+                                "COURSE_FINAL" && (
+                                <svg
+                                  className="h-5 w-5 text-green-700"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                  />
+                                </svg>
+                              )}
                             </div>
                             <div>
-                              <p className="text-sm text-green-800">Correct answer:</p>
-                              <p className="font-semibold text-green-900">{question.correctAnswer}</p>
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge
+                                  className={`
+                        ${
+                          assessment.assessmentLevel === "LESSON_QUIZ"
+                            ? "bg-green-100 text-green-800 border-green-200"
+                            : ""
+                        }
+                        ${
+                          assessment.assessmentLevel === "MODULE_ASSESSMENT"
+                            ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                            : ""
+                        }
+                        ${
+                          assessment.assessmentLevel === "COURSE_FINAL"
+                            ? "bg-green-200 text-green-900 border-green-300"
+                            : ""
+                        }
+                      `}
+                                >
+                                  {assessment.assessmentLevel.replace(
+                                    /_/g,
+                                    " "
+                                  )}
+                                </Badge>
+                                <span className="text-xs px-2 py-1 rounded">
+                                  Passing: {assessment.passingScore}%
+                                </span>
+                              </div>
+                              <h4 className="font-semibold ">
+                                {assessment.title}
+                              </h4>
+                              {assessment.description && (
+                                <p className="text-sm  mt-1">
+                                  {assessment.description}
+                                </p>
+                              )}
                             </div>
                           </div>
-                        )}
-                        {question.questionType === 'SHORT_ANSWER' && (
-                          <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
-                            <p className="text-sm text-amber-800 mb-1">Expected answer:</p>
-                            <div className="bg-white px-3 py-2 rounded border border-amber-300">
-                              <code className="text-amber-900">{question.correctAnswer}</code>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <div className="text-sm font-medium">
+                                {assessment.questions?.length || 0} questions
+                              </div>
+                              <div className="text-xs ">
+                                Click to{" "}
+                                {expandedAssessments.includes(assessment.id)
+                                  ? "collapse"
+                                  : "expand"}
+                              </div>
+                            </div>
+                            <ChevronDown
+                              className={`h-5 w-5  transition-transform duration-200 ${
+                                expandedAssessments.includes(assessment.id)
+                                  ? "rotate-180"
+                                  : ""
+                              }`}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Questions Section */}
+                        {expandedAssessments.includes(assessment.id) && (
+                          <div className="border-t border-green-100  p-6">
+                            <div className="mb-4 flex items-center justify-between">
+                              <h5 className="font-semibold">
+                                Questions Preview
+                              </h5>
+                              <Badge
+                                variant="outline"
+                                className="border-green-200 text-green-700"
+                              >
+                                {assessment.questions?.length || 0} total
+                              </Badge>
+                            </div>
+                            <div className="space-y-4">
+                              {assessment.questions?.map((question, index) => (
+                                <div
+                                  key={question.id}
+                                  className="bg-white border border-green-200 rounded-lg p-4"
+                                >
+                                  <div className="flex gap-6 items-center mb-3">
+                                    <div className="flex items-center gap-3">
+                                      <h6 className="font-medium text-green-900">
+                                        Q{index + 1}
+                                      </h6>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-800">
+                                        {question.questionText}
+                                      </p>
+                                    </div>
+                                    <Badge
+                                      variant="outline"
+                                      className="border-green-200 text-green-700 "
+                                    >
+                                      {question.questionType.replace(/_/g, " ")}
+                                    </Badge>
+                                  </div>
+
+                                  <div className="ml-11 space-y-2">
+                                    {question.questionType ===
+                                      "MULTIPLE_CHOICE" &&
+                                      question.options && (
+                                        <div className="space-y-2">
+                                          {question.options.map(
+                                            (
+                                              option: string,
+                                              optIndex: number
+                                            ) => (
+                                              <div
+                                                key={optIndex}
+                                                className={`flex items-center gap-3 p-2 rounded border ${
+                                                  question.correctAnswer ===
+                                                  option
+                                                    ? "bg-green-50 border-green-300"
+                                                    : "bg-gray-50 border-gray-200"
+                                                }`}
+                                              >
+                                                <div
+                                                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                                                    question.correctAnswer ===
+                                                    option
+                                                      ? "border-green-500 bg-green-500"
+                                                      : "border-gray-400"
+                                                  }`}
+                                                >
+                                                  {question.correctAnswer ===
+                                                    option && (
+                                                    <div className="w-2 h-2 rounded-full bg-white"></div>
+                                                  )}
+                                                </div>
+                                                <span
+                                                  className={`text-sm ${
+                                                    question.correctAnswer ===
+                                                    option
+                                                      ? "text-green-800 font-medium"
+                                                      : "text-gray-700"
+                                                  }`}
+                                                >
+                                                  {option}
+                                                </span>
+                                                {question.correctAnswer ===
+                                                  option && (
+                                                  <Badge className="bg-green-100 text-green-800 border-green-200 text-xs ml-auto">
+                                                    Correct
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                            )
+                                          )}
+                                        </div>
+                                      )}
+                                    {question.questionType === "TRUE_FALSE" && (
+                                      <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                                        <div className="w-8 h-8 bg-green-100 text-green-800 rounded-full flex items-center justify-center">
+                                          ✓
+                                        </div>
+                                        <div>
+                                          <p className="text-sm text-green-800">
+                                            Correct answer:
+                                          </p>
+                                          <p className="font-semibold text-green-900">
+                                            {question.correctAnswer}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {question.questionType ===
+                                      "SHORT_ANSWER" && (
+                                      <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                                        <p className="text-sm text-amber-800 mb-1">
+                                          Expected answer:
+                                        </p>
+                                        <div className="bg-white px-3 py-2 rounded border border-amber-300">
+                                          <code className="text-amber-900">
+                                            {question.correctAnswer}
+                                          </code>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         )}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    )}
-  </CardContent>
-</Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Sidebar */}

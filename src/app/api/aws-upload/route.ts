@@ -379,7 +379,24 @@ export async function POST(request: NextRequest) {
 
     const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
     const allowedVideoTypes = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/x-matroska'];
-    const allowedTypes = [...allowedImageTypes, ...allowedVideoTypes];
+    const allowedDocumentTypes = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'text/plain',
+  'application/rtf'
+];
+    const allowedTypes = [...allowedImageTypes, ...allowedVideoTypes,...allowedDocumentTypes];
+    function isDocumentType(type: string): boolean {
+  return type.startsWith('application/pdf') || 
+         type.startsWith('application/msword') ||
+         type.startsWith('application/vnd.openxmlformats-officedocument') ||
+         type.startsWith('application/vnd.ms-excel') ||
+         type.startsWith('text/') ||
+         type.startsWith('application/rtf');
+}
     
     const maxSize = 200 * 1024 * 1024;
 

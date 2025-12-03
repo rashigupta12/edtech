@@ -3091,7 +3091,7 @@ const isNewLesson = !lesson.id || lesson.id.startsWith("new-") || !UUID_REGEX.te
             <Button
               type="submit"
               disabled={saving}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8"
+              className="bg-green-600 text-white px-8"
             >
               <Save className="h-4 w-4 mr-2" />
               {saving ? "Saving…" : "Update Course"}

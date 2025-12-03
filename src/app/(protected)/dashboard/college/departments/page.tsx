@@ -4,6 +4,7 @@ import { useCurrentUser } from "@/hooks/auth";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -14,7 +15,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Edit, Trash2, Search } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  Building2,
+  Save,
+  X,
+  CheckCircle,
+  XCircle,
+  ArrowLeft,
+} from "lucide-react";
+import Swal from "sweetalert2";
 
 interface Department {
   id: string;
@@ -35,10 +49,12 @@ const Departments = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
-  const [openModal, setOpenModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+  const [selectedDepartment, setSelectedDepartment] =
+    useState<Department | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -62,6 +78,12 @@ const Departments = () => {
       }
     } catch (err) {
       console.error("Failed to fetch college ID");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to load college information",
+        confirmButtonColor: "#059669",
+      });
     }
   };
 
@@ -76,6 +98,12 @@ const Departments = () => {
       setDepartments(data.data || []);
     } catch (err) {
       console.error("Failed to load departments");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to load departments",
+        confirmButtonColor: "#059669",
+      });
     } finally {
       setLoading(false);
     }
@@ -90,20 +118,58 @@ const Departments = () => {
       loadDepartments();
     }
   }, [collegeId]);
+  const generateDepartmentCode = (name: string): string => {
+  const trimmedName = name.trim().toUpperCase();
+  
+  if (!trimmedName) return '';
+  
+  const words = trimmedName.split(/\s+/);
+  
+  if (words.length === 1) {
+    const word = words[0];
+    if (word.length <= 3) {
+      return word;
+    } else if (word.length <= 5) {
+      return word.slice(0, 3); 
+    } else {
+      return word.slice(0, 4);
+    }
+  } else if (words.length === 2) {
+    return words[0].slice(0, 1) + words[1].slice(0, 1);
+  } else {
+    return words
+      .map(word => word.charAt(0))
+      .join('')
+      .slice(0, 6); 
+  }
+};
 
-  const handleFormChange = (
-  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-) => {
+ const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
   const { name, value } = e.target;
 
   if (name === "isActive") {
     setForm((prev) => ({ ...prev, [name]: value === "true" }));
+  } else if (name === "name") {
+    // Auto-generate code from name
+    const generatedCode = generateDepartmentCode(value);
+    setForm((prev) => ({ ...prev, name: value, code: generatedCode }));
   } else {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 };
+  const checkDuplicateCode = async (
+    code: string,
+    excludeId?: string
+  ): Promise<boolean> => {
+    const duplicate = departments.find(
+      (dept) =>
+        dept.code.toUpperCase() === code.toUpperCase() && dept.id !== excludeId
+    );
+    return !!duplicate;
+  };
 
-  const openAddModal = () => {
+  const openAddForm = () => {
+    setShowForm(true);
     setEditMode(false);
     setSelectedDepartment(null);
     setForm({
@@ -112,10 +178,10 @@ const Departments = () => {
       description: "",
       isActive: true,
     });
-    setOpenModal(true);
   };
 
-  const openEditModal = (dept: Department) => {
+  const openEditForm = (dept: Department) => {
+    setShowForm(true);
     setEditMode(true);
     setSelectedDepartment(dept);
     setForm({
@@ -124,14 +190,66 @@ const Departments = () => {
       description: dept.description || "",
       isActive: dept.isActive,
     });
-    setOpenModal(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditMode(false);
+    setSelectedDepartment(null);
+    setForm({
+      name: "",
+      code: "",
+      description: "",
+      isActive: true,
+    });
   };
 
   const saveDepartment = async () => {
-    if (!form.name || !form.code || !collegeId) {
-      alert("Name and Code are required!");
+    if (!form.name.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Required",
+        text: "Department name is required",
+        confirmButtonColor: "#059669",
+      });
       return;
     }
+
+    if (!form.code.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Required",
+        text: "Department code is required",
+        confirmButtonColor: "#059669",
+      });
+      return;
+    }
+
+    if (!collegeId) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "College information not found",
+        confirmButtonColor: "#059669",
+      });
+      return;
+    }
+    const isDuplicate = await checkDuplicateCode(
+      form.code,
+      editMode ? selectedDepartment?.id : undefined
+    );
+
+    if (isDuplicate) {
+      Swal.fire({
+        icon: "error",
+        title: "Duplicate Code",
+        text: `Department code "${form.code}" already exists. Please use a different code.`,
+        confirmButtonColor: "#059669",
+      });
+      return;
+    }
+
+    setSaving(true);
 
     const method = editMode ? "PUT" : "POST";
     const url = editMode
@@ -140,7 +258,7 @@ const Departments = () => {
 
     const payload = {
       ...form,
-      collegeId: collegeId, // Always enforce correct college
+      collegeId: collegeId,
     };
 
     try {
@@ -153,18 +271,54 @@ const Departments = () => {
       const data = await res.json();
 
       if (data.success) {
-        setOpenModal(false);
+        Swal.fire({
+          icon: "success",
+          title: "Success!",
+          text: editMode
+            ? "Department updated successfully"
+            : "Department created successfully",
+          timer: 2000,
+          showConfirmButton: false,
+          confirmButtonColor: "#059669",
+        });
+
+        closeForm();
         loadDepartments();
       } else {
-        alert(data.error?.message || "Failed to save department");
+        Swal.fire({
+          icon: "error",
+          title: "Failed",
+          text: data.error?.message || "Failed to save department",
+          confirmButtonColor: "#059669",
+        });
       }
     } catch (err) {
-      alert("Network error. Please try again.");
+      console.error("Save error:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Network error. Please try again.",
+        confirmButtonColor: "#059669",
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
-  const deleteDepartment = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this department?")) return;
+  const deleteDepartment = async (id: string, name: string) => {
+    const result = await Swal.fire({
+      title: "Delete Department?",
+      html: `Are you sure you want to delete <strong>"${name}"</strong>?<br>This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       const res = await fetch(`/api/departments?id=${id}`, {
@@ -173,12 +327,31 @@ const Departments = () => {
       const data = await res.json();
 
       if (data.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Deleted!",
+          text: "Department has been deleted successfully.",
+          timer: 2000,
+          showConfirmButton: false,
+          confirmButtonColor: "#059669",
+        });
         loadDepartments();
       } else {
-        alert("Failed to delete department");
+        Swal.fire({
+          icon: "error",
+          title: "Delete Failed",
+          text: data.error?.message || "Failed to delete department",
+          confirmButtonColor: "#059669",
+        });
       }
     } catch (err) {
-      alert("Error deleting department");
+      console.error("Delete error:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "An error occurred while deleting the department.",
+        confirmButtonColor: "#059669",
+      });
     }
   };
 
@@ -190,148 +363,316 @@ const Departments = () => {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <Card className="shadow-lg">
-        <CardHeader>
+    <div className="p-6 max-w-7xl mx-auto relative">
+      {/* Main Content */}
+      <div className={`transition-all duration-300 ${showForm ? "mr-80" : ""}`}>
+        <div className="space-y-6">
+          {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <CardTitle className="text-2xl font-bold">Departments</CardTitle>
-            <Button onClick={openAddModal} className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              Add Department
-            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Departments</h1>
+              <p className="text-gray-600 mt-2">
+                Manage your college departments
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="relative max-w-md w-full sm:w-auto">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Input
+                  placeholder="Search departments..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 w-full"
+                />
+              </div>
+
+              <Button
+                onClick={openAddForm}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4" />
+                Add Department
+              </Button>
+            </div>
           </div>
 
-          <div className="mt-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <Input
-                placeholder="Search departments..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 max-w-md"
-              />
-            </div>
-          </div>
-        </CardHeader>
+          {/* Departments Table */}
+          <Card className="bg-white border-gray-200 shadow-sm overflow-hidden">
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+                </div>
+              ) : filteredDepartments.length === 0 ? (
+                <div className="text-center py-10">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Building2 className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {searchTerm
+                      ? "No departments found"
+                      : "No departments added yet"}
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    {searchTerm
+                      ? "Try adjusting your search criteria"
+                      : "Click 'Add Department' to get started"}
+                  </p>
+                  {searchTerm ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => setSearchTerm("")}
+                      className="border-gray-300"
+                    >
+                      Clear Search
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={openAddForm}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Department
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-gray-100">
+                      <TableRow>
+                        <TableHead className="font-semibold text-gray-700">
+                          Name
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700">
+                          Code
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700">
+                          Description
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700">
+                          Status
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-right">
+                          Actions
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredDepartments.map((dept) => (
+                        <TableRow key={dept.id} className="hover:bg-gray-50/50">
+                          <TableCell className="font-medium text-gray-900">
+                            {dept.name}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="secondary"
+                              className="font-mono bg-gray-100 text-gray-700"
+                            >
+                              {dept.code}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            {dept.description || "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              className={
+                                dept.isActive
+                                  ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                                  : "bg-gray-100 text-gray-800 border-gray-200"
+                              }
+                            >
+                              {dept.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right space-x-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openEditForm(dept)}
+                              className="hover:bg-emerald-50 hover:text-emerald-700"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() =>
+                                deleteDepartment(dept.id, dept.name)
+                              }
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredDepartments.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              {searchTerm ? "No departments found matching your search." : "No departments added yet."}
-            </div>
-          ) : (
-            <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredDepartments.map((dept) => (
-                    <TableRow key={dept.id}>
-                      <TableCell className="font-medium">{dept.name}</TableCell>
-                      <TableCell className="uppercase font-mono">{dept.code}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {dept.description || "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={dept.isActive ? "default" : "secondary"}>
-                          {dept.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => openEditModal(dept)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => deleteDepartment(dept.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Modal */}
-      {openModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-5">
-                {editMode ? "Edit Department" : "Add New Department"}
+      {/* Slide-in Form Panel */}
+      <div
+        className={`fixed top-0 right-0 h-full w-96 bg-white border-l border-gray-200 shadow-xl z-50 transform transition-transform duration-300 ${
+          showForm ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="h-full flex flex-col">
+          {/* Form Header */}
+          <div className="border-b border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                {editMode ? (
+                  <>
+                    <Edit className="w-5 h-5 text-emerald-600" />
+                    Edit Department
+                  </>
+                ) : (
+                  <>
+                    Create New Department
+                  </>
+                )}
               </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeForm}
+                className="hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
 
-              <div className="space-y-4">
+          {/* Form Content */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Department Name *
+                </label>
                 <Input
                   name="name"
-                  placeholder="Department Name"
+                  placeholder="e.g., Computer Science"
                   value={form.name}
                   onChange={handleFormChange}
+                  className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Department Code *
+                </label>
                 <Input
                   name="code"
-                  placeholder="Department Code (e.g. CSE, MEC)"
+                  placeholder="Auto-generated from name"
                   value={form.code}
                   onChange={handleFormChange}
+                  className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 uppercase"
+                  readOnly
                 />
-                <Input
+                <p className="text-xs text-gray-500 mt-1">
+                  Auto-generated from department name. You can't edit it.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Description (Optional)
+                </label>
+                <Textarea
                   name="description"
-                  placeholder="Description (optional)"
+                  placeholder="Brief description of the department"
                   value={form.description}
                   onChange={handleFormChange}
+                  className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 min-h-[80px]"
                 />
+              </div>
 
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium">Status:</label>
-                  <select
-  name="isActive"
-  value={form.isActive ? "true" : "false"}
-  onChange={handleFormChange}
-  className="border rounded-md px-3 py-2 text-sm"
->
-  <option value="true">Active</option>
-  <option value="false">Inactive</option>
-</select>
-                </div>
-
-                <div className="text-xs text-muted-foreground bg-gray-50 p-3 rounded border">
-                  College ID: <span className="font-mono">{collegeId || "Loading..."}</span>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Status
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="isActive"
+                      value="true"
+                      checked={form.isActive === true}
+                      onChange={handleFormChange}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="flex items-center gap-2">
+                      Active
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="isActive"
+                      value="false"
+                      checked={form.isActive === false}
+                      onChange={handleFormChange}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="flex items-center gap-2">
+                      Inactive
+                    </span>
+                  </label>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 mt-6">
-                <Button variant="outline" onClick={() => setOpenModal(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={saveDepartment}>
-                  {editMode ? "Save Changes" : "Create Department"}
-                </Button>
-              </div>
+          
+            </div>
+          </div>
+
+          {/* Form Footer */}
+          <div className="border-t border-gray-200 p-4">
+            <div className="flex gap-3">
+              <Button
+                onClick={saveDepartment}
+                disabled={saving}
+                className="flex bg-emerald-600 hover:bg-emerald-700 text-white w-32"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    {editMode ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {editMode ? "Update" : "Create"}
+                  </>
+                )}
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={closeForm}
+                className="border-gray-300 w-32"
+              >
+                Cancel
+              </Button>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Overlay when form is open */}
+      {showForm && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={closeForm}
+        />
       )}
     </div>
   );
