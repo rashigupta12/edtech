@@ -1,24 +1,25 @@
 "use client";
 
-import { EyeOff, Eye, GraduationCap } from "lucide-react";
+import { loginUser } from "@/actions/loginUser";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormMessage,
   FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff, GraduationCap } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "../../ui/button";
-import { loginUser } from "@/actions/loginUser";
-import { FormSuccess } from "../form-success";
 import { FormError } from "../form-error";
+import { FormSuccess } from "../form-success";
 
 // Enhanced validation schema
 const LoginSchema = z.object({
@@ -60,6 +61,10 @@ function LoginForm() {
   const [success, setSuccess] = useState<string | undefined>(undefined);
   const [isPending, startTransition] = useTransition();
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  
+  // Get callbackUrl from URL query parameters
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams?.get("callbackUrl") || null;
 
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
@@ -67,19 +72,17 @@ function LoginForm() {
       email: "",
       password: "",
     },
-    mode: "onChange", // Validate on change for real-time feedback
+    mode: "onChange",
   });
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
-  // Real-time validation
   const handleInputChange = (field: string) => {
     setValidationErrors(prev => ({ ...prev, [field]: "" }));
   };
 
-  // Custom validation before submission
   const validateForm = (data: z.infer<typeof LoginSchema>) => {
     const errors: Record<string, string> = {};
 
@@ -123,7 +126,8 @@ function LoginForm() {
 
     startTransition(async () => {
       try {
-        const result = await loginUser(data);
+        // Pass callbackUrl to loginUser function
+        const result = await loginUser(data, callbackUrl);
         
         if (result?.error) {
           setError(result.error);
@@ -149,7 +153,6 @@ function LoginForm() {
     });
   }
 
-  // Get field errors for real-time display
   const getFieldError = (fieldName: keyof z.infer<typeof LoginSchema>) => {
     return form.formState.errors[fieldName]?.message || validationErrors[fieldName];
   };
@@ -158,7 +161,7 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-50">
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg border border-slate-200">
         {/* Logo Section */}
-       <div className="p-2 border-b border-emerald-100 bg-gradient-to-r from-emerald-50/50 to-green-50/50">
+        <div className="p-2 border-b border-emerald-100 bg-gradient-to-r from-emerald-50/50 to-green-50/50">
           <div className="flex items-center gap-3 justify-center">
             <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl">
               <GraduationCap className="h-6 w-6 text-white" />
@@ -309,7 +312,7 @@ function LoginForm() {
 
             <div className="text-center">
               <Link 
-                href="/auth/register" 
+                href={callbackUrl ? `/auth/register?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/auth/register"}
                 className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
               >
                 Don&apos;t have an account? {" "}

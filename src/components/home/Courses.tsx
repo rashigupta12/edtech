@@ -1,5 +1,7 @@
 "use client"
+import { useCurrentUser } from "@/hooks/auth";
 import { Star, Clock, Users, BookOpen, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 interface Course {
@@ -31,6 +33,8 @@ export default function FeaturedCourses() {
     if (price) return `$${parseFloat(price).toFixed(2)}`;
     return "Free";
   };
+  const user = useCurrentUser()
+  const userId = user?.id
 
   const formatDuration = (duration: string) => {
     const hours = parseInt(duration);
@@ -217,7 +221,7 @@ export default function FeaturedCourses() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>{formatDuration(course.duration)}</span>
+                    <span>{(course.duration)}H</span>
                   </div>
                 </div>
 
@@ -233,10 +237,16 @@ export default function FeaturedCourses() {
                       </span>
                     )}
                   </div>
+                  <Link   href={
+                                    userId
+                                      ? `/courses/${course.slug}?enroll=true`
+                                      : `/auth/login?callbackUrl=/courses/${course.slug}?enroll=true`
+                                  }>
                   <button className="flex items-center gap-1 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-all group-hover:gap-2 text-sm font-medium">
                     {course.isFree ? 'Enroll Free' : 'Enroll'}
                     <ArrowRight className="w-4 h-4" />
                   </button>
+                  </Link>
                 </div>
               </div>
             </div>
