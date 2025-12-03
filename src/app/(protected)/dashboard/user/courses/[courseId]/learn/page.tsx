@@ -1,23 +1,33 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
 /*eslint-disable @typescript-eslint/no-unused-vars */
-'use client';
+"use client";
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 
-import AssessmentStartDialog from '@/components/user/courses/AssessmentStartDialog';
-import AssessmentTimer from '@/components/user/courses/AssessmentTimer';
-import { Assessment, AssessmentAttempt, Curriculum, formatTime, formatVideoUrl, Lesson, LessonProgress, safeJson, UserAssessmentAttempt } from '@/components/user/courses/learn';
-import { useCurrentUser } from '@/hooks/auth';
+import AssessmentStartDialog from "@/components/user/courses/AssessmentStartDialog";
+import AssessmentTimer from "@/components/user/courses/AssessmentTimer";
+import {
+  Assessment,
+  AssessmentAttempt,
+  Curriculum,
+  formatTime,
+  formatVideoUrl,
+  Lesson,
+  LessonProgress,
+  safeJson,
+  UserAssessmentAttempt,
+} from "@/components/user/courses/learn";
+import { useCurrentUser } from "@/hooks/auth";
 import {
   AlertCircle,
   Award,
@@ -40,11 +50,11 @@ import {
   ChevronDown,
   ChevronUp,
   BarChart3,
-  ListChecks
-} from 'lucide-react';
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import ReactPlayer from 'react-player';
+  ListChecks,
+} from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import ReactPlayer from "react-player";
 
 export interface ProgressResponse {
   enrollmentId: string;
@@ -92,11 +102,15 @@ export default function CourseLearnPage() {
   // Data states
   const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [progress, setProgress] = useState<ProgressResponse | null>(null);
-  const [currentAssessment, setCurrentAssessment] = useState<Assessment | null>(null);
-  const [assessmentAttempt, setAssessmentAttempt] = useState<AssessmentAttempt | null>(null);
+  const [currentAssessment, setCurrentAssessment] = useState<Assessment | null>(
+    null
+  );
+  const [assessmentAttempt, setAssessmentAttempt] =
+    useState<AssessmentAttempt | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isProgressLoading, setIsProgressLoading] = useState<boolean>(false);
-  const [isAssessmentLoading, setIsAssessmentLoading] = useState<boolean>(false);
+  const [isAssessmentLoading, setIsAssessmentLoading] =
+    useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // UI state
@@ -104,8 +118,10 @@ export default function CourseLearnPage() {
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [playerPosition, setPlayerPosition] = useState<number>(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
-  
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(
+    new Set()
+  );
+
   // Assessment state
   const [userAnswers, setUserAnswers] = useState<Record<string, any>>({});
   const [assessmentResults, setAssessmentResults] = useState<{
@@ -120,7 +136,8 @@ export default function CourseLearnPage() {
   } | null>(null);
   const [showResults, setShowResults] = useState<boolean>(false);
   const [showStartDialog, setShowStartDialog] = useState<boolean>(false);
-  const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
+  const [selectedAssessment, setSelectedAssessment] =
+    useState<Assessment | null>(null);
   const [isTimerPaused, setIsTimerPaused] = useState<boolean>(false);
 
   // Refs
@@ -135,20 +152,22 @@ export default function CourseLearnPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/courses?id=${encodeURIComponent(courseId)}&curriculum=true`);
-        if (!res.ok) throw new Error('Failed to fetch curriculum');
+        const res = await fetch(
+          `/api/courses?id=${encodeURIComponent(courseId)}&curriculum=true`
+        );
+        if (!res.ok) throw new Error("Failed to fetch curriculum");
         const json = await safeJson(res);
         if (!mounted) return;
-        
+
         const modules = json?.data?.modules || [];
         if (modules.length === 0) {
-          throw new Error('No curriculum found for this course');
+          throw new Error("No curriculum found for this course");
         }
-        
+
         setCurriculum({
           modules,
-          courseTitle: json?.data?.courseTitle || 'Untitled Course',
-          finalAssessment: json?.data?.finalAssessment || null
+          courseTitle: json?.data?.courseTitle || "Untitled Course",
+          finalAssessment: json?.data?.finalAssessment || null,
         });
 
         // Expand first module by default
@@ -162,8 +181,10 @@ export default function CourseLearnPage() {
           setSelectedModuleId(modules[0].id);
         }
       } catch (err) {
-        console.error('fetchCurriculum error', err);
-        setError(err instanceof Error ? err.message : 'Failed to load course content');
+        console.error("fetchCurriculum error", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to load course content"
+        );
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -184,13 +205,17 @@ export default function CourseLearnPage() {
     async function fetchProgress() {
       setIsProgressLoading(true);
       try {
+        // Add cache-busting parameter to avoid disk cache
+        const timestamp = new Date().getTime();
         const res = await fetch(
-          `/api/progress?userId=${encodeURIComponent(userId??"")}&courseId=${encodeURIComponent(courseId)}`
+          `/api/progress?userId=${encodeURIComponent(
+            userId ?? ""
+          )}&courseId=${encodeURIComponent(courseId)}&t=${timestamp}`
         );
-        if (!res.ok) throw new Error('Failed to fetch progress');
+        if (!res.ok) throw new Error("Failed to fetch progress");
         const json = await safeJson(res);
         if (!mounted) return;
-        
+
         setProgress(json?.data ?? null);
 
         if (selectedLessonId) {
@@ -202,7 +227,7 @@ export default function CourseLearnPage() {
           }
         }
       } catch (err) {
-        console.error('fetchProgress error', err);
+        console.error("fetchProgress error", err);
       } finally {
         if (mounted) setIsProgressLoading(false);
       }
@@ -223,132 +248,166 @@ export default function CourseLearnPage() {
 
   const confirmStartAssessment = async () => {
     if (!selectedAssessment || !userId || !progress?.enrollmentId) return;
-    
+
     setShowStartDialog(false);
     setIsAssessmentLoading(true);
-    
+
     try {
-      const res = await fetch('/api/assessment-attempts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/assessment-attempts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           assessmentId: selectedAssessment.id,
           userId,
           enrollmentId: progress.enrollmentId,
-          status: 'IN_PROGRESS',
+          status: "IN_PROGRESS",
           startedAt: new Date().toISOString(),
         }),
       });
-      
-      if (!res.ok) throw new Error('Failed to start assessment');
-      
-      const data = await res.json();
-      setAssessmentAttempt(data.data);
+
+      if (!res.ok) throw new Error("Failed to start assessment");
+
+      const responseData = await res.json();
+
+      // Check if the response has the expected structure
+      if (!responseData.success) {
+        throw new Error(
+          responseData.error?.message || "Failed to start assessment"
+        );
+      }
+
+      // The API returns { success: true, data: { attempt: {...}, questions: [...] } }
+      const attemptData = responseData.data?.attempt;
+
+      if (!attemptData || !attemptData.id) {
+        throw new Error("Invalid response from server");
+      }
+
+      setAssessmentAttempt(attemptData);
       setCurrentAssessment(selectedAssessment);
       setUserAnswers({});
       setAssessmentResults(null);
       setShowResults(false);
       setIsTimerPaused(false);
-      
-      if (data.data.answers) {
-        setUserAnswers(data.data.answers);
+
+      // If the API returns answers from a previous attempt, use them
+      if (attemptData.answers) {
+        setUserAnswers(attemptData.answers);
       }
-      
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
-      console.error('Start assessment error:', err);
-      setError('Failed to start assessment');
+      console.error("Start assessment error:", err);
+      setError(
+        "Failed to start assessment: " +
+          (err instanceof Error ? err.message : "Unknown error")
+      );
     } finally {
       setIsAssessmentLoading(false);
       setSelectedAssessment(null);
     }
   };
 
-  // Submit assessment
+  // Submit assessment - Use backend calculation only
   const submitAssessment = async () => {
     if (!currentAssessment || !assessmentAttempt || !userId) return;
-    
+
     setIsAssessmentLoading(true);
     try {
-      let score = 0;
-      let correctAnswers = 0;
-      
-      currentAssessment.questions.forEach(question => {
-        const userAnswer = userAnswers[question.id];
-        if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
-          if (question.questionType === 'MULTIPLE_CHOICE' || question.questionType === 'TRUE_FALSE') {
-            if (userAnswer === question.correctAnswer) {
-              score += question.points;
-              correctAnswers++;
-            } else if (question.negativePoints) {
-              score -= question.negativePoints;
-            }
-          } else if (question.questionType === 'SHORT_ANSWER') {
-            if (userAnswer.trim().toLowerCase() === question.correctAnswer.trim().toLowerCase()) {
-              score += question.points;
-              correctAnswers++;
-            }
-          } else if (question.questionType === 'ESSAY') {
-            score += question.points;
-            correctAnswers++;
-          }
+      // Calculate time spent
+      const timeSpent = Math.floor(
+        (Date.now() - new Date(assessmentAttempt.startedAt).getTime()) / 1000
+      );
+
+      console.log("Submitting assessment with ID:", assessmentAttempt.id);
+
+      // Only send answers, let backend calculate score
+      const res = await fetch(
+        `/api/assessment-attempts?id=${assessmentAttempt.id}&submit=true`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            answers: userAnswers,
+            status: "COMPLETED",
+            completedAt: new Date().toISOString(),
+            timeSpent: timeSpent,
+          }),
         }
-      });
+      );
 
-      const totalPoints = currentAssessment.questions.reduce((sum, q) => sum + q.points, 0);
-      const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
-      const passed = percentage >= currentAssessment.passingScore;
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("API error response:", errorText);
+        throw new Error(
+          `Failed to submit assessment: ${res.status} ${res.statusText}`
+        );
+      }
 
-      const res = await fetch('/api/assessment-attempts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          submit: true,
-          id: assessmentAttempt.id,
-          answers: userAnswers,
-          score,
-          percentage,
-          passed,
-          status: 'COMPLETED',
-          completedAt: new Date().toISOString(),
-          timeSpent: Math.floor((Date.now() - new Date(assessmentAttempt.startedAt).getTime()) / 1000),
-        }),
-      });
+      const responseData = await res.json();
 
-      if (!res.ok) throw new Error('Failed to submit assessment');
-      
-      const updatedAttempt = await res.json();
-      
+      if (!responseData.success) {
+        throw new Error(
+          responseData.error?.message || "Failed to submit assessment"
+        );
+      }
+
+      // Use results from backend response
+      const backendResults = responseData.data?.results;
+      const updatedAttempt = responseData.data?.attempt;
+
+      if (!backendResults || !updatedAttempt) {
+        throw new Error("Invalid response from server");
+      }
+
       setAssessmentResults({
-        score,
-        totalPoints,
-        percentage,
-        passed,
-        passingScore: currentAssessment.passingScore,
-        correctAnswers,
-        totalQuestions: currentAssessment.questions.length,
+        score: backendResults.score,
+        totalPoints: backendResults.totalPoints,
+        percentage: backendResults.percentage,
+        passed: backendResults.passed,
+        passingScore:
+          backendResults.passingScore || currentAssessment.passingScore,
+        correctAnswers: backendResults.correctAnswers,
+        totalQuestions: backendResults.totalQuestions,
         attemptId: assessmentAttempt.id,
       });
-      
+
+      // Update the attempt with backend data
+      setAssessmentAttempt(updatedAttempt);
+
       setShowResults(true);
-      
+
+      // Refresh progress data with cache busting
       if (progress?.enrollmentId) {
-        const progressRes = await fetch(
-          `/api/progress?userId=${encodeURIComponent(userId)}&courseId=${encodeURIComponent(courseId)}`
-        );
-        if (progressRes.ok) {
-          const progressData = await progressRes.json();
-          setProgress(progressData.data);
+        try {
+          const timestamp = new Date().getTime();
+          const progressRes = await fetch(
+            `/api/progress?userId=${encodeURIComponent(
+              userId
+            )}&courseId=${encodeURIComponent(courseId)}&t=${timestamp}`
+          );
+          if (progressRes.ok) {
+            const progressData = await progressRes.json();
+            setProgress(progressData.data);
+          }
+        } catch (progressErr) {
+          console.error("Failed to refresh progress:", progressErr);
         }
       }
-      
-      if (passed && selectedLessonId && currentAssessment.assessmentLevel === 'LESSON_QUIZ') {
+
+      if (
+        backendResults.passed &&
+        selectedLessonId &&
+        currentAssessment.assessmentLevel === "LESSON_QUIZ"
+      ) {
         await markLessonComplete(selectedLessonId);
       }
-      
     } catch (err) {
-      console.error('Submit assessment error:', err);
-      setError('Failed to submit assessment');
+      console.error("Submit assessment error:", err);
+      setError(
+        "Failed to submit assessment: " +
+          (err instanceof Error ? err.message : "Unknown error")
+      );
     } finally {
       setIsAssessmentLoading(false);
     }
@@ -359,53 +418,68 @@ export default function CourseLearnPage() {
     submitAssessment();
   };
 
-  const getPreviousAttempts = (assessmentId: string): UserAssessmentAttempt[] => {
+  const getPreviousAttempts = (
+    assessmentId: string
+  ): UserAssessmentAttempt[] => {
     if (!progress?.assessmentAttempts) {
       if (curriculum && assessmentId === curriculum.finalAssessment?.id) {
-        return progress?.finalAssessmentStatus?.attempted ? [{
-          id: progress.finalAssessmentStatus.latestAttemptId || '',
-          score: progress.finalAssessmentStatus.latestScore || 0,
-          percentage: progress.finalAssessmentStatus.latestScore || 0,
-          passed: progress.finalAssessmentStatus.passed || false,
-          status: 'COMPLETED',
-          startedAt: new Date().toISOString(),
-          timeSpent: 0
-        }] : [];
+        return progress?.finalAssessmentStatus?.attempted
+          ? [
+              {
+                id: progress.finalAssessmentStatus.latestAttemptId || "",
+                score: progress.finalAssessmentStatus.latestScore || 0,
+                percentage: progress.finalAssessmentStatus.latestScore || 0,
+                passed: progress.finalAssessmentStatus.passed || false,
+                status: "COMPLETED",
+                startedAt: new Date().toISOString(),
+                timeSpent: 0,
+              },
+            ]
+          : [];
       }
-      
+
       const moduleAssessment = progress?.moduleAssessmentStatus?.find(
         (m: any) => m.assessmentId === assessmentId
       );
       if (moduleAssessment) {
-        return moduleAssessment.attempted ? [{
-          id: moduleAssessment.latestAttemptId || '',
-          score: moduleAssessment.latestScore || 0,
-          percentage: moduleAssessment.latestScore || 0,
-          passed: moduleAssessment.passed || false,
-          status: 'COMPLETED',
-          startedAt: new Date().toISOString(),
-          timeSpent: 0
-        }] : [];
+        return moduleAssessment.attempted
+          ? [
+              {
+                id: moduleAssessment.latestAttemptId || "",
+                score: moduleAssessment.latestScore || 0,
+                percentage: moduleAssessment.latestScore || 0,
+                passed: moduleAssessment.passed || false,
+                status: "COMPLETED",
+                startedAt: new Date().toISOString(),
+                timeSpent: 0,
+              },
+            ]
+          : [];
       }
-      
+
       return [];
     }
-    
+
     return progress.assessmentAttempts[assessmentId] || [];
   };
 
   // Get current assessment progress
   const getAssessmentProgress = () => {
     if (!currentAssessment) return { answered: 0, total: 0, percentage: 0 };
-    
+
     const answered = Object.keys(userAnswers).filter(
-      key => userAnswers[key] !== undefined && userAnswers[key] !== '' && userAnswers[key] !== null
+      (key) =>
+        userAnswers[key] !== undefined &&
+        userAnswers[key] !== "" &&
+        userAnswers[key] !== null
     ).length;
-    
+
     return {
       answered,
       total: currentAssessment.questions.length,
-      percentage: Math.round((answered / currentAssessment.questions.length) * 100)
+      percentage: Math.round(
+        (answered / currentAssessment.questions.length) * 100
+      ),
     };
   };
 
@@ -418,16 +492,22 @@ export default function CourseLearnPage() {
     if (!userId) return;
     try {
       await fetch(
-        `/api/progress?userId=${encodeURIComponent(userId)}&lessonId=${encodeURIComponent(lessonId)}&complete=true`,
-        { method: 'POST' }
+        `/api/progress?userId=${encodeURIComponent(
+          userId
+        )}&lessonId=${encodeURIComponent(lessonId)}&complete=true`,
+        { method: "POST" }
       );
 
+      // Refresh progress with cache busting
+      const timestamp = new Date().getTime();
       const res = await fetch(
-        `/api/progress?userId=${encodeURIComponent(userId)}&courseId=${encodeURIComponent(courseId)}`
+        `/api/progress?userId=${encodeURIComponent(
+          userId
+        )}&courseId=${encodeURIComponent(courseId)}&t=${timestamp}`
       );
       const json = await safeJson(res);
       setProgress(json?.data ?? null);
-      
+
       if (progress?.lessonsProgress) {
         const updatedProgress = { ...progress };
         const lessonIndex = updatedProgress.lessonsProgress.findIndex(
@@ -444,23 +524,25 @@ export default function CourseLearnPage() {
               videoPercentageWatched: 100,
             };
           } else {
-            updatedProgress.lessonsProgress[lessonIndex].progress.isCompleted = true;
-            updatedProgress.lessonsProgress[lessonIndex].progress.completedAt = new Date().toISOString();
+            updatedProgress.lessonsProgress[lessonIndex].progress.isCompleted =
+              true;
+            updatedProgress.lessonsProgress[lessonIndex].progress.completedAt =
+              new Date().toISOString();
           }
           updatedProgress.lessonsProgress[lessonIndex].isComplete = true;
-          
+
           const completedLessons = updatedProgress.lessonsProgress.filter(
             (lp: any) => lp.isComplete
           ).length;
           updatedProgress.overallProgress = Math.round(
             (completedLessons / updatedProgress.lessonsProgress.length) * 100
           );
-          
+
           setProgress(updatedProgress);
         }
       }
     } catch (err) {
-      console.error('markLessonComplete error', err);
+      console.error("markLessonComplete error", err);
     }
   }
 
@@ -468,13 +550,18 @@ export default function CourseLearnPage() {
   async function sendProgressUpdate(lessonId: string, position: number) {
     if (!userId) return;
     try {
-      await fetch(`/api/progress?userId=${encodeURIComponent(userId)}&lessonId=${encodeURIComponent(lessonId)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lastWatchedPosition: Math.floor(position) }),
-      });
+      await fetch(
+        `/api/progress?userId=${encodeURIComponent(
+          userId
+        )}&lessonId=${encodeURIComponent(lessonId)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lastWatchedPosition: Math.floor(position) }),
+        }
+      );
     } catch (err) {
-      console.error('sendProgressUpdate error', err);
+      console.error("sendProgressUpdate error", err);
     }
   }
 
@@ -496,7 +583,9 @@ export default function CourseLearnPage() {
   useEffect(() => {
     return () => {
       if (progressTimeoutRef.current && selectedLessonId) {
-        sendProgressUpdate(selectedLessonId, latestPositionRef.current).catch(() => {});
+        sendProgressUpdate(selectedLessonId, latestPositionRef.current).catch(
+          () => {}
+        );
       }
     };
   }, [selectedLessonId]);
@@ -504,18 +593,22 @@ export default function CourseLearnPage() {
   // Derived data
   const allLessons = curriculum?.modules?.flatMap((m) => m.lessons) ?? [];
   const currentIndex = allLessons.findIndex((l) => l.id === selectedLessonId);
-  const nextLesson = currentIndex >= 0 ? allLessons[currentIndex + 1] ?? null : null;
-  const prevLesson = currentIndex >= 0 ? allLessons[currentIndex - 1] ?? null : null;
+  const nextLesson =
+    currentIndex >= 0 ? allLessons[currentIndex + 1] ?? null : null;
+  const prevLesson =
+    currentIndex >= 0 ? allLessons[currentIndex - 1] ?? null : null;
   const selectedLesson = allLessons.find((l) => l.id === selectedLessonId);
-  const formattedVideoUrl = selectedLesson?.videoUrl ? formatVideoUrl(selectedLesson.videoUrl) : null;
+  const formattedVideoUrl = selectedLesson?.videoUrl
+    ? formatVideoUrl(selectedLesson.videoUrl)
+    : null;
 
   const getLessonProgress = (lessonId: string): LessonProgress | undefined => {
     const lessonProgress = progress?.lessonsProgress?.find(
       (lp: any) => lp.id === lessonId
     );
-    
+
     if (!lessonProgress?.progress) return undefined;
-    
+
     return {
       lessonId: lessonProgress.id,
       lessonTitle: lessonProgress.title,
@@ -531,24 +624,24 @@ export default function CourseLearnPage() {
   const handleLessonSelect = (lessonId: string, moduleId: string) => {
     setSelectedLessonId(lessonId);
     setSelectedModuleId(moduleId);
-    
+
     const lessonProgress = progress?.lessonsProgress?.find(
       (lp: any) => lp.id === lessonId
     );
     const savedPosition = lessonProgress?.progress?.lastWatchedPosition || 0;
     setPlayerPosition(savedPosition);
-    
+
     setCurrentAssessment(null);
     setAssessmentAttempt(null);
     setUserAnswers({});
     setAssessmentResults(null);
     setShowResults(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Toggle module expansion
   const toggleModule = (moduleId: string) => {
-    setExpandedModules(prev => {
+    setExpandedModules((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(moduleId)) {
         newSet.delete(moduleId);
@@ -571,8 +664,10 @@ export default function CourseLearnPage() {
                 <h3 className="font-semibold">Error Loading Course</h3>
               </div>
               <p className="text-gray-700 mb-6">{error}</p>
-              <Button 
-                onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}
+              <Button
+                onClick={() =>
+                  router.push(`/dashboard/user/courses/${courseId}`)
+                }
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 Back to Course
@@ -608,9 +703,13 @@ export default function CourseLearnPage() {
             <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <BookOpen className="h-8 w-8 text-emerald-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2 text-gray-800">Course Content Coming Soon</h3>
-            <p className="text-gray-600 mb-6">We're preparing the learning materials for this course.</p>
-            <Button 
+            <h3 className="text-lg font-semibold mb-2 text-gray-800">
+              Course Content Coming Soon
+            </h3>
+            <p className="text-gray-600 mb-6">
+              We're preparing the learning materials for this course.
+            </p>
+            <Button
               onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white w-full"
             >
@@ -626,17 +725,27 @@ export default function CourseLearnPage() {
   const AssessmentResults = () => {
     if (!assessmentResults || !currentAssessment) return null;
 
-    const canRetake = currentAssessment.allowRetake && 
-      (currentAssessment.maxAttempts === null || 
-       getPreviousAttempts(currentAssessment.id).length < (currentAssessment.maxAttempts ?? Infinity));
+    const canRetake =
+      currentAssessment.allowRetake &&
+      (currentAssessment.maxAttempts === null ||
+        getPreviousAttempts(currentAssessment.id).length <
+          (currentAssessment.maxAttempts ?? Infinity));
 
     return (
       <div className="space-y-6">
-        <Card className={`border ${assessmentResults.passed ? 'border-emerald-200' : 'border-red-200'} bg-white`}>
+        <Card
+          className={`border ${
+            assessmentResults.passed ? "border-emerald-200" : "border-red-200"
+          } bg-white`}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${assessmentResults.passed ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    assessmentResults.passed ? "bg-emerald-100" : "bg-red-100"
+                  }`}
+                >
                   {assessmentResults.passed ? (
                     <CheckCircle className="h-6 w-6 text-emerald-600" />
                   ) : (
@@ -645,17 +754,25 @@ export default function CourseLearnPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">
-                    {assessmentResults.passed ? 'Assessment Completed Successfully' : 'Assessment Not Passed'}
+                    {assessmentResults.passed
+                      ? "Assessment Completed Successfully"
+                      : "Assessment Not Passed"}
                   </h3>
                   <p className="text-gray-600">
-                    {assessmentResults.passed 
-                      ? 'You have demonstrated understanding of the material.'
+                    {assessmentResults.passed
+                      ? "You have demonstrated understanding of the material."
                       : `Minimum passing score: ${assessmentResults.passingScore}%`}
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <div className={`text-3xl font-bold ${assessmentResults.passed ? 'text-emerald-700' : 'text-red-700'}`}>
+                <div
+                  className={`text-3xl font-bold ${
+                    assessmentResults.passed
+                      ? "text-emerald-700"
+                      : "text-red-700"
+                  }`}
+                >
                   {assessmentResults.percentage}%
                 </div>
                 <div className="text-sm text-gray-500">Your Score</div>
@@ -664,22 +781,29 @@ export default function CourseLearnPage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-lg font-bold text-gray-900">{assessmentResults.score}</div>
+                <div className="text-lg font-bold text-gray-900">
+                  {assessmentResults.score}
+                </div>
                 <div className="text-sm text-gray-600">Points Earned</div>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="text-lg font-bold text-gray-900">
-                  {assessmentResults.correctAnswers}/{assessmentResults.totalQuestions}
+                  {assessmentResults.correctAnswers}/
+                  {assessmentResults.totalQuestions}
                 </div>
                 <div className="text-sm text-gray-600">Correct Answers</div>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-lg font-bold text-gray-900">{assessmentResults.totalPoints}</div>
+                <div className="text-lg font-bold text-gray-900">
+                  {assessmentResults.totalPoints}
+                </div>
                 <div className="text-sm text-gray-600">Total Points</div>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="text-lg font-bold text-gray-900">
-                  {assessmentAttempt?.timeSpent ? formatTime(assessmentAttempt.timeSpent) : '--:--'}
+                  {assessmentAttempt?.timeSpent
+                    ? formatTime(assessmentAttempt.timeSpent)
+                    : "--:--"}
                 </div>
                 <div className="text-sm text-gray-600">Time Taken</div>
               </div>
@@ -690,92 +814,197 @@ export default function CourseLearnPage() {
         {currentAssessment.showCorrectAnswers && (
           <Card className="border-gray-200 bg-white">
             <CardContent className="p-6">
-              <h4 className="font-bold text-lg text-gray-900 mb-4">Review Your Answers</h4>
+              <h4 className="font-bold text-lg text-gray-900 mb-4">
+                Review Your Answers
+              </h4>
               <div className="space-y-4">
                 {currentAssessment.questions.map((question, index) => {
                   const userAnswer = userAnswers[question.id];
-                  const isCorrect = question.questionType === 'ESSAY' 
-                    ? true
-                    : userAnswer === question.correctAnswer;
-                  
+                  let isCorrect = false;
+
+                  // Calculate correctness based on question type
+                  if (question.questionType === "ESSAY") {
+                    isCorrect = true; // Essay questions are always marked as correct
+                  } else if (question.questionType === "TRUE_FALSE") {
+                    // Case-insensitive comparison for TRUE_FALSE
+                    const userAnswerNormalized = userAnswer
+                      ?.toString()
+                      .trim()
+                      .toLowerCase();
+                    const correctAnswerNormalized = question.correctAnswer
+                      .toString()
+                      .trim()
+                      .toLowerCase();
+                    isCorrect =
+                      userAnswerNormalized === correctAnswerNormalized;
+                  } else if (question.questionType === "SHORT_ANSWER") {
+                    // Case-insensitive comparison for SHORT_ANSWER
+                    const userAnswerNormalized = userAnswer
+                      ?.toString()
+                      .trim()
+                      .toLowerCase();
+                    const correctAnswerNormalized = question.correctAnswer
+                      .toString()
+                      .trim()
+                      .toLowerCase();
+                    isCorrect =
+                      userAnswerNormalized === correctAnswerNormalized;
+                  } else {
+                    // For MULTIPLE_CHOICE
+                    isCorrect = userAnswer === question.correctAnswer;
+                  }
+
                   return (
-                    <div key={question.id} className={`p-4 rounded-lg border ${isCorrect ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}`}>
+                    <div
+                      key={question.id}
+                      className={`p-4 rounded-lg border ${
+                        isCorrect
+                          ? "border-emerald-200 bg-emerald-50"
+                          : "border-red-200 bg-red-50"
+                      }`}
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-3">
-                            <span className="font-medium text-gray-900">Q{index + 1}</span>
-                            <Badge className={
-                              question.difficulty === 'HARD' ? 'bg-red-100 text-red-800' :
-                              question.difficulty === 'MEDIUM' ? 'bg-amber-100 text-amber-800' :
-                              'bg-blue-100 text-blue-800'
-                            }>
+                            <span className="font-medium text-gray-900">
+                              Q{index + 1}
+                            </span>
+                            <Badge
+                              className={
+                                question.difficulty === "HARD"
+                                  ? "bg-red-100 text-red-800"
+                                  : question.difficulty === "MEDIUM"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }
+                            >
                               {question.difficulty}
                             </Badge>
-                            {question.questionType !== 'ESSAY' && (
-                              <Badge className={isCorrect ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}>
-                                {isCorrect ? 'Correct' : 'Incorrect'}
+                            {question.questionType !== "ESSAY" && (
+                              <Badge
+                                className={
+                                  isCorrect
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : "bg-red-100 text-red-800"
+                                }
+                              >
+                                {isCorrect ? "Correct" : "Incorrect"}
                               </Badge>
                             )}
                           </div>
-                          <p className="font-medium mb-3 text-gray-900">{question.questionText}</p>
-                          
-                          {question.questionType === 'MULTIPLE_CHOICE' && question.options && (
+                          <p className="font-medium mb-3 text-gray-900">
+                            {question.questionText}
+                          </p>
+
+                          {question.questionType === "MULTIPLE_CHOICE" &&
+                            question.options && (
+                              <div className="space-y-2 ml-2">
+                                {question.options.map(
+                                  (option: any, optIndex: number) => (
+                                    <div
+                                      key={optIndex}
+                                      className={`p-3 rounded ${
+                                        option === question.correctAnswer
+                                          ? "bg-emerald-100 border-emerald-200 border"
+                                          : option === userAnswer && !isCorrect
+                                          ? "bg-red-100 border-red-200 border"
+                                          : "bg-gray-50"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div
+                                          className={`h-4 w-4 rounded-full border ${
+                                            option === question.correctAnswer
+                                              ? "bg-emerald-500 border-emerald-500"
+                                              : option === userAnswer &&
+                                                !isCorrect
+                                              ? "bg-red-500 border-red-500"
+                                              : "border-gray-300"
+                                          }`}
+                                        />
+                                        <span className="text-gray-900">
+                                          {option}
+                                        </span>
+                                        {option === question.correctAnswer && (
+                                          <Badge className="ml-auto bg-emerald-500">
+                                            Correct
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            )}
+
+                          {question.questionType === "TRUE_FALSE" && (
                             <div className="space-y-2 ml-2">
-                              {question.options.map((option: any, optIndex: number) => (
-                                <div key={optIndex} className={`p-3 rounded ${option === question.correctAnswer 
-                                    ? 'bg-emerald-100 border-emerald-200 border' 
-                                    : option === userAnswer && !isCorrect
-                                    ? 'bg-red-100 border-red-200 border'
-                                    : 'bg-gray-50'}`}>
-                                  <div className="flex items-center gap-3">
-                                    <div className={`h-4 w-4 rounded-full border ${option === question.correctAnswer 
-                                        ? 'bg-emerald-500 border-emerald-500'
-                                        : option === userAnswer && !isCorrect
-                                        ? 'bg-red-500 border-red-500'
-                                        : 'border-gray-300'}`} />
-                                    <span className="text-gray-900">{option}</span>
-                                    {option === question.correctAnswer && (
-                                      <Badge className="ml-auto bg-emerald-500">Correct</Badge>
-                                    )}
+                              {["True", "False"].map((option) => {
+                                const optionNormalized = option.toLowerCase();
+                                const correctAnswerNormalized =
+                                  question.correctAnswer
+                                    ?.toString()
+                                    .toLowerCase();
+                                const userAnswerNormalized = userAnswer
+                                  ?.toString()
+                                  .toLowerCase();
+                                const isOptionCorrect =
+                                  optionNormalized === correctAnswerNormalized;
+                                const isUserAnswer =
+                                  optionNormalized === userAnswerNormalized;
+
+                                return (
+                                  <div
+                                    key={option}
+                                    className={`p-3 rounded ${
+                                      isOptionCorrect
+                                        ? "bg-emerald-100 border-emerald-200 border"
+                                        : isUserAnswer && !isOptionCorrect
+                                        ? "bg-red-100 border-red-200 border"
+                                        : "bg-gray-50"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div
+                                        className={`h-4 w-4 rounded-full border ${
+                                          isOptionCorrect
+                                            ? "bg-emerald-500 border-emerald-500"
+                                            : isUserAnswer && !isOptionCorrect
+                                            ? "bg-red-500 border-red-500"
+                                            : "border-gray-300"
+                                        }`}
+                                      />
+                                      <span className="text-gray-900">
+                                        {option}
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
 
-                          {question.questionType === 'TRUE_FALSE' && (
-                            <div className="space-y-2 ml-2">
-                              {['True', 'False'].map((option) => (
-                                <div key={option} className={`p-3 rounded ${option === question.correctAnswer 
-                                    ? 'bg-emerald-100 border-emerald-200 border' 
-                                    : option === userAnswer && option !== question.correctAnswer
-                                    ? 'bg-red-100 border-red-200 border'
-                                    : 'bg-gray-50'}`}>
-                                  <div className="flex items-center gap-3">
-                                    <div className={`h-4 w-4 rounded-full border ${option === question.correctAnswer 
-                                        ? 'bg-emerald-500 border-emerald-500'
-                                        : option === userAnswer && option !== question.correctAnswer
-                                        ? 'bg-red-500 border-red-500'
-                                        : 'border-gray-300'}`} />
-                                    <span className="text-gray-900">{option}</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {(question.questionType === 'SHORT_ANSWER' || question.questionType === 'ESSAY') && (
+                          {(question.questionType === "SHORT_ANSWER" ||
+                            question.questionType === "ESSAY") && (
                             <div className="space-y-3 ml-2">
-                              {question.questionType === 'SHORT_ANSWER' && (
+                              {question.questionType === "SHORT_ANSWER" && (
                                 <div className="p-3 rounded bg-emerald-50 border-emerald-200 border">
-                                  <div className="text-sm font-medium text-emerald-700 mb-1">Correct Answer:</div>
-                                  <div className="text-gray-900">{question.correctAnswer}</div>
+                                  <div className="text-sm font-medium text-emerald-700 mb-1">
+                                    Correct Answer:
+                                  </div>
+                                  <div className="text-gray-900">
+                                    {question.correctAnswer}
+                                  </div>
                                 </div>
                               )}
                               {userAnswer && (
                                 <div className="p-3 rounded bg-blue-50 border-blue-200 border">
-                                  <div className="text-sm font-medium text-blue-700 mb-1">Your Answer:</div>
-                                  <div className="whitespace-pre-wrap text-gray-900">{userAnswer}</div>
+                                  <div className="text-sm font-medium text-blue-700 mb-1">
+                                    Your Answer:
+                                  </div>
+                                  <div className="whitespace-pre-wrap text-gray-900">
+                                    {userAnswer}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -783,13 +1012,19 @@ export default function CourseLearnPage() {
 
                           {question.explanation && (
                             <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-                              <div className="text-sm font-medium text-blue-700 mb-1">Explanation</div>
-                              <div className="text-sm text-gray-700">{question.explanation}</div>
+                              <div className="text-sm font-medium text-blue-700 mb-1">
+                                Explanation
+                              </div>
+                              <div className="text-sm text-gray-700">
+                                {question.explanation}
+                              </div>
                             </div>
                           )}
                         </div>
                         <div className="text-right ml-4">
-                          <div className="font-bold text-gray-900">{question.points} pts</div>
+                          <div className="font-bold text-gray-900">
+                            {question.points} pts
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -821,12 +1056,16 @@ export default function CourseLearnPage() {
               setAssessmentAttempt(null);
               setUserAnswers({});
               setAssessmentResults(null);
-              
-              if (assessmentResults.passed && selectedLessonId && currentAssessment.assessmentLevel === 'LESSON_QUIZ') {
+
+              if (
+                assessmentResults.passed &&
+                selectedLessonId &&
+                currentAssessment.assessmentLevel === "LESSON_QUIZ"
+              ) {
                 const next = nextLesson;
                 if (next) {
-                  const module = curriculum.modules.find(m => 
-                    m.lessons.some(l => l.id === next.id)
+                  const module = curriculum.modules.find((m) =>
+                    m.lessons.some((l) => l.id === next.id)
                   );
                   if (module) {
                     handleLessonSelect(next.id, module.id);
@@ -856,21 +1095,29 @@ export default function CourseLearnPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">{currentAssessment.title}</h2>
-                <p className="text-gray-600 mt-1">{currentAssessment.description}</p>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {currentAssessment.title}
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  {currentAssessment.description}
+                </p>
               </div>
               <Badge className="bg-emerald-600">
-                {currentAssessment.assessmentLevel.replace('_', ' ')}
+                {currentAssessment.assessmentLevel.replace("_", " ")}
               </Badge>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <div className="bg-emerald-50 p-3 rounded-lg">
-                <div className="font-bold text-emerald-700">{currentAssessment.questions.length}</div>
+                <div className="font-bold text-emerald-700">
+                  {currentAssessment.questions.length}
+                </div>
                 <div className="text-sm text-emerald-600">Questions</div>
               </div>
               <div className="bg-blue-50 p-3 rounded-lg">
-                <div className="font-bold text-blue-700">{currentAssessment.passingScore}%</div>
+                <div className="font-bold text-blue-700">
+                  {currentAssessment.passingScore}%
+                </div>
                 <div className="text-sm text-blue-600">Passing Score</div>
               </div>
               <div className="bg-amber-50 p-3 rounded-lg">
@@ -881,7 +1128,9 @@ export default function CourseLearnPage() {
               </div>
               <div className="bg-purple-50 p-3 rounded-lg">
                 <div className="font-bold text-purple-700">
-                  {currentAssessment.timeLimit ? `${currentAssessment.timeLimit} min` : 'No Limit'}
+                  {currentAssessment.timeLimit
+                    ? `${currentAssessment.timeLimit} min`
+                    : "No Limit"}
                 </div>
                 <div className="text-sm text-purple-600">Time Limit</div>
               </div>
@@ -891,7 +1140,7 @@ export default function CourseLearnPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <AssessmentTimer
-                    timeLimit={currentAssessment.timeLimit} 
+                    timeLimit={currentAssessment.timeLimit}
                     onTimeUp={handleTimeUp}
                     isPaused={isTimerPaused}
                   />
@@ -906,12 +1155,16 @@ export default function CourseLearnPage() {
                     ) : (
                       <EyeOff className="h-4 w-4 mr-2" />
                     )}
-                    {isTimerPaused ? 'Resume Timer' : 'Pause Timer'}
+                    {isTimerPaused ? "Resume Timer" : "Pause Timer"}
                   </Button>
                 </div>
-                <Progress value={progress.percentage} className="h-2 bg-gray-200" />
+                <Progress
+                  value={progress.percentage}
+                  className="h-2 bg-gray-200"
+                />
                 <div className="text-sm text-gray-500 text-center">
-                  Progress: {progress.answered}/{progress.total} questions ({progress.percentage}%)
+                  Progress: {progress.answered}/{progress.total} questions (
+                  {progress.percentage}%)
                 </div>
               </div>
             )}
@@ -922,31 +1175,51 @@ export default function CourseLearnPage() {
         <div className="space-y-4">
           {currentAssessment.questions.map((question, index) => {
             const userAnswer = userAnswers[question.id];
-            const isAnswered = userAnswer !== undefined && userAnswer !== '' && userAnswer !== null;
+            const isAnswered =
+              userAnswer !== undefined &&
+              userAnswer !== "" &&
+              userAnswer !== null;
 
             return (
-              <Card key={question.id} className={`border ${isAnswered ? 'border-emerald-200' : 'border-gray-200'} bg-white`}>
+              <Card
+                key={question.id}
+                className={`border ${
+                  isAnswered ? "border-emerald-200" : "border-gray-200"
+                } bg-white`}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center font-bold ${isAnswered ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>
+                      <div
+                        className={`h-8 w-8 rounded-lg flex items-center justify-center font-bold ${
+                          isAnswered
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
                         {index + 1}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-gray-900">
-                            {question.questionType.replace('_', ' ')}
+                            {question.questionType.replace("_", " ")}
                           </span>
-                          <Badge className={
-                            question.difficulty === 'HARD' ? 'bg-red-100 text-red-800' :
-                            question.difficulty === 'MEDIUM' ? 'bg-amber-100 text-amber-800' :
-                            'bg-blue-100 text-blue-800'
-                          }>
+                          <Badge
+                            className={
+                              question.difficulty === "HARD"
+                                ? "bg-red-100 text-red-800"
+                                : question.difficulty === "MEDIUM"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-blue-100 text-blue-800"
+                            }
+                          >
                             {question.difficulty}
                           </Badge>
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
-                          {question.points} points {question.negativePoints > 0 && `• -${question.negativePoints} if wrong`}
+                          {question.points} points{" "}
+                          {question.negativePoints > 0 &&
+                            `• -${question.negativePoints} if wrong`}
                         </div>
                       </div>
                     </div>
@@ -958,24 +1231,77 @@ export default function CourseLearnPage() {
                     )}
                   </div>
 
-                  <p className="text-lg font-medium mb-4 text-gray-900">{question.questionText}</p>
+                  <p className="text-lg font-medium mb-4 text-gray-900">
+                    {question.questionText}
+                  </p>
 
                   {/* Question Options */}
-                  {question.questionType === 'MULTIPLE_CHOICE' && question.options && (
+                  {question.questionType === "MULTIPLE_CHOICE" &&
+                    question.options && (
+                      <RadioGroup
+                        value={userAnswer || ""}
+                        onValueChange={(value) =>
+                          setUserAnswers((prev) => ({
+                            ...prev,
+                            [question.id]: value,
+                          }))
+                        }
+                        className="space-y-2"
+                      >
+                        {question.options.map(
+                          (option: any, optIndex: number) => (
+                            <div
+                              key={optIndex}
+                              className={`flex items-center space-x-3 p-3 rounded-lg border ${
+                                userAnswer === option
+                                  ? "bg-emerald-50 border-emerald-300"
+                                  : "hover:bg-gray-50 border-gray-200"
+                              }`}
+                            >
+                              <RadioGroupItem
+                                value={option}
+                                id={`${question.id}-${optIndex}`}
+                              />
+                              <Label
+                                htmlFor={`${question.id}-${optIndex}`}
+                                className="flex-1 cursor-pointer text-gray-900"
+                              >
+                                {option}
+                              </Label>
+                            </div>
+                          )
+                        )}
+                      </RadioGroup>
+                    )}
+
+                  {question.questionType === "TRUE_FALSE" && (
                     <RadioGroup
-                      value={userAnswer || ''}
-                      onValueChange={(value) => setUserAnswers(prev => ({
-                        ...prev,
-                        [question.id]: value
-                      }))}
+                      value={userAnswer || ""}
+                      onValueChange={(value) =>
+                        setUserAnswers((prev) => ({
+                          ...prev,
+                          [question.id]: value.toLowerCase(),
+                        }))
+                      }
                       className="space-y-2"
                     >
-                      {question.options.map((option: any, optIndex: number) => (
-                        <div key={optIndex} className={`flex items-center space-x-3 p-3 rounded-lg border ${userAnswer === option 
-                            ? 'bg-emerald-50 border-emerald-300' 
-                            : 'hover:bg-gray-50 border-gray-200'}`}>
-                          <RadioGroupItem value={option} id={`${question.id}-${optIndex}`} />
-                          <Label htmlFor={`${question.id}-${optIndex}`} className="flex-1 cursor-pointer text-gray-900">
+                      {["True", "False"].map((option) => (
+                        <div
+                          key={option}
+                          className={`flex items-center space-x-3 p-3 rounded-lg border ${
+                            userAnswer === option.toLowerCase()
+                              ? "bg-emerald-50 border-emerald-300"
+                              : "hover:bg-gray-50 border-gray-200"
+                          }`}
+                        >
+                          <RadioGroupItem
+                            value={option}
+                            id={`${question.id}-${option}`}
+                          />
+                          <Label
+                            htmlFor={`${question.id}-${option}`}
+                            className="flex-1 cursor-pointer text-gray-900"
+                          >
                             {option}
                           </Label>
                         </div>
@@ -983,36 +1309,16 @@ export default function CourseLearnPage() {
                     </RadioGroup>
                   )}
 
-                  {question.questionType === 'TRUE_FALSE' && (
-                    <RadioGroup
-                      value={userAnswer || ''}
-                      onValueChange={(value) => setUserAnswers(prev => ({
-                        ...prev,
-                        [question.id]: value
-                      }))}
-                      className="space-y-2"
-                    >
-                      {['True', 'False'].map((option) => (
-                        <div key={option} className={`flex items-center space-x-3 p-3 rounded-lg border ${userAnswer === option 
-                            ? 'bg-emerald-50 border-emerald-300' 
-                            : 'hover:bg-gray-50 border-gray-200'}`}>
-                          <RadioGroupItem value={option} id={`${question.id}-${option}`} />
-                          <Label htmlFor={`${question.id}-${option}`} className="flex-1 cursor-pointer text-gray-900">
-                            {option}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  )}
-
-                  {question.questionType === 'SHORT_ANSWER' && (
+                  {question.questionType === "SHORT_ANSWER" && (
                     <div className="space-y-2">
                       <Input
-                        value={userAnswer || ''}
-                        onChange={(e) => setUserAnswers(prev => ({
-                          ...prev,
-                          [question.id]: e.target.value
-                        }))}
+                        value={userAnswer || ""}
+                        onChange={(e) =>
+                          setUserAnswers((prev) => ({
+                            ...prev,
+                            [question.id]: e.target.value,
+                          }))
+                        }
                         placeholder="Type your answer here..."
                         className="h-12 border-gray-300 focus:border-emerald-500"
                       />
@@ -1022,14 +1328,16 @@ export default function CourseLearnPage() {
                     </div>
                   )}
 
-                  {question.questionType === 'ESSAY' && (
+                  {question.questionType === "ESSAY" && (
                     <div className="space-y-2">
                       <Textarea
-                        value={userAnswer || ''}
-                        onChange={(e) => setUserAnswers(prev => ({
-                          ...prev,
-                          [question.id]: e.target.value
-                        }))}
+                        value={userAnswer || ""}
+                        onChange={(e) =>
+                          setUserAnswers((prev) => ({
+                            ...prev,
+                            [question.id]: e.target.value,
+                          }))
+                        }
                         placeholder="Type your essay answer here..."
                         className="min-h-[150px] border-gray-300 focus:border-emerald-500"
                       />
@@ -1055,7 +1363,7 @@ export default function CourseLearnPage() {
                 <div className="flex gap-3">
                   <Button
                     onClick={() => {
-                      if (confirm('Save progress and exit assessment?')) {
+                      if (confirm("Save progress and exit assessment?")) {
                         setCurrentAssessment(null);
                         setAssessmentAttempt(null);
                       }
@@ -1093,9 +1401,9 @@ export default function CourseLearnPage() {
   };
 
   // Lesson Content Component
-  const LessonContent = ({ lesson }: { lesson: Lesson}) => {
-    const module = curriculum?.modules.find(m => 
-      m.lessons.some(l => l.id === lesson.id)
+  const LessonContent = ({ lesson }: { lesson: Lesson }) => {
+    const module = curriculum?.modules.find((m) =>
+      m.lessons.some((l) => l.id === lesson.id)
     );
     const lessonProgress = getLessonProgress(lesson.id);
     const lessonQuiz = lesson.quiz;
@@ -1107,13 +1415,23 @@ export default function CourseLearnPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">{lesson.title}</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  {lesson.title}
+                </h2>
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1">
-                    {lesson.contentType === 'VIDEO' && <Video className="h-4 w-4" />}
-                    {lesson.contentType === 'ARTICLE' && <FileText className="h-4 w-4" />}
-                    {lesson.contentType === 'QUIZ' && <Target className="h-4 w-4" />}
-                    <span className="capitalize">{lesson.contentType.toLowerCase()}</span>
+                    {lesson.contentType === "VIDEO" && (
+                      <Video className="h-4 w-4" />
+                    )}
+                    {lesson.contentType === "ARTICLE" && (
+                      <FileText className="h-4 w-4" />
+                    )}
+                    {lesson.contentType === "QUIZ" && (
+                      <Target className="h-4 w-4" />
+                    )}
+                    <span className="capitalize">
+                      {lesson.contentType.toLowerCase()}
+                    </span>
                   </div>
                   {lesson.videoDuration && (
                     <div className="flex items-center gap-1">
@@ -1145,12 +1463,14 @@ export default function CourseLearnPage() {
                 <Button
                   onClick={() => markLessonComplete(lesson.id)}
                   disabled={lessonProgress?.isCompleted}
-                  className={`${lessonProgress?.isCompleted 
-                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}
+                  className={`${
+                    lessonProgress?.isCompleted
+                      ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  }`}
                 >
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  {lessonProgress?.isCompleted ? 'Completed' : 'Mark Complete'}
+                  {lessonProgress?.isCompleted ? "Completed" : "Mark Complete"}
                 </Button>
               </div>
             </div>
@@ -1162,7 +1482,7 @@ export default function CourseLearnPage() {
         </Card>
 
         {/* Lesson Content */}
-        {lesson.contentType === 'VIDEO' ? (
+        {lesson.contentType === "VIDEO" ? (
           <Card className="border-gray-200 bg-white">
             <CardContent className="p-6">
               <div className="aspect-video bg-black rounded-lg overflow-hidden">
@@ -1173,7 +1493,11 @@ export default function CourseLearnPage() {
                     height="100%"
                     controls
                     playing={false}
-                    onProgress={({ playedSeconds }: { playedSeconds: number }) => {
+                    onProgress={({
+                      playedSeconds,
+                    }: {
+                      playedSeconds: number;
+                    }) => {
                       setPlayerPosition(playedSeconds);
                       handleProgressUpdate(playedSeconds);
                     }}
@@ -1181,7 +1505,7 @@ export default function CourseLearnPage() {
                       markLessonComplete(lesson.id);
                     }}
                     onError={(e: any) => {
-                      console.error('ReactPlayer error:', e);
+                      console.error("ReactPlayer error:", e);
                     }}
                     progressInterval={1000}
                     config={{
@@ -1192,9 +1516,9 @@ export default function CourseLearnPage() {
                           origin: window.location.origin,
                         },
                         embedOptions: {
-                          host: 'https://www.youtube-nocookie.com'
-                        }
-                      }
+                          host: "https://www.youtube-nocookie.com",
+                        },
+                      },
                     }}
                   />
                 ) : (
@@ -1208,14 +1532,18 @@ export default function CourseLearnPage() {
               </div>
             </CardContent>
           </Card>
-        ) : lesson.contentType === 'ARTICLE' ? (
+        ) : lesson.contentType === "ARTICLE" ? (
           <Card className="border-gray-200 bg-white">
             <CardContent className="p-6">
               <div className="prose prose-sm md:prose-base max-w-none">
-                {(lesson.articleContent || lesson.description) ? (
+                {lesson.articleContent || lesson.description ? (
                   <div className="text-gray-700">
                     {lesson.articleContent ? (
-                      <div dangerouslySetInnerHTML={{ __html: lesson.articleContent }} />
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: lesson.articleContent,
+                        }}
+                      />
                     ) : (
                       <div className="whitespace-pre-line text-base leading-relaxed">
                         {lesson.description}
@@ -1225,38 +1553,46 @@ export default function CourseLearnPage() {
                 ) : (
                   <div className="text-center py-12">
                     <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600">Article content not available</p>
+                    <p className="text-gray-600">
+                      Article content not available
+                    </p>
                   </div>
                 )}
               </div>
             </CardContent>
           </Card>
-        ) : lesson.contentType === 'QUIZ' ? (
+        ) : lesson.contentType === "QUIZ" ? (
           <Card className="border-gray-200 bg-white">
             <CardContent className="p-6">
               <div className="flex items-center gap-3 mb-6">
                 <Target className="h-8 w-8 text-gray-600" />
                 <div>
-                  <h3 className="font-bold text-lg text-gray-900">Lesson Quiz</h3>
+                  <h3 className="font-bold text-lg text-gray-900">
+                    Lesson Quiz
+                  </h3>
                   <p className="text-gray-700">
                     Test your understanding of this lesson by taking the quiz.
                   </p>
                 </div>
               </div>
-              
+
               {lessonQuiz ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-gray-50 rounded-lg">
-                      <div className="font-bold text-gray-900">{lessonQuiz.questions?.length || 0}</div>
+                      <div className="font-bold text-gray-900">
+                        {lessonQuiz.questions?.length || 0}
+                      </div>
                       <div className="text-sm text-gray-600">Questions</div>
                     </div>
                     <div className="p-4 bg-gray-50 rounded-lg">
-                      <div className="font-bold text-gray-900">{lessonQuiz.passingScore}%</div>
+                      <div className="font-bold text-gray-900">
+                        {lessonQuiz.passingScore}%
+                      </div>
                       <div className="text-sm text-gray-600">Passing Score</div>
                     </div>
                   </div>
-                  
+
                   <Button
                     onClick={() => handleStartAssessment(lessonQuiz)}
                     disabled={isAssessmentLoading}
@@ -1295,9 +1631,12 @@ export default function CourseLearnPage() {
                 variant="outline"
                 disabled={!prevLesson}
                 onClick={() =>
-                  prevLesson && handleLessonSelect(
-                    prevLesson.id, 
-                    curriculum.modules.find((m) => m.lessons.some((l) => l.id === prevLesson.id))!.id
+                  prevLesson &&
+                  handleLessonSelect(
+                    prevLesson.id,
+                    curriculum.modules.find((m) =>
+                      m.lessons.some((l) => l.id === prevLesson.id)
+                    )!.id
                   )
                 }
                 className="border-gray-300 hover:bg-gray-50 text-gray-700"
@@ -1308,9 +1647,13 @@ export default function CourseLearnPage() {
 
               <div className="flex gap-2">
                 {selectedModuleId && (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => router.push(`/dashboard/user/courses/${courseId}/modules/${selectedModuleId}`)}
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      router.push(
+                        `/dashboard/user/courses/${courseId}/modules/${selectedModuleId}`
+                      )
+                    }
                     className="border-gray-300 hover:bg-gray-50 text-gray-700"
                   >
                     Module Overview
@@ -1321,9 +1664,12 @@ export default function CourseLearnPage() {
               <Button
                 disabled={!nextLesson}
                 onClick={() =>
-                  nextLesson && handleLessonSelect(
-                    nextLesson.id, 
-                    curriculum.modules.find((m) => m.lessons.some((l) => l.id === nextLesson.id))!.id
+                  nextLesson &&
+                  handleLessonSelect(
+                    nextLesson.id,
+                    curriculum.modules.find((m) =>
+                      m.lessons.some((l) => l.id === nextLesson.id)
+                    )!.id
                   )
                 }
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -1346,17 +1692,24 @@ export default function CourseLearnPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{curriculum.courseTitle}</h1>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {curriculum.courseTitle}
+                </h1>
                 <div className="flex items-center gap-4 mt-2">
                   <div className="flex items-center gap-2">
                     <BarChart3 className="h-4 w-4 text-emerald-600" />
                     <span className="text-sm text-gray-600">Progress</span>
-                    <span className="font-semibold text-emerald-700">{progress?.overallProgress ?? 0}%</span>
+                    <span className="font-semibold text-emerald-700">
+                      {progress?.overallProgress ?? 0}%
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <ListChecks className="h-4 w-4 text-emerald-600" />
                     <span className="text-sm text-gray-600">Lessons</span>
-                    <span className="font-semibold text-emerald-700">{progress?.completedLessons ?? 0}/{progress?.totalLessons ?? 0}</span>
+                    <span className="font-semibold text-emerald-700">
+                      {progress?.completedLessons ?? 0}/
+                      {progress?.totalLessons ?? 0}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1368,9 +1721,11 @@ export default function CourseLearnPage() {
                 >
                   <Menu className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    router.push(`/dashboard/user/courses/${courseId}`)
+                  }
                   className="border-gray-300 hover:bg-gray-50"
                 >
                   Back to Course
@@ -1405,27 +1760,41 @@ export default function CourseLearnPage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           {/* Left Sidebar - Curriculum */}
-          <div className={`${sidebarCollapsed ? 'hidden' : 'block'} md:block`}>
+          <div className={`${sidebarCollapsed ? "hidden" : "block"} md:block`}>
             <Card className="border-gray-200 bg-white h-[calc(100vh-200px)] flex flex-col">
               <CardContent className="p-0 flex-1 overflow-hidden flex flex-col">
-                <Tabs defaultValue="curriculum" className="flex-1 flex flex-col">
+                <Tabs
+                  defaultValue="curriculum"
+                  className="flex-1 flex flex-col"
+                >
                   <TabsList className="grid w-full grid-cols-2 bg-gray-50 p-2">
-                    <TabsTrigger value="curriculum" className="data-[state=active]:bg-white data-[state=active]:text-emerald-700">
+                    <TabsTrigger
+                      value="curriculum"
+                      className="data-[state=active]:bg-white data-[state=active]:text-emerald-700"
+                    >
                       Curriculum
                     </TabsTrigger>
-                    <TabsTrigger value="assessments" className="data-[state=active]:bg-white data-[state=active]:text-emerald-700">
+                    <TabsTrigger
+                      value="assessments"
+                      className="data-[state=active]:bg-white data-[state=active]:text-emerald-700"
+                    >
                       Assessments
                     </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="curriculum" className="flex-1 overflow-auto p-4">
+                  <TabsContent
+                    value="curriculum"
+                    className="flex-1 overflow-auto p-4"
+                  >
                     <div className="space-y-4">
                       {curriculum.modules.map((module) => {
                         const isExpanded = expandedModules.has(module.id);
-                        const moduleAttempts = module.moduleAssessment 
+                        const moduleAttempts = module.moduleAssessment
                           ? getPreviousAttempts(module.moduleAssessment.id)
                           : [];
-                        const hasPassedModuleAssessment = moduleAttempts.some(attempt => attempt.passed);
+                        const hasPassedModuleAssessment = moduleAttempts.some(
+                          (attempt) => attempt.passed
+                        );
 
                         return (
                           <div key={module.id} className="space-y-2">
@@ -1440,14 +1809,20 @@ export default function CourseLearnPage() {
                                 ) : (
                                   <ChevronUp className="h-4 w-4 text-gray-500" />
                                 )}
-                                <span className="font-medium text-gray-900">{module.title}</span>
+                                <span className="font-medium text-gray-900">
+                                  {module.title}
+                                </span>
                               </div>
                               <div className="flex items-center gap-2">
                                 {module.moduleAssessment && (
-                                  <Badge className={`${hasPassedModuleAssessment 
-                                    ? 'bg-emerald-100 text-emerald-800' 
-                                    : 'bg-gray-100 text-gray-800'}`}>
-                                    {hasPassedModuleAssessment ? '✓' : 'Q'}
+                                  <Badge
+                                    className={`${
+                                      hasPassedModuleAssessment
+                                        ? "bg-emerald-100 text-emerald-800"
+                                        : "bg-gray-100 text-gray-800"
+                                    }`}
+                                  >
+                                    {hasPassedModuleAssessment ? "✓" : "Q"}
                                   </Badge>
                                 )}
                                 <Badge variant="outline" className="text-xs">
@@ -1459,20 +1834,27 @@ export default function CourseLearnPage() {
                             {isExpanded && (
                               <div className="space-y-1 ml-4">
                                 {module.lessons.map((lesson) => {
-                                  const lessonProgress = getLessonProgress(lesson.id);
-                                  const isActive = lesson.id === selectedLessonId;
-                                  const lessonAttempts = lesson.quiz 
+                                  const lessonProgress = getLessonProgress(
+                                    lesson.id
+                                  );
+                                  const isActive =
+                                    lesson.id === selectedLessonId;
+                                  const lessonAttempts = lesson.quiz
                                     ? getPreviousAttempts(lesson.quiz.id)
                                     : [];
 
                                   return (
                                     <Button
                                       key={lesson.id}
-                                      variant={isActive ? 'secondary' : 'ghost'}
-                                      className={`w-full justify-start font-normal p-2 ${isActive 
-                                        ? 'bg-emerald-50 text-emerald-700' 
-                                        : 'hover:bg-gray-50 text-gray-800'}`}
-                                      onClick={() => handleLessonSelect(lesson.id, module.id)}
+                                      variant={isActive ? "secondary" : "ghost"}
+                                      className={`w-full justify-start font-normal p-2 ${
+                                        isActive
+                                          ? "bg-emerald-50 text-emerald-700"
+                                          : "hover:bg-gray-50 text-gray-800"
+                                      }`}
+                                      onClick={() =>
+                                        handleLessonSelect(lesson.id, module.id)
+                                      }
                                     >
                                       <div className="flex items-center gap-2 w-full">
                                         {lessonProgress?.isCompleted ? (
@@ -1482,10 +1864,19 @@ export default function CourseLearnPage() {
                                         )}
                                         <div className="flex-1 text-left truncate">
                                           <div className="flex items-center gap-2">
-                                            {lesson.contentType === 'VIDEO' && <Video className="h-3 w-3 text-gray-500 flex-shrink-0" />}
-                                            {lesson.contentType === 'ARTICLE' && <FileText className="h-3 w-3 text-gray-500 flex-shrink-0" />}
-                                            {lesson.contentType === 'QUIZ' && <Target className="h-3 w-3 text-gray-500 flex-shrink-0" />}
-                                            <span className="truncate">{lesson.title}</span>
+                                            {lesson.contentType === "VIDEO" && (
+                                              <Video className="h-3 w-3 text-gray-500 flex-shrink-0" />
+                                            )}
+                                            {lesson.contentType ===
+                                              "ARTICLE" && (
+                                              <FileText className="h-3 w-3 text-gray-500 flex-shrink-0" />
+                                            )}
+                                            {lesson.contentType === "QUIZ" && (
+                                              <Target className="h-3 w-3 text-gray-500 flex-shrink-0" />
+                                            )}
+                                            <span className="truncate">
+                                              {lesson.title}
+                                            </span>
                                           </div>
                                         </div>
                                         {lessonAttempts.length > 0 && (
@@ -1497,16 +1888,22 @@ export default function CourseLearnPage() {
                                     </Button>
                                   );
                                 })}
-                                
+
                                 {/* Module Assessment */}
                                 {module.moduleAssessment && (
                                   <Button
                                     variant="outline"
                                     className="w-full justify-start mt-2 p-2 border-dashed"
-                                    onClick={() => handleStartAssessment(module.moduleAssessment!)}
+                                    onClick={() =>
+                                      handleStartAssessment(
+                                        module.moduleAssessment!
+                                      )
+                                    }
                                   >
                                     <Target className="h-4 w-4 mr-2 text-emerald-600" />
-                                    <span className="text-sm">Module Assessment</span>
+                                    <span className="text-sm">
+                                      Module Assessment
+                                    </span>
                                     {moduleAttempts.length > 0 && (
                                       <Badge className="ml-auto bg-emerald-100 text-emerald-800 text-xs">
                                         {moduleAttempts.length}
@@ -1519,23 +1916,32 @@ export default function CourseLearnPage() {
                           </div>
                         );
                       })}
-                      
+
                       {/* Final Assessment */}
                       {curriculum.finalAssessment && (
                         <div className="mt-4 pt-4 border-t">
                           <Button
                             variant="outline"
                             className="w-full justify-start p-6 border-emerald-200 hover:bg-emerald-50"
-                            onClick={() => handleStartAssessment(curriculum.finalAssessment!)}
+                            onClick={() =>
+                              handleStartAssessment(curriculum.finalAssessment!)
+                            }
                           >
                             <Award className="h-5 w-5 mr-2 text-emerald-600" />
                             <div className="text-left">
-                              <div className="font-medium text-emerald-700">Final Assessment</div>
+                              <div className="font-medium text-emerald-700">
+                                Final Assessment
+                              </div>
                               <div className="text-xs text-gray-600">
-                                {getPreviousAttempts(curriculum.finalAssessment.id).length > 0 
-                                  ? `${getPreviousAttempts(curriculum.finalAssessment.id).length} attempt(s)`
-                                  : 'Complete all modules first'
-                                }
+                                {getPreviousAttempts(
+                                  curriculum.finalAssessment.id
+                                ).length > 0
+                                  ? `${
+                                      getPreviousAttempts(
+                                        curriculum.finalAssessment.id
+                                      ).length
+                                    } attempt(s)`
+                                  : "Complete all modules first"}
                               </div>
                             </div>
                           </Button>
@@ -1544,72 +1950,101 @@ export default function CourseLearnPage() {
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="assessments" className="flex-1 overflow-auto p-4">
+                  <TabsContent
+                    value="assessments"
+                    className="flex-1 overflow-auto p-4"
+                  >
                     <div className="space-y-4">
-                      <h3 className="font-bold text-gray-900">Assessment Overview</h3>
-                      
-                      {/* Module Assessments */}
-                      {curriculum.modules.filter(m => m.moduleAssessment).map(module => {
-                        const attempts = getPreviousAttempts(module.moduleAssessment!.id);
-                        const bestScore = attempts.length > 0 
-                          ? Math.max(...attempts.map(a => a.percentage))
-                          : null;
+                      <h3 className="font-bold text-gray-900">
+                        Assessment Overview
+                      </h3>
 
-                        return (
-                          <div key={module.id} className="p-3 border border-gray-200 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <Target className="h-4 w-4 text-gray-600" />
-                                <span className="font-medium text-gray-900">{module.title}</span>
+                      {/* Module Assessments */}
+                      {curriculum.modules
+                        .filter((m) => m.moduleAssessment)
+                        .map((module) => {
+                          const attempts = getPreviousAttempts(
+                            module.moduleAssessment!.id
+                          );
+                          const bestScore =
+                            attempts.length > 0
+                              ? Math.max(...attempts.map((a) => a.percentage))
+                              : null;
+
+                          return (
+                            <div
+                              key={module.id}
+                              className="p-3 border border-gray-200 rounded-lg"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <Target className="h-4 w-4 text-gray-600" />
+                                  <span className="font-medium text-gray-900">
+                                    {module.title}
+                                  </span>
+                                </div>
+                                {bestScore && (
+                                  <Badge
+                                    className={
+                                      bestScore >=
+                                      module.moduleAssessment!.passingScore
+                                        ? "bg-emerald-100 text-emerald-800"
+                                        : "bg-red-100 text-red-800"
+                                    }
+                                  >
+                                    {bestScore}%
+                                  </Badge>
+                                )}
                               </div>
-                              {bestScore && (
-                                <Badge className={
-                                  bestScore >= module.moduleAssessment!.passingScore 
-                                    ? 'bg-emerald-100 text-emerald-800' 
-                                    : 'bg-red-100 text-red-800'
-                                }>
-                                  {bestScore}%
-                                </Badge>
-                              )}
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-600">
+                                  {attempts.length} attempt(s)
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleStartAssessment(
+                                      module.moduleAssessment!
+                                    )
+                                  }
+                                  className="text-emerald-600 hover:text-emerald-700"
+                                >
+                                  {attempts.length > 0 ? "Retake" : "Start"}
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-gray-600">
-                                {attempts.length} attempt(s)
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleStartAssessment(module.moduleAssessment!)}
-                                className="text-emerald-600 hover:text-emerald-700"
-                              >
-                                {attempts.length > 0 ? 'Retake' : 'Start'}
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      
+                          );
+                        })}
+
                       {/* Final Assessment */}
                       {curriculum.finalAssessment && (
                         <div className="p-4 border border-emerald-200 rounded-lg bg-emerald-50">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <Award className="h-5 w-5 text-emerald-600" />
-                              <span className="font-medium text-emerald-700">Final Assessment</span>
+                              <span className="font-medium text-emerald-700">
+                                Final Assessment
+                              </span>
                             </div>
-                            <Badge className="bg-emerald-100 text-emerald-800">Final</Badge>
+                            <Badge className="bg-emerald-100 text-emerald-800">
+                              Final
+                            </Badge>
                           </div>
                           <p className="text-sm text-emerald-600 mb-3">
                             Complete all modules to unlock
                           </p>
                           <Button
                             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                            onClick={() => handleStartAssessment(curriculum.finalAssessment!)}
+                            onClick={() =>
+                              handleStartAssessment(curriculum.finalAssessment!)
+                            }
                           >
                             <Award className="mr-2 h-4 w-4" />
-                            {getPreviousAttempts(curriculum.finalAssessment.id).length > 0 
-                              ? 'Retake Final' 
-                              : 'Take Final'}
+                            {getPreviousAttempts(curriculum.finalAssessment.id)
+                              .length > 0
+                              ? "Retake Final"
+                              : "Take Final"}
                           </Button>
                         </div>
                       )}
@@ -1633,15 +2068,18 @@ export default function CourseLearnPage() {
                     <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
                       <PlayCircle className="h-10 w-10 text-emerald-600" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-2 text-gray-900">Ready to Learn?</h3>
+                    <h3 className="text-xl font-semibold mb-2 text-gray-900">
+                      Ready to Learn?
+                    </h3>
                     <p className="text-gray-600 mb-6 max-w-md">
-                      Select a lesson from the curriculum to start your learning journey.
+                      Select a lesson from the curriculum to start your learning
+                      journey.
                     </p>
                     <Button
                       onClick={() => {
                         const firstLesson = allLessons[0];
-                        const module = curriculum.modules.find(m => 
-                          m.lessons.some(l => l.id === firstLesson?.id)
+                        const module = curriculum.modules.find((m) =>
+                          m.lessons.some((l) => l.id === firstLesson?.id)
                         );
                         if (firstLesson && module) {
                           handleLessonSelect(firstLesson.id, module.id);

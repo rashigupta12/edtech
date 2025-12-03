@@ -78,7 +78,7 @@ function createVerificationEmail(name: string, url: string) {
           ${url}
         </p>
 
-        <p>If you didn’t create this account, you can safely ignore this email.</p>
+        <p>If you didn't create this account, you can safely ignore this email.</p>
       </div>
 
       <div class="footer">
@@ -100,7 +100,10 @@ async function sendEmailDirectly(to: string, subject: string, html: string) {
   });
 }
 
-export async function loginUser(values: z.infer<typeof LoginSchema>) {
+export async function loginUser(
+  values: z.infer<typeof LoginSchema>,
+  callbackUrl?: string | null
+) {
   const validation = LoginSchema.safeParse(values);
 
   if (!validation.success) {
@@ -145,7 +148,13 @@ export async function loginUser(values: z.infer<typeof LoginSchema>) {
       return { error: "Invalid credentials!" };
     }
 
-    return { success: "Logged in successfully!", redirectTo: DEFAULT_LOGIN_REDIRECT };
+    // 🔥 Use callbackUrl if provided, otherwise use DEFAULT_LOGIN_REDIRECT
+    const redirectTo = callbackUrl || DEFAULT_LOGIN_REDIRECT;
+    
+    return { 
+      success: "Logged in successfully!", 
+      redirectTo 
+    };
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {

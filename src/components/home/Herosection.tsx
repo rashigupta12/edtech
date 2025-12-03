@@ -29,12 +29,12 @@ export default function HeroSection() {
             
             <div className="flex flex-wrap gap-3 pt-2">
               <button className="group px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg font-medium hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-md hover:shadow-lg flex items-center gap-2">
-                Get Started
+                  <Link href="/courses" >Browse Courses</Link>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
-              <button className="px-6 py-3 bg-white text-slate-700 rounded-lg font-medium border border-slate-200 hover:border-emerald-600 hover:text-emerald-700 transition-all">
+              {/* <button className="px-6 py-3 bg-white text-slate-700 rounded-lg font-medium border border-slate-200 hover:border-emerald-600 hover:text-emerald-700 transition-all">
                 <Link href="/courses" >Browse Courses</Link>
-              </button>
+              </button> */}
             </div>
           </div>
           
