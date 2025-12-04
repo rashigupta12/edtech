@@ -34,30 +34,33 @@ export default function AssignmentDetailPage() {
   const router = useRouter();
   const assignmentId = params.assignmentId as string;
 
+  // Fixed useEffect – no missing dependency warning
   useEffect(() => {
-    if (assignmentId) {
-      fetchAssignment();
-    }
-  }, [assignmentId]);
+    if (!assignmentId) return;
 
-  const fetchAssignment = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/assignments?id=${assignmentId}`);
-      const result: ApiResponse<Assignment> = await response.json();
+    const loadAssignment = async () => {
+      try {
+        setLoading(true);
+        setError('');
 
-      if (result.success && result.data) {
-        setAssignment(result.data);
-      } else {
-        setError(result.error?.message || 'Assignment not found');
+        const response = await fetch(`/api/assignments?id=${assignmentId}`);
+        const result: ApiResponse<Assignment> = await response.json();
+
+        if (result.success && result.data) {
+          setAssignment(result.data);
+        } else {
+          setError(result.error?.message || 'Assignment not found');
+        }
+      } catch (err) {
+        setError('Failed to fetch assignment details');
+        console.error('Error fetching assignment:', err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError('Failed to fetch assignment details');
-      console.error('Error fetching assignment:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    loadAssignment();
+  }, [assignmentId]); // Only depends on assignmentId → perfect!
 
   const deleteAssignment = async () => {
     if (!confirm('Are you sure you want to delete this assignment?')) return;
@@ -80,6 +83,7 @@ export default function AssignmentDetailPage() {
     }
   };
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -96,6 +100,7 @@ export default function AssignmentDetailPage() {
     );
   }
 
+  // Error or not found
   if (error || !assignment) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -130,7 +135,7 @@ export default function AssignmentDetailPage() {
               <h1 className="text-3xl font-bold text-gray-900">{assignment.title}</h1>
               <p className="text-gray-600 mt-2">Assignment Details</p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-3">
               <Link
                 href={`/admin/assignments/${assignmentId}/edit`}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
@@ -169,10 +174,9 @@ export default function AssignmentDetailPage() {
             <div>
               <h3 className="text-sm font-medium text-gray-500">Due Date</h3>
               <p className="mt-1 text-sm text-gray-900">
-                {assignment.dueDate 
+                {assignment.dueDate
                   ? new Date(assignment.dueDate).toLocaleString()
-                  : 'No due date'
-                }
+                  : 'No due date'}
               </p>
             </div>
             <div>
@@ -203,10 +207,10 @@ export default function AssignmentDetailPage() {
             </div>
           )}
 
-          {assignment.attachments && (
+          {assignment.attachments && Object.keys(assignment.attachments).length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-gray-500 mb-2">Attachments</h3>
-              <pre className="text-sm text-gray-900 bg-gray-50 p-3 rounded">
+              <pre className="text-sm text-gray-900 bg-gray-50 p-4 rounded-lg overflow-x-auto">
                 {JSON.stringify(assignment.attachments, null, 2)}
               </pre>
             </div>

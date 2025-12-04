@@ -17,7 +17,7 @@ import { useCurrentUser } from "@/hooks/auth";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
 type College = {
@@ -56,45 +56,53 @@ export default function CreateBootcampPage() {
   // Selected courses for bootcamp
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
 
-  // Fetch colleges and courses
+ /* --------------------------------------------------------------
+     1. Fetch colleges & courses – inlined (no missing deps)
+     -------------------------------------------------------------- */
   useEffect(() => {
-    const fetchData = async () => {
+    const loadData = async () => {
       try {
-        // Fetch colleges
-        const collegesRes = await fetch("/api/colleges");
-        const collegesData = await collegesRes.json();
-        if (collegesData.success) {
-          setColleges(collegesData.data);
-        }
+        const [collegesRes, coursesRes] = await Promise.all([
+          fetch("/api/colleges"),
+          fetch("/api/courses"),
+        ]);
 
-        // Fetch courses
-        const coursesRes = await fetch("/api/courses");
+        const collegesData = await collegesRes.json();
         const coursesData = await coursesRes.json();
-        if (coursesData.success) {
-          setAvailableCourses(coursesData.data);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
+
+        if (collegesData.success) setColleges(collegesData.data);
+        if (coursesData.success) setAvailableCourses(coursesData.data);
+      } catch (err) {
+        console.error("Error fetching initial data:", err);
       }
     };
 
-    fetchData();
+    loadData();
+  }, []); // runs only once on mount
+
+  /* --------------------------------------------------------------
+     2. Auto-generate slug from title – memoized with useCallback
+     -------------------------------------------------------------- */
+  const generateSlug = useCallback((title: string) => {
+    return title
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, "")
+      .replace(/[\s_-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
   }, []);
 
-  // Auto-generate slug from title
   useEffect(() => {
     if (formData.title && !formData.slug) {
-      const slug = formData.title
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, "")
-        .replace(/[\s_-]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      setFormData((prev) => ({ ...prev, slug }));
+      const newSlug = generateSlug(formData.title);
+      setFormData((prev) => ({ ...prev, slug: newSlug }));
     }
-  }, [formData.title]);
+  }, [formData.title, formData.slug, generateSlug]); // now fully correct
 
-  const handleFieldChange = (field: string, value: string | boolean) => {
+  /* --------------------------------------------------------------
+     Rest of the component (unchanged, only tiny clean-ups)
+     -------------------------------------------------------------- */
+  const handleFieldChange = (field: keyof typeof formData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -109,7 +117,6 @@ export default function CreateBootcampPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
     if (!formData.title || !formData.startDate || !formData.endDate) {
       Swal.fire({
         icon: "warning",
@@ -130,11 +137,9 @@ export default function CreateBootcampPage() {
 
     setLoading(true);
 
-    const createdBy = user?.id;
-
     const payload = {
       ...formData,
-      createdBy,
+      createdBy: user?.id,
       collegeId: formData.collegeId || null,
       thumbnailUrl: formData.thumbnailUrl || null,
       price: formData.price ? Number(formData.price) : null,
@@ -153,7 +158,7 @@ export default function CreateBootcampPage() {
       if (response.success) {
         const bootcampId = response.data.id;
 
-        // Add courses to bootcamp
+        // Add selected courses
         for (let i = 0; i < selectedCourses.length; i++) {
           await fetch(`/api/bootcamps?id=${bootcampId}&addCourse=true`, {
             method: "POST",
@@ -168,12 +173,9 @@ export default function CreateBootcampPage() {
         Swal.fire({
           icon: "success",
           title: "Bootcamp Created!",
-          text: "Bootcamp has been created successfully",
           timer: 2000,
           showConfirmButton: false,
-        }).then(() => {
-          router.push("/dashboard/admin/bootcamps");
-        });
+        }).then(() => router.push("/dashboard/admin/bootcamps"));
       } else {
         Swal.fire({
           icon: "error",
@@ -183,11 +185,7 @@ export default function CreateBootcampPage() {
       }
     } catch (err) {
       console.error(err);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "An unexpected error occurred",
-      });
+      Swal.fire({ icon: "error", title: "Error", text: "An unexpected error occurred" });
     } finally {
       setLoading(false);
     }

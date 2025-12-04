@@ -4,6 +4,7 @@
 import AddAdminForm from "@/components/admin/Addadminform";
 import { Button } from "@/components/ui/button";
 import { Calendar, Mail, Phone, Plus, Shield, Trash, User, UserPlus } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -69,93 +70,77 @@ export default function CollegesPage() {
   >("all");
 
 
+   // Fetch colleges + admin data in parallel (fast & warning-free)
   useEffect(() => {
-    fetchColleges();
-  }, []);
+    const loadColleges = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
- const fetchUserData = async (userId: string): Promise<CollegeAdmin | null> => {
-  try {
-    const response = await fetch(`/api/users?id=${userId}`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch user data");
-    }
-    
-    // Now the response will be the user object directly
-    const user = await response.json();
-    
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      mobile: user.mobile || null,
-      isActive: user.isActive !== false,
-      lastLoginAt: user.lastLoginAt,
-      createdAt: user.createdAt,
+        const response = await fetch("/api/colleges");
+        if (!response.ok) throw new Error("Failed to fetch colleges");
+
+        const data = await response.json();
+        let collegesArray: ApiCollege[] = data.colleges || data.data || data;
+        if (!Array.isArray(collegesArray)) collegesArray = [collegesArray];
+
+        // Fetch all admins in parallel
+        const collegesWithAdmins = await Promise.all(
+          collegesArray.map(async (college: ApiCollege) => {
+            let admin: CollegeAdmin | undefined = undefined;
+
+            if (college.userId) {
+              try {
+                const userRes = await fetch(`/api/users?id=${college.userId}`);
+                if (userRes.ok) {
+                  const user = await userRes.json();
+                  admin = {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    mobile: user.mobile || null,
+                    isActive: user.isActive !== false,
+                    lastLoginAt: user.lastLoginAt,
+                    createdAt: user.createdAt,
+                  };
+                }
+              } catch (err) {
+                console.error(`Failed to fetch admin ${college.userId}:`, err);
+              }
+            }
+
+            return {
+              id: college.id,
+              collegeName: college.collegeName,
+              collegeCode: college.collegeCode,
+              contactEmail: college.contactEmail,
+              contactPhone: college.contactPhone,
+              address: college.address || null,
+              city: college.city || null,
+              state: college.state || null,
+              status: (college.status as College["status"]) || "PENDING",
+              createdAt: college.createdAt,
+              updatedAt: college.updatedAt || college.createdAt,
+              userId: college.userId,
+              createdBy: college.createdBy,
+              admin,
+              logo: college.logo || null,
+              websiteUrl: college.websiteUrl || null,
+            } satisfies College;
+          })
+        );
+
+        setColleges(collegesWithAdmins);
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setError(err instanceof Error ? err.message : "Failed to load colleges");
+      } finally {
+        setLoading(false);
+      }
     };
-  } catch (err) {
-    console.error(`Failed to fetch user data for userId ${userId}:`, err);
-    return null;
-  }
-};
 
-  const fetchColleges = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/colleges");
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch colleges");
-      }
-
-      const data = await response.json();
-
-      // Extract colleges array from response
-      let collegesArray: ApiCollege[] = data.colleges || data.data || data;
-
-      // If it's not an array, wrap it
-      if (!Array.isArray(collegesArray)) {
-        collegesArray = [collegesArray];
-      }
-
-      // Map API response fields to component interface and fetch admin data
-      const mappedColleges: College[] = await Promise.all(
-        collegesArray.map(async (college: ApiCollege) => {
-          let adminData: CollegeAdmin | null = null;
-          
-          // If userId exists (college admin ID), fetch admin data
-          if (college.userId) {
-            adminData = await fetchUserData(college.userId);
-          }
-
-          return {
-            id: college.id,
-            collegeName: college.collegeName,
-            collegeCode: college.collegeCode,
-            contactEmail: college.contactEmail,
-            contactPhone: college.contactPhone,
-            address: college.address || null,
-            city: college.city || null,
-            state: college.state || null,
-            status: (college.status as "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED") || "PENDING",
-            createdAt: college.createdAt,
-            updatedAt: college.updatedAt || college.createdAt,
-            userId: college.userId,
-            createdBy: college.createdBy,
-            admin: adminData || undefined,
-            logo: college.logo || null,
-            websiteUrl: college.websiteUrl || null,
-          };
-        })
-      );
-
-      setColleges(mappedColleges);
-    } catch (err) {
-      console.error("Fetch error:", err);
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
+    loadColleges();
+  }, []); // Only runs once on mount → perfect
 
   const handleAddAdmin = (collegeId: string, collegeName: string) => {
     setSelectedCollege({ id: collegeId, name: collegeName });
@@ -191,7 +176,7 @@ const handleAdminCreated = async (newAdminUserId: string) => {
     console.log("College update response:", updateResult);
 
     // Refresh the colleges list to show the newly created admin
-    await fetchColleges();
+    // await refreshcollegs();
     setIsAdminFormOpen(false);
     setSelectedCollege(null);
     
@@ -294,7 +279,6 @@ const handleAdminCreated = async (newAdminUserId: string) => {
       }
 
       // Refresh the colleges list
-      fetchColleges();
     } catch (err) {
       console.error("Delete error:", err);
       setError(
@@ -356,14 +340,14 @@ const handleAdminCreated = async (newAdminUserId: string) => {
                 </h3>
                 <p className="text-sm text-red-600 mt-1">{error}</p>
               </div>
-              <div className="ml-auto pl-3">
+              {/* <div className="ml-auto pl-3">
                 <button
                   onClick={fetchColleges}
                   className="bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded text-sm font-medium"
                 >
                   Retry
                 </button>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
@@ -498,10 +482,12 @@ const handleAdminCreated = async (newAdminUserId: string) => {
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
                             {college.logo ? (
-                              <img
+                              <Image
                                 src={college.logo}
                                 alt={college.collegeName}
                                 className="h-8 w-8 rounded"
+                                width={10}
+                                height={10}
                               />
                             ) : (
                               <span className="text-blue-600 font-semibold text-sm">

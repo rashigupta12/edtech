@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Upload, X, Check } from "lucide-react";
+import Image from "next/image";
 
 interface FileUploadProps {
   onUploadComplete: (url: string) => void;
@@ -234,10 +235,12 @@ export function FileUpload({
               preload="metadata"
             />
           ) : uploadedUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-            <img
+            <Image
               src={uploadedUrl}
               alt="Uploaded"
               className="w-full rounded border max-h-48 object-contain"
+              width={48}
+              height={48}
             />
           ) : (
             <a

@@ -1,6 +1,6 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
 /*eslint-disable @typescript-eslint/no-unused-vars */
-// src/app/(protected)/dashboard/admin/courses/[id]/edit/page.tsx
+// src/app/(protected)/dashboard/college/courses/[id]/edit/page.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -319,7 +319,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
           title: "Error",
           text: "Failed to load course data",
         });
-        router.push("/dashboard/admin/courses");
+        router.push("/dashboard/college/courses");
       } finally {
         setLoading(false);
       }
@@ -1816,7 +1816,7 @@ for (let i = 0; i < modules.length; i++) {
           timer: 2000,
           showConfirmButton: false,
         }).then(() => {
-          router.push("/dashboard/admin/courses");
+          router.push("/dashboard/college/courses");
           router.refresh();
         });
       } else {
@@ -1855,7 +1855,7 @@ for (let i = 0; i < modules.length; i++) {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/dashboard/admin/courses"
+            href="/dashboard/college/courses"
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -3086,7 +3086,7 @@ for (let i = 0; i < modules.length; i++) {
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-6 pb-8">
             <Button type="button" variant="outline" asChild>
-              <Link href="/dashboard/admin/courses">Cancel</Link>
+              <Link href="/dashboard/college/courses">Cancel</Link>
             </Button>
             <Button
               type="submit"

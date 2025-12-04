@@ -357,10 +357,12 @@ export default function TestimonialsListPage() {
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       {testimonial.studentImage ? (
-                        <img
+                        <Image
                           src={testimonial.studentImage}
                           alt={testimonial.studentName}
                           className="w-10 h-10 rounded-full object-cover"
+                          width={20}
+                          height={20}
                         />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">

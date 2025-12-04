@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ["your-domain.com"],
-    formats: ["image/avif", "image/webp"],
+
+    domains: ["gennextupload.s3.ap-south-1.amazonaws.com"],
   },
   experimental: {
     optimizeCss: true,

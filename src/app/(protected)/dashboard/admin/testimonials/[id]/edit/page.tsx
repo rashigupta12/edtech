@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import Swal from "sweetalert2";
+import Image from "next/image";
 
 
 
@@ -244,13 +245,15 @@ export default function EditTestimonialPage() {
                   </div>
                   {formData.studentImage && (
                     <div className="w-12 h-12">
-                      <img
+                      <Image
                         src={formData.studentImage}
                         alt="Preview"
                         className="w-full h-full rounded-lg object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                         }}
+                        width={12}
+                        height={12}
                       />
                     </div>
                   )}

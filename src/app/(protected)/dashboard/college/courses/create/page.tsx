@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// src/app/(protected)/dashboard/admin/courses/create/page.tsx
+// src/app/(protected)/dashboard/college/courses/create/page.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -717,7 +717,7 @@ for (let i = 0; i < modules.length; i++) {
           timer: 2000,
           showConfirmButton: false,
         }).then(() => {
-          router.push("/dashboard/admin/courses");
+          router.push("/dashboard/college/courses");
         });
       } else {
         Swal.fire({
@@ -1110,7 +1110,7 @@ for (let i = 0; i < modules.length; i++) {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/dashboard/admin/courses"
+            href="/dashboard/college/courses"
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -1152,7 +1152,7 @@ for (let i = 0; i < modules.length; i++) {
                     required
                   />
                 </div>
-
+{/* 
                 <div className="md:col-span-2">
                   <Label htmlFor="slug">Slug *</Label>
                   <Input
@@ -1165,7 +1165,7 @@ for (let i = 0; i < modules.length; i++) {
                   <p className="text-xs text-gray-500 mt-1">
                     URL-friendly version of the title (auto-generated)
                   </p>
-                </div>
+                </div> */}
 
                 <div className="md:col-span-2">
                   <Label htmlFor="shortDescription">Short Description</Label>
@@ -2111,7 +2111,7 @@ for (let i = 0; i < modules.length; i++) {
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-6 pb-8">
             <Button type="button" variant="outline" asChild>
-              <Link href="/dashboard/admin/courses">Cancel</Link>
+              <Link href="/dashboard/college/courses">Cancel</Link>
             </Button>
             <Button
               type="submit"

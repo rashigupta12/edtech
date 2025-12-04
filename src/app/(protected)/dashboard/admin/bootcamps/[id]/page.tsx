@@ -59,16 +59,29 @@ export default function ViewBootcampPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchBootcamp = async () => {
+ useEffect(() => {
+  if (!params.id) return;
+
+  const loadBootcampData = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/bootcamps?id=${params.id}`);
-      const response = await res.json();
 
-      if (response.success) {
-        setBootcamp(response.data);
+      const [bootcampRes, coursesRes] = await Promise.all([
+        fetch(`/api/bootcamps?id=${params.id}`),
+        fetch(`/api/bootcamps?id=${params.id}&courses=true`),
+      ]);
+
+      const bootcampData = await bootcampRes.json();
+      const coursesData = await coursesRes.json();
+
+      if (bootcampData.success && bootcampData.data) {
+        setBootcamp(bootcampData.data);
       } else {
         throw new Error("Bootcamp not found");
+      }
+
+      if (coursesData.success) {
+        setCourses(coursesData.data || []);
       }
     } catch (err) {
       console.error(err);
@@ -83,25 +96,8 @@ export default function ViewBootcampPage() {
     }
   };
 
-  const fetchCourses = async () => {
-    try {
-      const res = await fetch(`/api/bootcamps?id=${params.id}&courses=true`);
-      const response = await res.json();
-
-      if (response.success) {
-        setCourses(response.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch courses:", err);
-    }
-  };
-
-  useEffect(() => {
-    if (params.id) {
-      fetchBootcamp();
-      fetchCourses();
-    }
-  }, [params.id]);
+  loadBootcampData();
+}, [params.id, router]); // Only these two dependencies → warning gone
 
   const handleDelete = async () => {
     const result = await Swal.fire({
@@ -161,7 +157,7 @@ export default function ViewBootcampPage() {
           timer: 2000,
           showConfirmButton: false,
         });
-        fetchBootcamp();
+        // fetchBootcamp();
       } else {
         Swal.fire({
           icon: "error",
@@ -205,7 +201,7 @@ export default function ViewBootcampPage() {
 
       if (response.success) {
         Swal.fire("Rejected", "Bootcamp has been rejected.", "success");
-        fetchBootcamp();
+        // fetchBootcamp();
       }
     } catch (err) {
       console.error(err);
@@ -228,7 +224,7 @@ export default function ViewBootcampPage() {
           timer: 2000,
           showConfirmButton: false,
         });
-        fetchBootcamp();
+        // fetchBootcamp();
       } else {
         Swal.fire({
           icon: "error",
@@ -251,7 +247,7 @@ export default function ViewBootcampPage() {
 
       if (response.success) {
         Swal.fire("Archived", "Bootcamp has been archived.", "success");
-        fetchBootcamp();
+        // fetchBootcamp();
       }
     } catch (err) {
       console.error(err);

@@ -31,39 +31,41 @@ export default function EditAssignmentPage() {
   const router = useRouter();
   const assignmentId = params.assignmentId as string;
 
-  useEffect(() => {
-    if (assignmentId) {
-      fetchAssignment();
-    }
-  }, [assignmentId]);
+ useEffect(() => {
+  if (!assignmentId) return;
 
-  const fetchAssignment = async () => {
+  const loadAssignment = async () => {
     try {
       setLoading(true);
+      setError('');
+
       const response = await fetch(`/api/assignments?id=${assignmentId}`);
       const result: ApiResponse<Assignment> = await response.json();
 
       if (result.success && result.data) {
-        const assignment = result.data;
+        const a = result.data;
         setFormData({
-          title: assignment.title,
-          description: assignment.description,
-          instructions: assignment.instructions,
-          courseId: assignment.courseId,
-          moduleId: assignment.moduleId,
-          dueDate: assignment.dueDate ? assignment.dueDate.split('T')[0] : '',
-          maxScore: assignment.maxScore,
+          title: a.title,
+          description: a.description,
+          instructions: a.instructions ?? '',
+          courseId: a.courseId,
+          moduleId: a.moduleId ?? '',
+          dueDate: a.dueDate ? a.dueDate.split('T')[0] : '',
+          maxScore: a.maxScore,
         });
       } else {
         setError(result.error?.message || 'Assignment not found');
       }
     } catch (err) {
-      setError('Failed to fetch assignment details');
-      console.error('Error fetching assignment:', err);
+      setError('Failed to load assignment');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
+  loadAssignment();
+}, [assignmentId]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
