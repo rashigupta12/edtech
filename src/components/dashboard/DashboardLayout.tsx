@@ -13,6 +13,7 @@ import {
   List,
   MessageCircle,
   Plus,
+  PlusCircle,
   Quote,
   Tag,
   Ticket,
@@ -200,25 +201,29 @@ const navConfigs = {
       href: "/dashboard/college/faculty",
       icon: Users,
     },
+      {
+      title: "Batch Management",
+      icon: Tag,
+      children: [
+        { title: "Batches", href: "/dashboard/college/batches", icon: List },
+        {
+          title: "Enrollments",
+          href: "/dashboard/college/batches/enrollment",
+          icon: Ticket,
+        },
+        {
+          title: "Courses",
+          href: "/dashboard/college/batches/courses",
+          icon: Ticket,
+        },
+         {
+          title: "Create Student",
+          href: "/dashboard/college/student",
+          icon: PlusCircle,
+        },
+      ],
+    },
 
-    
-    // {
-    //   title: "Earnings",
-    //   icon: TrendingUp,
-    //   children: [
-    //     {
-    //       title: "Commission Overview",
-    //       href: "/dashboard/agent/earnings",
-    //       icon: DollarSign,
-    //     },
-    //     {
-    //       title: "Payout History",
-    //       href: "/dashboard/agent/payouts",
-    //       icon: Wallet,
-    //     },
-    //   ],
-    // },
-  
   ] as const,
 
   user: [

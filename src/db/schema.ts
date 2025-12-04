@@ -144,6 +144,8 @@ export const StudentProfilesTable = pgTable(
   "student_profiles",
   {
     id: uuid("id").primaryKey().references(() => UsersTable.id, { onDelete: "cascade" }),
+    collegeId: uuid("college_id").references(() => CollegesTable.id, { 
+      onDelete: "set null"}),
     dateOfBirth: timestamp("date_of_birth", { mode: "date" }),
     gender: Gender("gender"),
     address: text("address"),
@@ -169,6 +171,7 @@ export const StudentProfilesTable = pgTable(
   (table) => [
     index("student_profiles_education_level_idx").on(table.educationLevel),
     index("student_profiles_institution_idx").on(table.institution),
+    index("student_profiles_college_id_idx").on(table.collegeId),
   ]
 );
 
@@ -1676,6 +1679,10 @@ export const StudentProfilesRelations = relations(StudentProfilesTable, ({ one }
     fields: [StudentProfilesTable.id],
     references: [UsersTable.id],
   }),
+  college: one(CollegesTable, {
+    fields: [StudentProfilesTable.collegeId],
+    references: [CollegesTable.id],
+  }),
 }));
 
 export const FacultyProfilesRelations = relations(FacultyProfilesTable, ({ one }) => ({
@@ -1683,6 +1690,7 @@ export const FacultyProfilesRelations = relations(FacultyProfilesTable, ({ one }
     fields: [FacultyProfilesTable.id],
     references: [UsersTable.id],
   }),
+  
 }));
 
 // College Relations
