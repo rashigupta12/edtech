@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/app/(protected)/dashboard/admin/courses/create/page.tsx
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// src/app/(protected)/dashboard/college/courses/create/page.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -392,63 +393,62 @@ export default function CreateCoursePage() {
     setModules(updatedModules);
   };
 
-  const toggleModuleAssessment = (moduleIndex: number) => {
+const toggleModuleAssessment = (moduleIndex: number) => {
+  const updatedModules = [...modules];
+  const currentModule = updatedModules[moduleIndex]; // Changed from 'module'
+
+  if (!currentModule.hasAssessment) {
+    // Add module assessment
+    currentModule.hasAssessment = true;
+    currentModule.moduleAssessment = {
+      title: `${currentModule.title} Assessment`,
+      description: "Module assessment to test your understanding",
+      assessmentLevel: "MODULE_ASSESSMENT",
+      passingScore: currentModule.minimumPassingScore || 60,
+      isRequired: currentModule.assessmentRequired,
+      showCorrectAnswers: false,
+      allowRetake: true,
+      randomizeQuestions: true,
+      questions: [],
+    };
+  } else {
+    // Remove module assessment
+    currentModule.hasAssessment = false;
+    currentModule.moduleAssessment = undefined;
+  }
+
+  setModules(updatedModules);
+};
+
+const updateAssessment = (
+  type: "lesson" | "module" | "course",
+  field: keyof Assessment | "questions",
+  value: any,
+  moduleIndex?: number,
+  lessonIndex?: number
+) => {
+  if (
+    type === "lesson" &&
+    moduleIndex !== undefined &&
+    lessonIndex !== undefined
+  ) {
     const updatedModules = [...modules];
-    const module = updatedModules[moduleIndex];
-
-    if (!module.hasAssessment) {
-      // Add module assessment
-      module.hasAssessment = true;
-      module.moduleAssessment = {
-        title: `${module.title} Assessment`,
-        description: "Module assessment to test your understanding",
-        assessmentLevel: "MODULE_ASSESSMENT",
-        passingScore: module.minimumPassingScore || 60,
-        isRequired: module.assessmentRequired,
-        showCorrectAnswers: false,
-        allowRetake: true,
-        randomizeQuestions: true,
-        questions: [],
-      };
-    } else {
-      // Remove module assessment
-      module.hasAssessment = false;
-      module.moduleAssessment = undefined;
+    const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
+    if (lesson.quiz) {
+      (lesson.quiz as any)[field] = value;
+      setModules(updatedModules);
     }
-
-    setModules(updatedModules);
-  };
-
-  const updateAssessment = (
-    type: "lesson" | "module" | "course",
-    field: keyof Assessment | "questions", // Move required parameter up
-    value: any, // Move required parameter up
-    moduleIndex?: number, // Optional parameters at the end
-    lessonIndex?: number // Optional parameters at the end
-  ) => {
-    if (
-      type === "lesson" &&
-      moduleIndex !== undefined &&
-      lessonIndex !== undefined
-    ) {
-      const updatedModules = [...modules];
-      const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
-      if (lesson.quiz) {
-        (lesson.quiz as any)[field] = value;
-        setModules(updatedModules);
-      }
-    } else if (type === "module" && moduleIndex !== undefined) {
-      const updatedModules = [...modules];
-      const module = updatedModules[moduleIndex];
-      if (module.moduleAssessment) {
-        (module.moduleAssessment as any)[field] = value;
-        setModules(updatedModules);
-      }
-    } else if (type === "course") {
-      setCourseFinalAssessment((prev) => ({ ...prev, [field]: value }));
+  } else if (type === "module" && moduleIndex !== undefined) {
+    const updatedModules = [...modules];
+    const currentModule = updatedModules[moduleIndex]; // Changed from 'module'
+    if (currentModule.moduleAssessment) {
+      (currentModule.moduleAssessment as any)[field] = value;
+      setModules(updatedModules);
     }
-  };
-
+  } else if (type === "course") {
+    setCourseFinalAssessment((prev) => ({ ...prev, [field]: value }));
+  }
+};
   const addQuestion = (
     type: "lesson" | "module" | "course",
     moduleIndex?: number,
@@ -614,49 +614,49 @@ export default function CreateCoursePage() {
         }
 
         // Add modules and lessons
-        for (let i = 0; i < modules.length; i++) {
-          const module = modules[i];
-          if (module.title.trim()) {
-            // Create module
-            const moduleRes = await fetch(
-              `/api/courses?id=${courseId}&modules=true`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: module.title,
-                  description: module.description,
-                  hasAssessment: module.hasAssessment,
-                  assessmentRequired: module.assessmentRequired,
-                  minimumPassingScore: module.minimumPassingScore,
-                  requireAllLessonsComplete: module.requireAllLessonsComplete,
-                  sortOrder: i,
-                }),
-              }
-            );
+for (let i = 0; i < modules.length; i++) {
+  const currentModule = modules[i]; // Changed from 'module'
+  if (currentModule.title.trim()) {
+    // Create module
+    const moduleRes = await fetch(
+      `/api/courses?id=${courseId}&modules=true`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: currentModule.title,
+          description: currentModule.description,
+          hasAssessment: currentModule.hasAssessment,
+          assessmentRequired: currentModule.assessmentRequired,
+          minimumPassingScore: currentModule.minimumPassingScore,
+          requireAllLessonsComplete: currentModule.requireAllLessonsComplete,
+          sortOrder: i,
+        }),
+      }
+    );
 
-            const moduleData = await moduleRes.json();
+    const moduleData = await moduleRes.json();
 
-            if (moduleData.success) {
-              // Add module assessment if exists
-              if (module.hasAssessment && module.moduleAssessment) {
-                await fetch(
-                  `/api/courses?id=${courseId}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${moduleData.data.id}`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      ...module.moduleAssessment,
-                      createdBy,
-                      questions: module.moduleAssessment?.questions || [],
-                    }),
-                  }
-                );
-              }
+    if (moduleData.success) {
+      // Add module assessment if exists
+      if (currentModule.hasAssessment && currentModule.moduleAssessment) {
+        await fetch(
+          `/api/courses?id=${courseId}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${moduleData.data.id}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...currentModule.moduleAssessment,
+              createdBy,
+              questions: currentModule.moduleAssessment?.questions || [],
+            }),
+          }
+        );
+      }
 
-              // Add lessons for this module
-              for (let j = 0; j < module.lessons.length; j++) {
-                const lesson = module.lessons[j];
+      // Add lessons for this module
+      for (let j = 0; j < currentModule.lessons.length; j++) {
+        const lesson = currentModule.lessons[j];
                 if (lesson.title.trim()) {
                   const lessonRes = await fetch(
                     `/api/courses?id=${courseId}&lessons=true&moduleId=${moduleData.data.id}`,
@@ -725,7 +725,7 @@ export default function CreateCoursePage() {
           timer: 2000,
           showConfirmButton: false,
         }).then(() => {
-          router.push("/dashboard/admin/courses");
+          router.push("/dashboard/college/courses");
         });
       } else {
         Swal.fire({
@@ -1118,7 +1118,7 @@ export default function CreateCoursePage() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/dashboard/admin/courses"
+            href="/dashboard/college/courses"
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -1160,7 +1160,7 @@ export default function CreateCoursePage() {
                     required
                   />
                 </div>
-
+{/* 
                 <div className="md:col-span-2">
                   <Label htmlFor="slug">Slug *</Label>
                   <Input
@@ -1173,7 +1173,7 @@ export default function CreateCoursePage() {
                   <p className="text-xs text-gray-500 mt-1">
                     URL-friendly version of the title (auto-generated)
                   </p>
-                </div>
+                </div> */}
 
                 <div className="md:col-span-2">
                   <Label htmlFor="shortDescription">Short Description</Label>
@@ -2125,7 +2125,7 @@ export default function CreateCoursePage() {
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-6 pb-8">
             <Button type="button" variant="outline" asChild>
-              <Link href="/dashboard/admin/courses">Cancel</Link>
+              <Link href="/dashboard/college/courses">Cancel</Link>
             </Button>
             <Button
               type="submit"

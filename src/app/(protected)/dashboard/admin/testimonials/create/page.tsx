@@ -15,6 +15,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import Swal from "sweetalert2";
+import Image from "next/image";
 
 interface College {
   id: string;
@@ -392,10 +393,12 @@ export default function CreateTestimonialPage() {
                   {/* Preview */}
                   {formData.studentImage && (
                     <div className="relative">
-                      <img
+                      <Image
                         src={formData.studentImage}
                         alt="Preview"
                         className="w-24 h-24 rounded-lg object-cover border border-gray-200"
+                        width={24}
+                        height={24}
                       />
                       <button
                         type="button"

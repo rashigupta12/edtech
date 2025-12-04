@@ -4,25 +4,20 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrentUser } from '@/hooks/auth';
-import { 
-  Award, 
-  BookOpen, 
-  Calendar, 
-  CheckCircle, 
-  Clock, 
-  PlayCircle, 
-  Target,
+import {
+  Award,
   BarChart3,
-  FileText,
-  Users,
-  Star,
+  BookOpen,
+  CheckCircle,
   ChevronLeft,
+  Clock,
+  FileText,
   GraduationCap,
-  Layers
+  PlayCircle,
+  Target
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';

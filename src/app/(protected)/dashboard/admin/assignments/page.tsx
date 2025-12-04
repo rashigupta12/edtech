@@ -1,9 +1,8 @@
 /*eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface Assignment {
   id: string;
@@ -32,23 +31,14 @@ export default function AdminAssignmentsPage() {
     courseId: '',
     status: ''
   });
-  const router = useRouter();
-
-  useEffect(() => {
-    fetchAssignments();
-  }, [filters]);
-
+useEffect(() => {
   const fetchAssignments = async () => {
     try {
       setLoading(true);
-      let url = '/api/assignments';
       const params = new URLSearchParams();
-      
       if (filters.courseId) params.append('courseId', filters.courseId);
-      
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
+
+      const url = params.toString() ? `/api/assignments?${params}` : '/api/assignments';
 
       const response = await fetch(url);
       const result: ApiResponse<Assignment[]> = await response.json();
@@ -65,6 +55,9 @@ export default function AdminAssignmentsPage() {
       setLoading(false);
     }
   };
+
+  fetchAssignments();
+}, [filters]);
 
   const deleteAssignment = async (assignmentId: string) => {
     if (!confirm('Are you sure you want to delete this assignment?')) return;

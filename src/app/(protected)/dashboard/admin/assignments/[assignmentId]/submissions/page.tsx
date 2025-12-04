@@ -1,5 +1,4 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
-/*eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -20,6 +19,12 @@ interface Submission {
   gradedBy: string | null;
 }
 
+interface Assignment {
+  id: string;
+  title: string;
+  maxScore: number;
+}
+
 interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -28,90 +33,95 @@ interface ApiResponse<T> {
 
 export default function AssignmentSubmissionsPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [assignment, setAssignment] = useState<any>(null);
+  const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [grading, setGrading] = useState<string | null>(null);
   const params = useParams();
   const assignmentId = params.assignmentId as string;
 
+  // Fixed: No more missing dependency warnings!
   useEffect(() => {
-    if (assignmentId) {
-      fetchSubmissions();
-      fetchAssignment();
-    }
-  }, [assignmentId]);
+    if (!assignmentId) return;
 
-  const fetchSubmissions = async () => {
-    try {
-      const response = await fetch(`/api/assignments?id=${assignmentId}&submissions=true`);
-      const result: ApiResponse<Submission[]> = await response.json();
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError('');
 
-      if (result.success && result.data) {
-        setSubmissions(result.data);
-      } else {
-        setError(result.error?.message || 'Failed to fetch submissions');
+        // Parallel fetch both assignment and submissions
+        const [subRes, assignRes] = await Promise.all([
+          fetch(`/api/assignments?id=${assignmentId}&submissions=true`),
+          fetch(`/api/assignments?id=${assignmentId}`)
+        ]);
+
+        const subResult: ApiResponse<Submission[]> = await subRes.json();
+        const assignResult: ApiResponse<Assignment> = await assignRes.json();
+
+        if (subResult.success && subResult.data) {
+          setSubmissions(subResult.data);
+        } else {
+          setError(subResult.error?.message || 'Failed to load submissions');
+        }
+
+        if (assignResult.success && assignResult.data) {
+          setAssignment(assignResult.data);
+        }
+      } catch (err) {
+        setError('Failed to load assignment data');
+        console.error('Load error:', err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError('Failed to fetch submissions');
-      console.error('Error fetching submissions:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  const fetchAssignment = async () => {
-    try {
-      const response = await fetch(`/api/assignments?id=${assignmentId}`);
-      const result: ApiResponse<any> = await response.json();
-      if (result.success && result.data) {
-        setAssignment(result.data);
-      }
-    } catch (err) {
-      console.error('Error fetching assignment:', err);
-    }
-  };
+    loadData();
+  }, [assignmentId]); // Only depends on assignmentId → perfect!
 
   const gradeSubmission = async (submissionId: string, score: number, feedback: string) => {
     setGrading(submissionId);
+
     try {
       const response = await fetch(`/api/assignments?submissionId=${submissionId}&grade=true`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           score,
           maxScore: assignment?.maxScore || 100,
           feedback,
-          gradedBy: 'admin', // In real app, get from auth context
+          gradedBy: 'admin',
         }),
       });
 
-      const result: ApiResponse<any> = await response.json();
+      const result = await response.json();
 
       if (result.success) {
-        await fetchSubmissions(); // Refresh submissions
+        // Refresh submissions only
+        const res = await fetch(`/api/assignments?id=${assignmentId}&submissions=true`);
+        const data: ApiResponse<Submission[]> = await res.json();
+        if (data.success && data.data) {
+          setSubmissions(data.data);
+        }
       } else {
         alert(result.error?.message || 'Failed to grade submission');
       }
     } catch (err) {
       alert('Failed to grade submission');
-      console.error('Error grading submission:', err);
+      console.error(err);
     } finally {
       setGrading(null);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'GRADED': return 'bg-green-100 text-green-800';
-      case 'SUBMITTED': return 'bg-blue-100 text-blue-800';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'LATE': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // const getStatusColor = (status: string) => {
+  //   switch (status) {
+  //     case 'GRADED': return 'bg-green-100 text-green-800';
+  //     case 'SUBMITTED': return 'bg-blue-100 text-blue-800';
+  //     case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+  //     case 'LATE': return 'bg-red-100 text-red-800';
+  //     default: return 'bg-gray-100 text-gray-800';
+  //   }
+  // };
 
   if (loading) {
     return (
@@ -133,51 +143,36 @@ export default function AssignmentSubmissionsPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
             {assignment?.title || 'Assignment'} Submissions
           </h1>
-          <p className="text-gray-600 mt-2">
-            Manage and grade student submissions
-          </p>
+          <p className="text-gray-600 mt-2">Manage and grade student submissions</p>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
 
-        {/* Submissions List */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           {submissions.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-gray-400 text-6xl mb-4">📄</div>
+              <div className="text-gray-400 text-6xl mb-4">No submissions</div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No submissions yet</h3>
-              <p className="text-gray-600">Students haven&apos;t submitted any work for this assignment.</p>
+              <p className="text-gray-600">Students haven &apos;t submitted any work for this assignment.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Student
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Submitted
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Score
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -185,9 +180,9 @@ export default function AssignmentSubmissionsPage() {
                     <SubmissionRow
                       key={submission.id}
                       submission={submission}
-                      assignment={assignment}
+                      maxScore={assignment?.maxScore || 100}
                       onGrade={gradeSubmission}
-                      grading={grading === submission.id}
+                      isGrading={grading === submission.id}
                     />
                   ))}
                 </tbody>
@@ -200,20 +195,21 @@ export default function AssignmentSubmissionsPage() {
   );
 }
 
-function SubmissionRow({ 
-  submission, 
-  assignment, 
-  onGrade, 
-  grading 
-}: { 
+// Clean SubmissionRow — no duplicate logic
+function SubmissionRow({
+  submission,
+  maxScore,
+  onGrade,
+  isGrading,
+}: {
   submission: Submission;
-  assignment: any;
-  onGrade: (submissionId: string, score: number, feedback: string) => void;
-  grading: boolean;
+  maxScore: number;
+  onGrade: (id: string, score: number, feedback: string) => void;
+  isGrading: boolean;
 }) {
   const [showGradeForm, setShowGradeForm] = useState(false);
-  const [score, setScore] = useState(submission.score || 0);
-  const [feedback, setFeedback] = useState(submission.feedback || '');
+  const [score, setScore] = useState(submission.score ?? 0);
+  const [feedback, setFeedback] = useState(submission.feedback ?? '');
 
   const handleGrade = () => {
     onGrade(submission.id, score, feedback);
@@ -232,10 +228,8 @@ function SubmissionRow({
 
   return (
     <tr className="hover:bg-gray-50">
-      <td className="px-6 py-4">
-        <div className="text-sm font-medium text-gray-900">
-          {submission.userName || submission.userId}
-        </div>
+      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+        {submission.userName || submission.userId}
       </td>
       <td className="px-6 py-4 text-sm text-gray-900">
         {new Date(submission.submittedAt).toLocaleString()}
@@ -246,42 +240,44 @@ function SubmissionRow({
         </span>
       </td>
       <td className="px-6 py-4 text-sm text-gray-900">
-        {submission.score !== null ? `${submission.score}/${submission.maxScore}` : 'Not graded'}
+        {submission.score !== null ? `${submission.score}/${maxScore}` : 'Not graded'}
       </td>
-      <td className="px-6 py-4 text-sm font-medium space-x-2">
+      <td className="px-6 py-4 text-sm">
         {!showGradeForm ? (
-          <>
-            <button
-              onClick={() => setShowGradeForm(true)}
-              className="text-blue-600 hover:text-blue-900"
-            >
+          <div className="flex gap-4">
+            <button onClick={() => setShowGradeForm(true)} className="text-blue-600 hover:text-blue-900 font-medium">
               Grade
             </button>
-            <button className="text-gray-600 hover:text-gray-900">
-              View
-            </button>
-          </>
+            <button className="text-gray-600 hover:text-gray-900">View</button>
+          </div>
         ) : (
-          <div className="flex space-x-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <input
               type="number"
               value={score}
               onChange={(e) => setScore(Number(e.target.value))}
               min="0"
-              max={assignment?.maxScore || 100}
-              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-              placeholder="Score"
+              max={maxScore}
+              className="w-20 px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+              placeholder="0"
+            />
+            <input
+              type="text"
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Feedback (optional)"
+              className="flex-1 min-w-48 px-3 py-1.5 border border-gray-300 rounded-md text-sm"
             />
             <button
               onClick={handleGrade}
-              disabled={grading}
-              className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 disabled:opacity-50"
+              disabled={isGrading}
+              className="bg-green-600 text-white px-4 py-1.5 rounded-md text-sm hover:bg-green-700 disabled:opacity-50"
             >
-              {grading ? '...' : 'Save'}
+              {isGrading ? 'Saving...' : 'Save'}
             </button>
             <button
               onClick={() => setShowGradeForm(false)}
-              className="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600"
+              className="bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm hover:bg-gray-600"
             >
               Cancel
             </button>

@@ -1,6 +1,6 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
 /*eslint-disable @typescript-eslint/no-unused-vars */
-// src/app/(protected)/dashboard/admin/courses/[id]/edit/page.tsx
+// src/app/(protected)/dashboard/college/courses/[id]/edit/page.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -319,7 +319,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
           title: "Error",
           text: "Failed to load course data",
         });
-        router.push("/dashboard/admin/courses");
+        router.push("/dashboard/college/courses");
       } finally {
         setLoading(false);
       }
@@ -393,111 +393,111 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
       const updatedModules = [...modulesData];
 
       // Process each assessment
-      for (const assessment of assessmentsData) {
-        console.log("Processing assessment:", assessment);
+    for (const assessment of assessmentsData) {
+  console.log("Processing assessment:", assessment);
 
-        if (
-          assessment.assessmentLevel === "MODULE_ASSESSMENT" &&
-          assessment.moduleId
-        ) {
-          const moduleIndex = updatedModules.findIndex(
-            (m) => m.id === assessment.moduleId
+  if (
+    assessment.assessmentLevel === "MODULE_ASSESSMENT" &&
+    assessment.moduleId
+  ) {
+    const moduleIndex = updatedModules.findIndex(
+      (m) => m.id === assessment.moduleId
+    );
+    if (moduleIndex !== -1) {
+      console.log(`Attaching module assessment to module ${moduleIndex}`);
+
+      // Fetch questions for module assessment using correct API endpoint
+      try {
+        const questionsRes = await fetch(
+          `/api/assessments?id=${assessment.id}&questions=true`
+        );
+        const questionsData = await questionsRes.json();
+        console.log("Questions API response for module:", questionsData);
+
+        if (questionsData.success) {
+          const questionsArray = questionsData.data?.questions || [];
+          if (Array.isArray(questionsArray)) {
+            assessment.questions = questionsArray;
+          } else {
+            assessment.questions = [];
+          }
+        } else {
+          assessment.questions = [];
+        }
+      } catch (error) {
+        console.error(
+          "Error fetching questions for module assessment:",
+          error
+        );
+        assessment.questions = [];
+      }
+
+      updatedModules[moduleIndex].moduleAssessment = assessment;
+      updatedModules[moduleIndex].hasAssessment = true;
+    } else {
+      console.log(
+        `Module ${assessment.moduleId} not found for assessment`
+      );
+    }
+  }
+
+  if (
+    assessment.assessmentLevel === "LESSON_QUIZ" &&
+    assessment.lessonId
+  ) {
+    console.log(`Looking for lesson ${assessment.lessonId} for quiz`);
+    let found = false;
+
+    for (const currentModule of updatedModules) { // Changed from 'module' to 'currentModule'
+      const lessonIndex = currentModule.lessons.findIndex(
+        (l) => l.id === assessment.lessonId
+      );
+      if (lessonIndex !== -1) {
+        console.log(
+          `Attaching quiz to lesson ${lessonIndex} in module ${currentModule.title}`
+        );
+
+        // Fetch questions for lesson quiz using correct API endpoint
+        try {
+          const questionsRes = await fetch(
+            `/api/assessments?id=${assessment.id}&questions=true`
           );
-          if (moduleIndex !== -1) {
-            console.log(`Attaching module assessment to module ${moduleIndex}`);
+          const questionsData = await questionsRes.json();
+          console.log(
+            "Questions API response for lesson:",
+            questionsData
+          );
 
-            // Fetch questions for module assessment using correct API endpoint
-            try {
-              const questionsRes = await fetch(
-                `/api/assessments?id=${assessment.id}&questions=true`
-              );
-              const questionsData = await questionsRes.json();
-              console.log("Questions API response for module:", questionsData);
-
-              if (questionsData.success) {
-                const questionsArray = questionsData.data?.questions || [];
-                if (Array.isArray(questionsArray)) {
-                  assessment.questions = questionsArray;
-                } else {
-                  assessment.questions = [];
-                }
-              } else {
-                assessment.questions = [];
-              }
-            } catch (error) {
-              console.error(
-                "Error fetching questions for module assessment:",
-                error
-              );
+          if (questionsData.success) {
+            const questionsArray = questionsData.data?.questions || [];
+            if (Array.isArray(questionsArray)) {
+              assessment.questions = questionsArray;
+            } else {
               assessment.questions = [];
             }
-
-            updatedModules[moduleIndex].moduleAssessment = assessment;
-            updatedModules[moduleIndex].hasAssessment = true;
           } else {
-            console.log(
-              `Module ${assessment.moduleId} not found for assessment`
-            );
+            assessment.questions = [];
           }
+        } catch (error) {
+          console.error(
+            "Error fetching questions for lesson quiz:",
+            error
+          );
+          assessment.questions = [];
         }
 
-        if (
-          assessment.assessmentLevel === "LESSON_QUIZ" &&
-          assessment.lessonId
-        ) {
-          console.log(`Looking for lesson ${assessment.lessonId} for quiz`);
-          let found = false;
-
-          for (const module of updatedModules) {
-            const lessonIndex = module.lessons.findIndex(
-              (l) => l.id === assessment.lessonId
-            );
-            if (lessonIndex !== -1) {
-              console.log(
-                `Attaching quiz to lesson ${lessonIndex} in module ${module.title}`
-              );
-
-              // Fetch questions for lesson quiz using correct API endpoint
-              try {
-                const questionsRes = await fetch(
-                  `/api/assessments?id=${assessment.id}&questions=true`
-                );
-                const questionsData = await questionsRes.json();
-                console.log(
-                  "Questions API response for lesson:",
-                  questionsData
-                );
-
-                if (questionsData.success) {
-                  const questionsArray = questionsData.data?.questions || [];
-                  if (Array.isArray(questionsArray)) {
-                    assessment.questions = questionsArray;
-                  } else {
-                    assessment.questions = [];
-                  }
-                } else {
-                  assessment.questions = [];
-                }
-              } catch (error) {
-                console.error(
-                  "Error fetching questions for lesson quiz:",
-                  error
-                );
-                assessment.questions = [];
-              }
-
-              module.lessons[lessonIndex].quiz = assessment;
-              module.lessons[lessonIndex].hasQuiz = true;
-              found = true;
-              break;
-            }
-          }
-
-          if (!found) {
-            console.log(`Lesson ${assessment.lessonId} not found for quiz`);
-          }
-        }
+        currentModule.lessons[lessonIndex].quiz = assessment;
+        currentModule.lessons[lessonIndex].hasQuiz = true;
+        found = true;
+        break;
       }
+    }
+
+    if (!found) {
+      console.log(`Lesson ${assessment.lessonId} not found for quiz`);
+    }
+  }
+}
 
       setModules(updatedModules);
       console.log("Updated modules with assessments:", updatedModules);
@@ -638,33 +638,32 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
   };
 
   // Module assessment functions
-  const toggleModuleAssessment = (moduleIndex: number) => {
-    const updatedModules = [...modules];
-    const module = updatedModules[moduleIndex];
+const toggleModuleAssessment = (moduleIndex: number) => {
+  const updatedModules = [...modules];
+  const currentModule = updatedModules[moduleIndex]; // Changed from 'module' to 'currentModule'
 
-    if (!module.hasAssessment) {
-      // Add module assessment
-      module.hasAssessment = true;
-      module.moduleAssessment = {
-        title: `${module.title} Assessment`,
-        description: "Module assessment to test your understanding",
-        assessmentLevel: "MODULE_ASSESSMENT",
-        passingScore: module.minimumPassingScore || 60,
-        isRequired: module.assessmentRequired || true,
-        showCorrectAnswers: false,
-        allowRetake: true,
-        randomizeQuestions: true,
-        questions: [],
-      };
-    } else {
-      // Remove module assessment
-      module.hasAssessment = false;
-      module.moduleAssessment = undefined;
-    }
+  if (!currentModule.hasAssessment) {
+    // Add module assessment
+    currentModule.hasAssessment = true;
+    currentModule.moduleAssessment = {
+      title: `${currentModule.title} Assessment`,
+      description: "Module assessment to test your understanding",
+      assessmentLevel: "MODULE_ASSESSMENT",
+      passingScore: currentModule.minimumPassingScore || 60,
+      isRequired: currentModule.assessmentRequired || true,
+      showCorrectAnswers: false,
+      allowRetake: true,
+      randomizeQuestions: true,
+      questions: [],
+    };
+  } else {
+    // Remove module assessment
+    currentModule.hasAssessment = false;
+    currentModule.moduleAssessment = undefined;
+  }
 
-    setModules(updatedModules);
-  };
-
+  setModules(updatedModules);
+};
   // Lesson functions
   const addNewLesson = (moduleId: string) => {
     const newId = `new-${Date.now()}-${Math.random()
@@ -810,35 +809,36 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
   };
 
   // Assessment update function
-  const updateAssessmentField = (
-    type: "lesson" | "module" | "course",
-    field: keyof Assessment | "questions",
-    value: any,
-    moduleIndex?: number,
-    lessonIndex?: number
-  ) => {
-    if (
-      type === "lesson" &&
-      moduleIndex !== undefined &&
-      lessonIndex !== undefined
-    ) {
-      const updatedModules = [...modules];
-      const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
-      if (lesson.quiz) {
-        (lesson.quiz as any)[field] = value;
-        setModules(updatedModules);
-      }
-    } else if (type === "module" && moduleIndex !== undefined) {
-      const updatedModules = [...modules];
-      const module = updatedModules[moduleIndex];
-      if (module.moduleAssessment) {
-        (module.moduleAssessment as any)[field] = value;
-        setModules(updatedModules);
-      }
-    } else if (type === "course") {
-      setCourseFinalAssessment((prev) => ({ ...prev!, [field]: value }));
+const updateAssessmentField = (
+  type: "lesson" | "module" | "course",
+  field: keyof Assessment | "questions",
+  value: any,
+  moduleIndex?: number,
+  lessonIndex?: number
+) => {
+  if (
+    type === "lesson" &&
+    moduleIndex !== undefined &&
+    lessonIndex !== undefined
+  ) {
+    const updatedModules = [...modules];
+    const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
+    if (lesson.quiz) {
+      (lesson.quiz as any)[field] = value;
+      setModules(updatedModules);
     }
-  };
+  } else if (type === "module" && moduleIndex !== undefined) {
+    const updatedModules = [...modules];
+    const currentModule = updatedModules[moduleIndex]; // Changed from 'module' to 'currentModule'
+    if (currentModule.moduleAssessment) {
+      (currentModule.moduleAssessment as any)[field] = value;
+      setModules(updatedModules);
+    }
+  } else if (type === "course") {
+    setCourseFinalAssessment((prev) => ({ ...prev!, [field]: value }));
+  }
+};
+
 
   const addQuestion = (
     type: "lesson" | "module" | "course",
@@ -1563,226 +1563,226 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
             );
           }
         }
+// Process modules and lessons
+for (let i = 0; i < modules.length; i++) {
+  const currentModule = modules[i]; // Changed from 'module' to 'currentModule'
 
-        // Process modules and lessons
-        for (let i = 0; i < modules.length; i++) {
-          const module = modules[i];
+  if (currentModule.isNew) {
+    // Create new module
+    if (currentModule.title.trim()) {
+      const moduleRes = await fetch(
+        `/api/courses?id=${params.id}&modules=true`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: currentModule.title,
+            description: currentModule.description,
+            hasAssessment: currentModule.hasAssessment || false,
+            assessmentRequired: currentModule.assessmentRequired || true,
+            minimumPassingScore: currentModule.minimumPassingScore || 60,
+            sortOrder: i,
+          }),
+        }
+      );
 
-          if (module.isNew) {
-            // Create new module
-            if (module.title.trim()) {
-              const moduleRes = await fetch(
-                `/api/courses?id=${params.id}&modules=true`,
+      const moduleData = await moduleRes.json();
+
+      if (moduleData.success) {
+        // Add module assessment if exists
+        if (currentModule.hasAssessment && currentModule.moduleAssessment) {
+          await fetch(
+            `/api/courses?id=${params.id}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${moduleData.data.id}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...currentModule.moduleAssessment,
+                questions: currentModule.moduleAssessment?.questions || [],
+              }),
+            }
+          );
+        }
+
+        // Create lessons for new module
+        for (let j = 0; j < currentModule.lessons.length; j++) {
+          const lesson = currentModule.lessons[j];
+          if (lesson.title.trim()) {
+            const lessonRes = await fetch(
+              `/api/courses?id=${params.id}&lessons=true&moduleId=${moduleData.data.id}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title: lesson.title,
+                  description: lesson.description,
+                  contentType: lesson.contentType,
+                  videoUrl: lesson.videoUrl,
+                  quizUrl: lesson.quizUrl,
+                  articleContent: lesson.articleContent,
+                  isFree: lesson.isFree,
+                  hasQuiz: lesson.hasQuiz || false,
+                  quizRequired: lesson.quizRequired || false,
+                  sortOrder: j,
+                }),
+              }
+            );
+
+            const lessonData = await lessonRes.json();
+
+            if (lessonData.success && lesson.hasQuiz && lesson.quiz) {
+              // Add lesson quiz
+              await fetch(
+                `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lessonData.data.id}`,
                 {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    title: module.title,
-                    description: module.description,
-                    hasAssessment: module.hasAssessment || false,
-                    assessmentRequired: module.assessmentRequired || true,
-                    minimumPassingScore: module.minimumPassingScore || 60,
-                    sortOrder: i,
+                    ...lesson.quiz,
+                    questions: lesson.quiz?.questions || [],
                   }),
                 }
               );
-
-              const moduleData = await moduleRes.json();
-
-              if (moduleData.success) {
-                // Add module assessment if exists
-                if (module.hasAssessment && module.moduleAssessment) {
-                  await fetch(
-                    `/api/courses?id=${params.id}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${moduleData.data.id}`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        ...module.moduleAssessment,
-                        questions: module.moduleAssessment?.questions || [],
-                      }),
-                    }
-                  );
-                }
-
-                // Create lessons for new module
-                for (let j = 0; j < module.lessons.length; j++) {
-                  const lesson = module.lessons[j];
-                  if (lesson.title.trim()) {
-                    const lessonRes = await fetch(
-                      `/api/courses?id=${params.id}&lessons=true&moduleId=${moduleData.data.id}`,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          title: lesson.title,
-                          description: lesson.description,
-                          contentType: lesson.contentType,
-                          videoUrl: lesson.videoUrl,
-                          quizUrl: lesson.quizUrl,
-                          articleContent: lesson.articleContent,
-                          isFree: lesson.isFree,
-                          hasQuiz: lesson.hasQuiz || false,
-                          quizRequired: lesson.quizRequired || false,
-                          sortOrder: j,
-                        }),
-                      }
-                    );
-
-                    const lessonData = await lessonRes.json();
-
-                    if (lessonData.success && lesson.hasQuiz && lesson.quiz) {
-                      // Add lesson quiz
-                      await fetch(
-                        `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lessonData.data.id}`,
-                        {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            ...lesson.quiz,
-                            questions: lesson.quiz?.questions || [],
-                          }),
-                        }
-                      );
-                    }
-                  }
-                }
-              }
-            }
-          } else {
-            // Update existing module
-            await fetch(`/api/courses?id=${module.id}&updateModule=true`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                title: module.title,
-                description: module.description,
-                hasAssessment: module.hasAssessment || false,
-                assessmentRequired: module.assessmentRequired || true,
-                minimumPassingScore: module.minimumPassingScore || 60,
-                sortOrder: i,
-              }),
-            });
-
-            // Update module assessment if exists
-            if (module.hasAssessment && module.moduleAssessment) {
-              if (module.moduleAssessment.id) {
-                // Update existing assessment
-                await fetch(
-                  `/api/assessments?id=${module.moduleAssessment.id}`,
-                  {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(module.moduleAssessment),
-                  }
-                );
-              } else {
-                // Create new assessment
-                await fetch(
-                  `/api/courses?id=${params.id}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${module.id}`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      ...module.moduleAssessment,
-                      questions: module.moduleAssessment?.questions || [],
-                    }),
-                  }
-                );
-              }
-            }
-
-            // Process lessons for existing module
-            for (let j = 0; j < module.lessons.length; j++) {
-              const lesson = module.lessons[j];
-
-const isNewLesson = !lesson.id || lesson.id.startsWith("new-") || !UUID_REGEX.test(lesson.id);
-              if (isNewLesson) {
-                // Create new lesson
-                if (lesson.title.trim()) {
-                  const lessonRes = await fetch(
-                    `/api/courses?id=${params.id}&lessons=true&moduleId=${module.id}`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        title: lesson.title,
-                        description: lesson.description,
-                        contentType: lesson.contentType,
-                        videoUrl: lesson.videoUrl,
-                        quizUrl: lesson.quizUrl,
-                        articleContent: lesson.articleContent,
-                        isFree: lesson.isFree,
-                        hasQuiz: lesson.hasQuiz || false,
-                        quizRequired: lesson.quizRequired || false,
-                        sortOrder: j,
-                      }),
-                    }
-                  );
-
-                  const lessonData = await lessonRes.json();
-
-                  if (lessonData.success && lesson.hasQuiz && lesson.quiz) {
-                    // Add lesson quiz
-                    await fetch(
-                      `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lessonData.data.id}`,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          ...lesson.quiz,
-                          questions: lesson.quiz?.questions || [],
-                        }),
-                      }
-                    );
-                  }
-                }
-              } else {
-                // Update existing lesson
-                await fetch(`/api/courses?id=${lesson.id}&updateLesson=true`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    title: lesson.title,
-                    description: lesson.description,
-                    contentType: lesson.contentType,
-                    videoUrl: lesson.videoUrl,
-                    articleContent: lesson.articleContent,
-                    isFree: lesson.isFree,
-                    hasQuiz: lesson.hasQuiz || false,
-                    quizRequired: lesson.quizRequired || false,
-                    sortOrder: j,
-                  }),
-                });
-
-                // Update lesson quiz if exists
-                if (lesson.hasQuiz && lesson.quiz) {
-                  if (lesson.quiz.id) {
-                    // Update existing quiz
-                    await fetch(`/api/assessments?id=${lesson.quiz.id}`, {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(lesson.quiz),
-                    });
-                  } else {
-                    // Create new quiz
-                    await fetch(
-                      `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lesson.id}`,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          ...lesson.quiz,
-                          questions: lesson.quiz?.questions || [],
-                        }),
-                      }
-                    );
-                  }
-                }
-              }
             }
           }
         }
+      }
+    }
+  } else {
+    // Update existing module
+    await fetch(`/api/courses?id=${currentModule.id}&updateModule=true`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: currentModule.title,
+        description: currentModule.description,
+        hasAssessment: currentModule.hasAssessment || false,
+        assessmentRequired: currentModule.assessmentRequired || true,
+        minimumPassingScore: currentModule.minimumPassingScore || 60,
+        sortOrder: i,
+      }),
+    });
+
+    // Update module assessment if exists
+    if (currentModule.hasAssessment && currentModule.moduleAssessment) {
+      if (currentModule.moduleAssessment.id) {
+        // Update existing assessment
+        await fetch(
+          `/api/assessments?id=${currentModule.moduleAssessment.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(currentModule.moduleAssessment),
+          }
+        );
+      } else {
+        // Create new assessment
+        await fetch(
+          `/api/courses?id=${params.id}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${currentModule.id}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...currentModule.moduleAssessment,
+              questions: currentModule.moduleAssessment?.questions || [],
+            }),
+          }
+        );
+      }
+    }
+
+    // Process lessons for existing module
+    for (let j = 0; j < currentModule.lessons.length; j++) {
+      const lesson = currentModule.lessons[j];
+
+      const isNewLesson = !lesson.id || lesson.id.startsWith("new-") || !UUID_REGEX.test(lesson.id);
+      
+      if (isNewLesson) {
+        // Create new lesson
+        if (lesson.title.trim()) {
+          const lessonRes = await fetch(
+            `/api/courses?id=${params.id}&lessons=true&moduleId=${currentModule.id}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: lesson.title,
+                description: lesson.description,
+                contentType: lesson.contentType,
+                videoUrl: lesson.videoUrl,
+                quizUrl: lesson.quizUrl,
+                articleContent: lesson.articleContent,
+                isFree: lesson.isFree,
+                hasQuiz: lesson.hasQuiz || false,
+                quizRequired: lesson.quizRequired || false,
+                sortOrder: j,
+              }),
+            }
+          );
+
+          const lessonData = await lessonRes.json();
+
+          if (lessonData.success && lesson.hasQuiz && lesson.quiz) {
+            // Add lesson quiz
+            await fetch(
+              `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lessonData.data.id}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  ...lesson.quiz,
+                  questions: lesson.quiz?.questions || [],
+                }),
+              }
+            );
+          }
+        }
+      } else {
+        // Update existing lesson
+        await fetch(`/api/courses?id=${lesson.id}&updateLesson=true`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: lesson.title,
+            description: lesson.description,
+            contentType: lesson.contentType,
+            videoUrl: lesson.videoUrl,
+            articleContent: lesson.articleContent,
+            isFree: lesson.isFree,
+            hasQuiz: lesson.hasQuiz || false,
+            quizRequired: lesson.quizRequired || false,
+            sortOrder: j,
+          }),
+        });
+
+        // Update lesson quiz if exists
+        if (lesson.hasQuiz && lesson.quiz) {
+          if (lesson.quiz.id) {
+            // Update existing quiz
+            await fetch(`/api/assessments?id=${lesson.quiz.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(lesson.quiz),
+            });
+          } else {
+            // Create new quiz
+            await fetch(
+              `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lesson.id}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  ...lesson.quiz,
+                  questions: lesson.quiz?.questions || [],
+                }),
+              }
+            );
+          }
+        }
+      }
+    }
+  }
+}
 
         // Update course final assessment
         if (courseHasFinalAssessment && courseFinalAssessment) {
@@ -1816,7 +1816,7 @@ const isNewLesson = !lesson.id || lesson.id.startsWith("new-") || !UUID_REGEX.te
           timer: 2000,
           showConfirmButton: false,
         }).then(() => {
-          router.push("/dashboard/admin/courses");
+          router.push("/dashboard/college/courses");
           router.refresh();
         });
       } else {
@@ -1855,7 +1855,7 @@ const isNewLesson = !lesson.id || lesson.id.startsWith("new-") || !UUID_REGEX.te
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/dashboard/admin/courses"
+            href="/dashboard/college/courses"
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -3086,7 +3086,7 @@ const isNewLesson = !lesson.id || lesson.id.startsWith("new-") || !UUID_REGEX.te
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-6 pb-8">
             <Button type="button" variant="outline" asChild>
-              <Link href="/dashboard/admin/courses">Cancel</Link>
+              <Link href="/dashboard/college/courses">Cancel</Link>
             </Button>
             <Button
               type="submit"

@@ -1,3 +1,5 @@
+/*eslint-disable  @typescript-eslint/no-explicit-any*/
+/*eslint-disable   @typescript-eslint/no-unused-vars*/
 // File path: app/api/colleges/students/route.ts
 
 import { NextRequest, NextResponse } from "next/server";

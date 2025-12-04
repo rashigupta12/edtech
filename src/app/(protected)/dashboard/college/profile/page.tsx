@@ -1,36 +1,34 @@
 "use client";
 
 import { useCurrentUser } from "@/hooks/auth";
+import {
+  AlertCircle,
+  Banknote,
+  BookOpen,
+  Building2,
+  CheckCircle,
+  CreditCard,
+  Edit3,
+  Eye,
+  File,
+  Globe,
+  Hash,
+  Image as ImageIcon,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  Plus,
+  Save,
+  Shield,
+  Trash2,
+  Upload,
+  User,
+  X,
+} from "lucide-react";
+import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
-import {
-  Building2,
-  MapPin,
-  Globe,
-  Mail,
-  Phone,
-  FileText,
-  Banknote,
-  Upload,
-  Edit3,
-  Save,
-  X,
-  Loader2,
-  ExternalLink,
-  Calendar,
-  Hash,
-  User,
-  Shield,
-  BookOpen,
-  CreditCard,
-  Image as ImageIcon,
-  File,
-  CheckCircle,
-  AlertCircle,
-  Plus,
-  Trash2,
-  Eye,
-} from "lucide-react";
 
 interface CollegeData {
   id: string;
@@ -580,8 +578,8 @@ const CollegeProfile = () => {
             College Profile Not Found
           </h2>
           <p className="text-gray-600 mb-8">
-            Your college profile hasn't been set up yet. Please contact the
-            administrator to create your institution profile.
+            Your college profile hasn &apos;t been set up yet. Please contact
+            the administrator to create your institution profile.
           </p>
           <button className="px-8 py-3 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition-all shadow-lg hover:shadow-xl">
             Contact Administrator
@@ -632,87 +630,89 @@ const CollegeProfile = () => {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-{isEditing ? (
-  <div className="flex items-center gap-4">
-    <div className="relative">
-      <div className="w-20 h-20 rounded-xl overflow-hidden bg-white border-2 border-gray-200">
-        {(formData.logo || collegeDetail.logo) ? (
-          <img 
-            src={formData.logo || collegeDetail.logo || ''} 
-            alt="College Logo" 
-            className="w-full h-full object-contain p-2"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-50">
-            <Building2 className="w-10 h-10 text-gray-400" />
-          </div>
-        )}
-      </div>
-      <input
-        type="file"
-        id="logo-upload"
-        accept="image/*"
-        onChange={(e) => handleFileChange(e, 'logo')}
-        className="hidden"
-      />
-      <label
-        htmlFor="logo-upload"
-        className="absolute -bottom-2 -right-2 bg-emerald-600 text-white p-2 rounded-full hover:bg-emerald-700 cursor-pointer shadow-lg"
-      >
-        {uploading.logo ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Upload className="w-4 h-4" />
-        )}
-      </label>
-    </div>
-    <div className="flex items-center gap-3 flex-wrap">
-      <div className="flex items-center gap-3">
-        <h1 className="text-3xl font-bold text-gray-900">
-          <input
-            type="text"
-            name="collegeName"
-            value={formData.collegeName || ''}
-            onChange={handleInputChange}
-            className="bg-transparent border-b-2 border-emerald-500 focus:outline-none focus:border-emerald-700 w-64"
-            required
-          />
-        </h1>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium">
-            <Hash className="w-3 h-3" />
-            <input
-              type="text"
-              name="collegeCode"
-              value={formData.collegeCode || ''}
-              onChange={handleInputChange}
-              className="bg-transparent focus:outline-none w-20"
-              placeholder="Code"
-            />
-          </span>
-          <span className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
-            <Shield className="w-3 h-3" />
-            <input
-              type="text"
-              name="registrationNumber"
-              value={formData.registrationNumber || ''}
-              onChange={handleInputChange}
-              className="bg-transparent focus:outline-none w-40"
-              placeholder="Reg. No"
-            />
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
-) : (
+            {isEditing ? (
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden bg-white border-2 border-gray-200">
+                    {formData.logo || collegeDetail.logo ? (
+                      <Image
+                        src={formData.logo || collegeDetail.logo || ""}
+                        alt="College Logo"
+                        className="w-full h-full object-contain p-2"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                        <Building2 className="w-10 h-10 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    id="logo-upload"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e, "logo")}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="logo-upload"
+                    className="absolute -bottom-2 -right-2 bg-emerald-600 text-white p-2 rounded-full hover:bg-emerald-700 cursor-pointer shadow-lg"
+                  >
+                    {uploading.logo ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                  </label>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-3xl font-bold text-gray-900">
+                      <input
+                        type="text"
+                        name="collegeName"
+                        value={formData.collegeName || ""}
+                        onChange={handleInputChange}
+                        className="bg-transparent border-b-2 border-emerald-500 focus:outline-none focus:border-emerald-700 w-64"
+                        required
+                      />
+                    </h1>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium">
+                        <Hash className="w-3 h-3" />
+                        <input
+                          type="text"
+                          name="collegeCode"
+                          value={formData.collegeCode || ""}
+                          onChange={handleInputChange}
+                          className="bg-transparent focus:outline-none w-20"
+                          placeholder="Code"
+                        />
+                      </span>
+                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                        <Shield className="w-3 h-3" />
+                        <input
+                          type="text"
+                          name="registrationNumber"
+                          value={formData.registrationNumber || ""}
+                          onChange={handleInputChange}
+                          className="bg-transparent focus:outline-none w-40"
+                          placeholder="Reg. No"
+                        />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
               <div className="flex items-center gap-4">
                 {collegeDetail.logo ? (
                   <div className="w-20 h-20 rounded-xl overflow-hidden bg-white border-2 border-gray-200 shadow-sm">
-                    <img
+                    <Image
                       src={collegeDetail.logo}
                       alt="College Logo"
                       className="w-full h-full object-contain p-2"
+                      width={20}
+                      height={20}
                     />
                   </div>
                 ) : (
@@ -720,22 +720,20 @@ const CollegeProfile = () => {
                     <Building2 className="w-10 h-10 text-emerald-600" />
                   </div>
                 )}
-              
-                  
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
                     {collegeDetail.collegeName}
                   </h1>
-                    <span className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium">
-                      <Hash className="w-3 h-3" />
-                      {collegeDetail.collegeCode}
-                    </span>
-                    <span className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
-                      <Shield className="w-3 h-3" />
-                      {collegeDetail.registrationNumber}
-                    </span>
-                  </div>
-               
+                  <span className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium">
+                    <Hash className="w-3 h-3" />
+                    {collegeDetail.collegeCode}
+                  </span>
+                  <span className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                    <Shield className="w-3 h-3" />
+                    {collegeDetail.registrationNumber}
+                  </span>
+                </div>
               </div>
             )}
 
@@ -1206,7 +1204,7 @@ const CollegeProfile = () => {
                   {(formData.banner || collegeDetail.banner) && (
                     <div className="mt-4">
                       <div className="relative h-32 w-full rounded-lg overflow-hidden border">
-                        <img
+                        <Image
                           src={formData.banner || collegeDetail.banner || ""}
                           alt="Banner Preview"
                           className="w-full h-full object-cover"

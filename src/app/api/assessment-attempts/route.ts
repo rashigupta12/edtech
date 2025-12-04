@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/api/assessment-attempts/route.ts
-import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import {
   AssessmentAttemptsTable,
+  AssessmentQuestionsTable,
   AssessmentsTable,
   EnrollmentsTable,
   LessonProgressTable,
-  AssessmentQuestionsTable,
 } from '@/db/schema';
-import { eq, and, desc, count, sql, asc, isNotNull } from 'drizzle-orm';
+import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
+import { NextRequest, NextResponse } from 'next/server';
 
 // ===========================
 // TYPES & HELPERS

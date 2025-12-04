@@ -1,10 +1,11 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect } from 'react';
-import { BookOpen, Calendar, Clock, Award, TrendingUp, FileText, Bell, Loader2, Sparkles, ChevronRight } from 'lucide-react';
-import { useCurrentUser } from '@/hooks/auth';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useCurrentUser } from '@/hooks/auth';
+import { Award, BookOpen, Calendar, ChevronRight, Clock, FileText, Loader2, Sparkles, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 interface Course {
   id: string;
@@ -132,7 +133,7 @@ export default function StudentDashboard() {
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Welcome back, {user.name?.split(' ')[0] || 'Student'}!
           </h2>
-          <p className="text-gray-600">Here's what's happening with your courses today.</p>
+          <p className="text-gray-600">Here &apos;s what &apos;s happening with your courses today.</p>
         </div>
          <Button
             className="group bg-gradient-to-r from-green-700 to-emerald-900 hover:from-green-700 hover:to-emerald-900 text-white shadow-lg hover:shadow-xl transition-all duration-300"

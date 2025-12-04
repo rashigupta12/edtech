@@ -1,3 +1,4 @@
+/*eslint-disable  @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useCurrentUser } from "@/hooks/auth";
@@ -49,8 +50,47 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useCurrentUser } from "@/hooks/auth";
+import {
+  Download,
+  Filter,
+  Loader2,
+  Search,
+  Trash2,
+  UserPlus,
+  Users
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 
 interface Batch {
   id: string;
@@ -257,7 +297,7 @@ const BatchEnrollmentPage = () => {
 
     setSubmitting(true);
     try {
-      let enrollmentIds = selectedEnrollmentId ? [selectedEnrollmentId] : 
+      const enrollmentIds = selectedEnrollmentId ? [selectedEnrollmentId] : 
         enrollments.filter(e => selectedStudents.includes(e.userId)).map(e => e.id);
 
       const res = await fetch("/api/batch-enrollments", {
@@ -504,7 +544,7 @@ const BatchEnrollmentPage = () => {
                       No students enrolled in this batch
                     </h3>
                     <p className="text-gray-600 mb-4">
-                      Click 'Add Students' to enroll students in this batch
+                      Click &apos;Add Students&apos; to enroll students in this batch
                     </p>
                     <Button
                       onClick={() => setOpenAddDialog(true)}

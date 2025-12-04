@@ -1,5 +1,6 @@
 "use client"
 import { Star } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 interface Testimonial {
@@ -135,13 +136,15 @@ export default function Testimonials() {
                 
                 <div className="flex items-center gap-3">
                   {testimonial.studentImage ? (
-                    <img 
+                    <Image
                       src={testimonial.studentImage} 
                       alt={testimonial.studentName}
                       className="w-12 h-12 rounded-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
                       }}
+                      width={12}
+                      height={12}
                     />
                   ) : null}
                   

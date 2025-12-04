@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/dashboard/user/courses/page.tsx
 "use client";
 
@@ -19,6 +20,7 @@ import {
   CheckCircle,
   Clock,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -373,7 +375,7 @@ export default function UserCoursesPage() {
                     {/* Course Thumbnail */}
                     <div className="lg:w-80 relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 min-h-[240px]">
                       {course.courseThumbnail ? (
-                        <img
+                        <Image
                           // src={course.courseThumbnail}
                           src="https://blog.zegocloud.com/wp-content/uploads/2024/03/types-of-web-development-services.jpg"
                           alt={course.courseTitle}

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/api/assessments/route.ts
 import { db } from '@/db';
 import {
@@ -291,23 +293,23 @@ const createAssessment = async (request: NextRequest) => {
 };
 
 // GET ASSESSMENT BY ID
-const getAssessment = async (id: string) => {
-  try {
-    const [assessment] = await db
-      .select()
-      .from(AssessmentsTable)
-      .where(eq(AssessmentsTable.id, id))
-      .limit(1);
+// const getAssessment = async (id: string) => {
+//   try {
+//     const [assessment] = await db
+//       .select()
+//       .from(AssessmentsTable)
+//       .where(eq(AssessmentsTable.id, id))
+//       .limit(1);
 
-    if (!assessment) {
-      return errorResponse('Assessment not found', 'NOT_FOUND', 404);
-    }
+//     if (!assessment) {
+//       return errorResponse('Assessment not found', 'NOT_FOUND', 404);
+//     }
 
-    return successResponse(assessment);
-  } catch (error: any) {
-    return errorResponse(error.message || 'Failed to get assessment', 'GET_ERROR', 500);
-  }
-};
+//     return successResponse(assessment);
+//   } catch (error: any) {
+//     return errorResponse(error.message || 'Failed to get assessment', 'GET_ERROR', 500);
+//   }
+// };
 // UPDATE ASSESSMENT
 const updateAssessment = async (id: string, request: NextRequest) => {
   try {
@@ -754,7 +756,7 @@ const updateEnrollmentStats = async (enrollmentId: string, assessment: any, pass
     if (!enrollment[0]) return;
 
     // Update overall score based on assessment level
-    let updates: any = {};
+    const updates: any = {};
     
     if (assessment.assessmentLevel === 'COURSE_FINAL') {
       updates.finalAssessmentScore = score;

@@ -20,6 +20,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import Swal from "sweetalert2";
+import Image from "next/image";
 
 interface Testimonial {
   id: string;
@@ -306,10 +307,12 @@ export default function ViewTestimonialPage() {
 
             <div className="flex items-start mb-6">
               {testimonial.studentImage ? (
-                <img
+                <Image
                   src={testimonial.studentImage}
                   alt={testimonial.studentName}
                   className="w-20 h-20 rounded-full object-cover"
+                  width={20}
+                  height={20}
                 />
               ) : (
                 <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center">

@@ -1,6 +1,7 @@
 "use client"
 import { useCurrentUser } from "@/hooks/auth";
 import { Star, Clock, Users, BookOpen, ArrowRight } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -36,18 +37,18 @@ export default function FeaturedCourses() {
   const user = useCurrentUser()
   const userId = user?.id
 
-  const formatDuration = (duration: string) => {
-    const hours = parseInt(duration);
-    if (hours >= 60) {
-      const days = Math.floor(hours / 60);
-      const remainingHours = hours % 60;
-      if (remainingHours === 0) {
-        return `${days}d`;
-      }
-      return `${days}d ${remainingHours}h`;
-    }
-    return `${hours}h`;
-  };
+  // const formatDuration = (duration: string) => {
+  //   const hours = parseInt(duration);
+  //   if (hours >= 60) {
+  //     const days = Math.floor(hours / 60);
+  //     const remainingHours = hours % 60;
+  //     if (remainingHours === 0) {
+  //       return `${days}d`;
+  //     }
+  //     return `${days}d ${remainingHours}h`;
+  //   }
+  //   return `${hours}h`;
+  // };
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -163,10 +164,12 @@ export default function FeaturedCourses() {
               {/* Course Image/Thumbnail */}
               <div className="relative h-44 bg-gradient-to-br from-emerald-500 to-emerald-700 overflow-hidden">
                 {course.thumbnailUrl ? (
-                  <img 
+                  <Image
                     src={course.thumbnailUrl} 
                     alt={course.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    width={50}
+                    height={50}
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center p-6">

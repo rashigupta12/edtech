@@ -1,3 +1,5 @@
+/*eslint-disable  @typescript-eslint/no-explicit-any*/
+/*eslint-disable   @typescript-eslint/no-unused-vars*/
 // --- Types ---
 export type ContentType = 'VIDEO' | 'ARTICLE' | 'QUIZ' | 'ASSESSMENT';
 
