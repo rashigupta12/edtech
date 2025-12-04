@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/dashboard/user/courses/page.tsx
 "use client";
 

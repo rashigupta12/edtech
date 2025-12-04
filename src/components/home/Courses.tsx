@@ -36,18 +36,18 @@ export default function FeaturedCourses() {
   const user = useCurrentUser()
   const userId = user?.id
 
-  const formatDuration = (duration: string) => {
-    const hours = parseInt(duration);
-    if (hours >= 60) {
-      const days = Math.floor(hours / 60);
-      const remainingHours = hours % 60;
-      if (remainingHours === 0) {
-        return `${days}d`;
-      }
-      return `${days}d ${remainingHours}h`;
-    }
-    return `${hours}h`;
-  };
+  // const formatDuration = (duration: string) => {
+  //   const hours = parseInt(duration);
+  //   if (hours >= 60) {
+  //     const days = Math.floor(hours / 60);
+  //     const remainingHours = hours % 60;
+  //     if (remainingHours === 0) {
+  //       return `${days}d`;
+  //     }
+  //     return `${days}d ${remainingHours}h`;
+  //   }
+  //   return `${hours}h`;
+  // };
 
   useEffect(() => {
     const fetchCourses = async () => {

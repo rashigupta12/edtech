@@ -1,3 +1,5 @@
+/*eslint-disable  @typescript-eslint/no-explicit-any*/
+/*eslint-disable   @typescript-eslint/no-unused-vars*/
 'use client';
 
 import { useState } from 'react';
@@ -210,8 +212,8 @@ export default function StudentProfileForm({
                   <option value="">Select Education Level</option>
                   <option value="HIGH_SCHOOL">High School</option>
                   <option value="DIPLOMA">Diploma</option>
-                  <option value="BACHELORS">Bachelor's Degree</option>
-                  <option value="MASTERS">Master's Degree</option>
+                  <option value="BACHELORS">Bachelor &apos;s Degree</option>
+                  <option value="MASTERS">Master &apos;s Degree</option>
                   <option value="PHD">PhD</option>
                   <option value="OTHER">Other</option>
                 </select>

@@ -1,16 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/*eslint-disable   @typescript-eslint/no-unused-vars*/
 // src/app/api/progress/route.ts
 import { db } from '@/db';
-import { 
-  CourseLessonsTable, 
-  EnrollmentsTable, 
-  LessonProgressTable,
-  CourseModulesTable,
-  LessonCompletionRulesTable,
+import {
+  AssessmentAttemptsTable,
   AssessmentsTable,
-  AssessmentAttemptsTable
+  CourseLessonsTable,
+  CourseModulesTable,
+  EnrollmentsTable,
+  LessonCompletionRulesTable,
+  LessonProgressTable
 } from '@/db/schema';
-import { and, count, eq, desc, sql, isNotNull } from 'drizzle-orm';
+import { and, count, desc, eq } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 
 // ===========================

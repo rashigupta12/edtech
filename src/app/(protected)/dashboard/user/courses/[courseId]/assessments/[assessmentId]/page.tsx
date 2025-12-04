@@ -1,36 +1,33 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
+import AssessmentResults from "@/components/user/courses/AssessmentResults";
 import AssessmentTimer from "@/components/user/courses/AssessmentTimer";
 import {
   Assessment,
   AssessmentAttempt,
-  formatTime,
-  safeJson,
+  safeJson
 } from "@/components/user/courses/learn";
 import { useCurrentUser } from "@/hooks/auth";
 import {
-  Award,
   CheckCircle,
   CheckSquare,
   Eye,
   EyeOff,
   Loader2,
-  RefreshCw,
   Target,
-  XCircle,
+  XCircle
 } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import AssessmentResults from "@/components/user/courses/AssessmentResults";
 
 export default function AssessmentPage() {
   const { courseId, assessmentId } = useParams() as {
@@ -298,7 +295,7 @@ if (!assessmentData.data) {
                   Assessment Not Found
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  The assessment you're looking for doesn't exist or you don't have access.
+                  The assessment you &apos;re looking for doesn&apos;t exist or you don&apos;t have access.
                 </p>
                 <Button
                   onClick={() =>
@@ -608,7 +605,7 @@ if (!assessmentData.data) {
                       No Questions Available
                     </h3>
                     <p className="text-gray-600 mb-6">
-                      This assessment doesn't have any questions yet.
+                      This assessment doesn&apos;t have any questions yet.
                     </p>
                     <Button
                       onClick={() =>

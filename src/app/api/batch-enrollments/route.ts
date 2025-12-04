@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { db } from "@/db";
-import { BatchEnrollmentsTable, UsersTable, BatchesTable, StudentProfilesTable } from "@/db/schema";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { BatchEnrollmentsTable, BatchesTable, UsersTable } from "@/db/schema";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
 
 // GET - Fetch batch enrollments
 export async function GET(request: NextRequest) {

@@ -1,36 +1,33 @@
 "use client";
 
 import { useCurrentUser } from "@/hooks/auth";
+import {
+  AlertCircle,
+  Banknote,
+  BookOpen,
+  Building2,
+  CheckCircle,
+  CreditCard,
+  Edit3,
+  Eye,
+  File,
+  Globe,
+  Hash,
+  Image as ImageIcon,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  Plus,
+  Save,
+  Shield,
+  Trash2,
+  Upload,
+  User,
+  X
+} from "lucide-react";
 import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
-import {
-  Building2,
-  MapPin,
-  Globe,
-  Mail,
-  Phone,
-  FileText,
-  Banknote,
-  Upload,
-  Edit3,
-  Save,
-  X,
-  Loader2,
-  ExternalLink,
-  Calendar,
-  Hash,
-  User,
-  Shield,
-  BookOpen,
-  CreditCard,
-  Image as ImageIcon,
-  File,
-  CheckCircle,
-  AlertCircle,
-  Plus,
-  Trash2,
-  Eye,
-} from "lucide-react";
 
 interface CollegeData {
   id: string;
@@ -580,7 +577,7 @@ const CollegeProfile = () => {
             College Profile Not Found
           </h2>
           <p className="text-gray-600 mb-8">
-            Your college profile hasn't been set up yet. Please contact the
+            Your college profile hasn &apos;t been set up yet. Please contact the
             administrator to create your institution profile.
           </p>
           <button className="px-8 py-3 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition-all shadow-lg hover:shadow-xl">

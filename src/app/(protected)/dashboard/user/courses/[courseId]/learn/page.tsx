@@ -321,7 +321,7 @@ export default function CourseLearnPage() {
               Course Content Coming Soon
             </h3>
             <p className="text-gray-600 mb-6">
-              We're preparing the learning materials for this course.
+              We &apos;re preparing the learning materials for this course.
             </p>
             <Button
               onClick={() => router.push(`/dashboard/user/courses/${courseId}`)}
@@ -435,10 +435,10 @@ export default function CourseLearnPage() {
                     className="flex-1 overflow-auto p-4"
                   >
                     <div className="space-y-4">
-                      {curriculum.modules.map((module) => {
-                        const isExpanded = expandedModules.has(module.id);
-                        const moduleAttempts = module.moduleAssessment
-                          ? getPreviousAttempts(module.moduleAssessment.id)
+                     {curriculum.modules.map((mod) => {
+  const isExpanded = expandedModules.has(mod.id);
+                        const moduleAttempts = mod.moduleAssessment
+                          ? getPreviousAttempts(mod.moduleAssessment.id)
                           : [];
                         const hasPassedModuleAssessment = moduleAttempts.some(
                           (attempt) => attempt.passed
@@ -458,11 +458,11 @@ export default function CourseLearnPage() {
                                   <ChevronUp className="h-4 w-4 text-gray-500" />
                                 )}
                                 <span className="font-medium text-gray-900">
-                                  {module.title}
+                                  {mod.title}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
-                                {module.moduleAssessment && (
+                                {mod.moduleAssessment && (
                                   <Badge
                                     className={`${
                                       hasPassedModuleAssessment
@@ -474,14 +474,14 @@ export default function CourseLearnPage() {
                                   </Badge>
                                 )}
                                 <Badge variant="outline" className="text-xs">
-                                  {module.lessons.length}
+                                  {mod.lessons.length}
                                 </Badge>
                               </div>
                             </Button>
 
                             {isExpanded && (
                               <div className="space-y-1 ml-4">
-                                {module.lessons.map((lesson) => {
+                                {mod.lessons.map((lesson) => {
                                   const lessonAttempts = lesson.quiz
                                     ? getPreviousAttempts(lesson.quiz.id)
                                     : [];
@@ -531,13 +531,13 @@ export default function CourseLearnPage() {
                                 })}
 
                                 {/* Module Assessment */}
-                                {module.moduleAssessment && (
+                                {mod.moduleAssessment && (
                                   <Button
                                     variant="outline"
                                     className="w-full justify-start mt-2 p-2 border-dashed"
                                     onClick={() =>
                                       handleStartAssessment(
-                                        module.moduleAssessment!
+                                        mod.moduleAssessment!
                                       )
                                     }
                                   >
@@ -725,20 +725,20 @@ export default function CourseLearnPage() {
                       Select a lesson from the curriculum to start your learning
                       journey.
                     </p>
-                    <Button
-                      onClick={() => {
-                        const firstLesson = allLessons[0];
-                        const module = curriculum.modules.find((m) =>
-                          m.lessons.some((l) => l.id === firstLesson?.id)
-                        );
-                        if (firstLesson && module) {
-                          handleLessonSelect(firstLesson.id, module.id);
-                        }
-                      }}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                    >
-                      Start First Lesson
-                    </Button>
+<Button
+  onClick={() => {
+    const firstLesson = allLessons[0];
+    const mod = curriculum.modules.find((m) =>
+      m.lessons.some((l) => l.id === firstLesson?.id)
+    );
+    if (firstLesson && mod) {
+      handleLessonSelect(firstLesson.id, mod.id);
+    }
+  }}
+  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+>
+  Start First Lesson
+</Button>
                   </div>
                 )}
               </CardContent>

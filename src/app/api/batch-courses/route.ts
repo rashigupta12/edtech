@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { db } from "@/db";
 import { BatchCoursesTable, BatchesTable, CoursesTable, FacultyTable, UsersTable } from "@/db/schema";
 import { and, asc, eq } from "drizzle-orm";
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       const formattedBatchCourse = {
         ...result.batchCourse,
         courseTitle: result.course?.title ?? null,
-        courseCode: result.course?.code ?? null,
+        // courseCode: result.course?.code ?? null,
         facultyName: result.user?.name ?? null,
         batchName: result.batch?.name ?? null,
       };
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
     const batchCourses = results.map((result) => ({
       ...result.batchCourse,
       courseTitle: result.course?.title ?? null,
-      courseCode: result.course?.code ?? null,
+      // courseCode: result.course?.code ?? null,
       facultyName: result.user?.name ?? null,
       batchName: result.batch?.name ?? null,
     }));

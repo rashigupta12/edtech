@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/dashboard/user/courses/[courseId]/announcements/page.tsx
 'use client';
 
@@ -106,14 +107,14 @@ export default function AnnouncementsPage() {
     loadData();
   }, [courseId]);
 
-  const getBadgeVariant = (type: string) => {
-    switch (type) {
-      case 'URGENT': return 'destructive';
-      case 'UPDATE': return 'default';
-      case 'REMINDER': return 'secondary';
-      default: return 'outline';
-    }
-  };
+  // const getBadgeVariant = (type: string) => {
+  //   switch (type) {
+  //     case 'URGENT': return 'destructive';
+  //     case 'UPDATE': return 'default';
+  //     case 'REMINDER': return 'secondary';
+  //     default: return 'outline';
+  //   }
+  // };
 
   const getBadgeColor = (type: string) => {
     switch (type) {

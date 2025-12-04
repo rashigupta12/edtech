@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { Badge } from "@/components/ui/badge";
@@ -576,7 +577,7 @@ const Departments = () => {
                   readOnly
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Auto-generated from department name. You can't edit it.
+                  Auto-generated from department name. You can &apos;t edit it.
                 </p>
               </div>
 

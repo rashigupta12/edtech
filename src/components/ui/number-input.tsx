@@ -3,10 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export interface NumberInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {}
-
-const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
+const NumberInput = React.forwardRef<HTMLInputElement, Omit<React.InputHTMLAttributes<HTMLInputElement>, "type">>(
   ({ className, onFocus, onBlur, onWheel, ...props }, ref) => {
     const [isFocused, setIsFocused] = React.useState(false);
 
@@ -21,7 +18,6 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
     };
 
     const handleWheel = (e: React.WheelEvent<HTMLInputElement>) => {
-      // Prevent scroll from changing the value when focused
       if (isFocused) {
         e.currentTarget.blur();
       }
@@ -46,5 +42,4 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
 );
 
 NumberInput.displayName = "NumberInput";
-
 export { NumberInput };

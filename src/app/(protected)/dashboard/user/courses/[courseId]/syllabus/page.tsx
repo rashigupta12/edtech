@@ -1,30 +1,30 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  CheckCircle, 
-  Clock, 
-  PlayCircle, 
-  ChevronLeft, 
-  Award, 
-  BookOpen, 
-  Target,
-  FileText,
-  Video,
-  AlertCircle,
-  BarChart3,
-  GraduationCap,
-  Layers
-} from 'lucide-react';
 import { useCurrentUser } from '@/hooks/auth';
+import {
+  Award,
+  BarChart3,
+  BookOpen,
+  CheckCircle,
+  ChevronLeft,
+  Clock,
+  FileText,
+  GraduationCap,
+  Layers,
+  PlayCircle,
+  Target,
+  Video
+} from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface Lesson {
   id: string;

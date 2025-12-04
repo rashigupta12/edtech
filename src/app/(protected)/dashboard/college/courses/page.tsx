@@ -674,7 +674,7 @@ export default function CoursesPage() {
                     <td className="px-6 py-2 text-center">
                       <div className="flex items-center justify-end gap-1">
                         {/* View */}
-                        <Link href={`/dashboard/college/courses/${course.id}`}>
+                        <Link href={`/dashboard/admin/courses/${course.id}`}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -685,7 +685,7 @@ export default function CoursesPage() {
                         </Link>
 
                         {/* Edit */}
-                        <Link href={`/dashboard/college/courses/${course.id}/edit`}>
+                        <Link href={`/dashboard/admin/courses/${course.id}/edit`}>
                           <Button
                             variant="ghost"
                             size="icon"
