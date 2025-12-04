@@ -1,4 +1,3 @@
-
 /*eslint-disable @typescript-eslint/no-unused-vars */
 // components/dashboard/DashboardLayout.tsx
 "use client";
@@ -6,20 +5,16 @@
 import {
   BookOpen,
   ChevronDown,
-  DollarSign,
   FileText,
   Home,
   LayoutDashboard,
   List,
   MessageCircle,
   Plus,
-  PlusCircle,
-  Quote,
   Tag,
   Ticket,
-  TrendingUp,
   Users,
-  Wallet
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -66,11 +61,15 @@ const navConfigs = {
 
     { title: "Categories", href: "/dashboard/admin/categories", icon: List },
 
-     {
+    {
       title: "Bootcamp",
       icon: BookOpen,
       children: [
-        { title: "All Bootcamps", href: "/dashboard/admin/bootcamps", icon: List },
+        {
+          title: "All Bootcamps",
+          href: "/dashboard/admin/bootcamps",
+          icon: List,
+        },
         {
           title: "Add Bootcamp",
           href: "/dashboard/admin/bootcamps/create",
@@ -83,22 +82,41 @@ const navConfigs = {
       title: "College",
       icon: BookOpen,
       children: [
-        { title: "List of Colleges", href: "/dashboard/admin/colleges", icon: List },
-        { title: "Add College", href: "/dashboard/admin/colleges/add", icon: Plus },
+        {
+          title: "List of Colleges",
+          href: "/dashboard/admin/colleges",
+          icon: List,
+        },
+        {
+          title: "Add College",
+          href: "/dashboard/admin/colleges/add",
+          icon: Plus,
+        },
       ],
     },
     {
       title: "Assignment",
       icon: FileText,
       children: [
-        { title: "All Assignments", href: "/dashboard/admin/assignments", icon: List },
-        { title: "Add Assignment", href: "/dashboard/admin/assignments/create", icon: Plus },
+        {
+          title: "All Assignments",
+          href: "/dashboard/admin/assignments",
+          icon: List,
+        },
+        {
+          title: "Add Assignment",
+          href: "/dashboard/admin/assignments/create",
+          icon: Plus,
+        },
       ],
     },
 
-        { title: "CMS", href: "/dashboard/admin/cms", icon: LayoutDashboard },
-        { title: "Testimonals", href: "/dashboard/admin/testimonials", icon:MessageCircle },
-
+    { title: "CMS", href: "/dashboard/admin/cms", icon: LayoutDashboard },
+    {
+      title: "Testimonals",
+      href: "/dashboard/admin/testimonials",
+      icon: MessageCircle,
+    },
 
     // {
     //   title: "Astrologer ",
@@ -171,7 +189,7 @@ const navConfigs = {
 
   agent: [
     { title: "Dashboard", href: "/dashboard/college", icon: Home },
-      {
+    {
       title: "Profile",
       href: "/dashboard/college/profile",
       icon: Users,
@@ -180,7 +198,11 @@ const navConfigs = {
       title: " Courses",
       icon: Tag,
       children: [
-        { title: "All Courses", href: "/dashboard/college/courses", icon: List },
+        {
+          title: "All Courses",
+          href: "/dashboard/college/courses",
+          icon: List,
+        },
         {
           title: "Add course",
           href: "/dashboard/college/courses/create",
@@ -189,19 +211,23 @@ const navConfigs = {
       ],
     },
 
-     {
+    {
       title: " Departments",
       icon: Tag,
       children: [
-        { title: "All Departments", href: "/dashboard/college/departments", icon: List },
+        {
+          title: "All Departments",
+          href: "/dashboard/college/departments",
+          icon: List,
+        },
       ],
     },
-      {
+    {
       title: "Faculty",
       href: "/dashboard/college/faculty",
       icon: Users,
     },
-      {
+    {
       title: "Batch Management",
       icon: Tag,
       children: [
@@ -216,14 +242,13 @@ const navConfigs = {
           href: "/dashboard/college/batches/courses",
           icon: Ticket,
         },
-         {
-          title: "Create Student",
-          href: "/dashboard/college/student",
-          icon: PlusCircle,
+        {
+          title: "Student",
+          href: "/dashboard/college/batches/student",
+          icon: Users,
         },
       ],
     },
-
   ] as const,
 
   user: [

@@ -133,7 +133,7 @@ export default function CreateCoursePage() {
     price: "",
     discountPrice: "",
     maxStudents: "",
-    status: "DRAFT",
+    status: "PENDING_APPROVAL",
     hasFinalAssessment: true,
     finalAssessmentRequired: true,
     minimumCoursePassingScore: 60,
@@ -231,14 +231,22 @@ export default function CreateCoursePage() {
 
       const data = await res.json();
       if (data.success) {
-        setCategories([...categories, data.data]);
-        setFormData((prev) => ({ ...prev, categoryId: data.data.id }));
+        const newCategory = data.data;
+
+        // Add to categories list first
+        setCategories([...categories, newCategory]);
+
+        // Then select it - use the new category's ID
+        setFormData((prev) => ({ ...prev, categoryId: newCategory.id }));
+
+        // Close the new category input
         setShowNewCategory(false);
         setNewCategoryName("");
+
         Swal.fire({
           icon: "success",
           title: "Category Created!",
-          text: "New category has been added successfully",
+          text: `"${newCategory.name}" has been selected`, // Updated message
           timer: 1500,
         });
       }
@@ -558,7 +566,7 @@ export default function CreateCoursePage() {
     const payload = {
       ...formData,
       createdBy,
-      status: formData.status,
+      status: "PENDING_APPROVAL",
       collegeId: formData.collegeId || null,
       thumbnailUrl: formData.thumbnailUrl || null,
       previewVideoUrl: formData.previewVideoUrl || null,
@@ -1197,8 +1205,10 @@ export default function CreateCoursePage() {
                   <Label htmlFor="categoryId">Category *</Label>
                   <div className="space-y-2">
                     <Select
+                      key={formData.categoryId || "default"}
                       value={formData.categoryId}
                       onValueChange={(value) => {
+                        console.log("Selected value:", value);
                         if (value === "new-category") {
                           setShowNewCategory(true);
                         } else {
@@ -1207,7 +1217,12 @@ export default function CreateCoursePage() {
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        {/* Show the selected category name */}
+                        <SelectValue placeholder="Select category">
+                          {categories.find(
+                            (cat) => cat.id === formData.categoryId
+                          )?.name || "Select category"}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((cat) => (
@@ -1260,7 +1275,7 @@ export default function CreateCoursePage() {
                   </div>
                 </div>
 
-                <div>
+                {/* <div>
                   <Label htmlFor="collegeId">College (Optional)</Label>
                   <Select
                     value={formData.collegeId || "NONE"}
@@ -1283,7 +1298,7 @@ export default function CreateCoursePage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
 
                 <div>
                   <Label htmlFor="level">Level</Label>
@@ -1313,7 +1328,7 @@ export default function CreateCoursePage() {
                     placeholder="English"
                   />
                 </div>
-                <div>
+                {/* <div>
                   <Label htmlFor="status">Status</Label>
                   <Select
                     value={formData.status}
@@ -1332,10 +1347,10 @@ export default function CreateCoursePage() {
                       <SelectItem value="APPROVED">Approved</SelectItem>
                       <SelectItem value="REJECTED">Rejected</SelectItem>
                       <SelectItem value="PUBLISHED">Published</SelectItem>
-                      {/* <SelectItem value="ARCHIVED">Archived</SelectItem> */}
+                      <SelectItem value="ARCHIVED">Archived</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
 
                 <div>
                   <Label htmlFor="duration">Duration</Label>
@@ -1353,7 +1368,6 @@ export default function CreateCoursePage() {
                   <Label htmlFor="maxStudents">Max Students</Label>
                   <NumberInput
                     id="maxStudents"
-                   
                     value={formData.maxStudents}
                     onChange={(e) =>
                       handleFieldChange("maxStudents", e.target.value)

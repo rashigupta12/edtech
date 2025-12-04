@@ -146,6 +146,7 @@ export const StudentProfilesTable = pgTable(
     id: uuid("id").primaryKey().references(() => UsersTable.id, { onDelete: "cascade" }),
     collegeId: uuid("college_id").references(() => CollegesTable.id, { 
       onDelete: "set null"}),
+      enrollmentNumber: varchar("enrollment_number", { length: 50 }),
     dateOfBirth: timestamp("date_of_birth", { mode: "date" }),
     gender: Gender("gender"),
     address: text("address"),

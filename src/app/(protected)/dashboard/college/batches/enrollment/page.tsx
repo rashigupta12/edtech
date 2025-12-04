@@ -17,15 +17,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   Loader2,
-  Plus,
   Search,
-  Edit,
   Trash2,
-  Save,
-  X,
   UserPlus,
   Users,
-  GraduationCap,
   Filter,
   Download,
 } from "lucide-react";
@@ -69,7 +64,7 @@ interface Student {
   id: string;
   name: string;
   email: string;
-  rollNumber?: string;
+  enrollmentNumber?: string;
   departmentName?: string;
 }
 
@@ -99,7 +94,6 @@ const BatchEnrollmentPage = () => {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(null);
 
-  const [rollNumbers, setRollNumbers] = useState<{[key: string]: string}>({});
   const [selectedStudentsForAdd, setSelectedStudentsForAdd] = useState<string[]>([]);
 
   const fetchCollegeId = async () => {
@@ -130,10 +124,18 @@ const BatchEnrollmentPage = () => {
   const loadStudents = async () => {
     if (!collegeId) return;
     try {
-      const res = await fetch(`/api/colleges/students?collegeId=${collegeId}`);
+      const res = await fetch(`/api/students?collegeId=${collegeId}`);
       const data = await res.json();
       if (data.success) {
-        setStudents(data.data);
+        // Map the API response to match the Student interface
+        const mappedStudents = data.data.map((student: any) => ({
+          id: student.id,
+          name: student.user.name,
+          email: student.user.email,
+          enrollmentNumber: student.enrollmentNumber || "",
+          departmentName: student.specialization || "",
+        }));
+        setStudents(mappedStudents);
       }
     } catch (error) {
       console.error("Error loading students:", error);
@@ -204,11 +206,14 @@ const BatchEnrollmentPage = () => {
 
     setSubmitting(true);
     try {
-      const enrollmentsData = selectedStudentsForAdd.map(studentId => ({
-        batchId: selectedBatch,
-        userId: studentId,
-        rollNumber: rollNumbers[studentId] || "",
-      }));
+      const enrollmentsData = selectedStudentsForAdd.map(studentId => {
+        const student = students.find(s => s.id === studentId);
+        return {
+          batchId: selectedBatch,
+          userId: studentId,
+          rollNumber: student?.enrollmentNumber || "",
+        };
+      });
 
       const res = await fetch("/api/batch-enrollments", {
         method: "POST",
@@ -224,7 +229,6 @@ const BatchEnrollmentPage = () => {
 
       setOpenAddDialog(false);
       setSelectedStudentsForAdd([]);
-      setRollNumbers({});
       await loadEnrollments();
       
       Swal.fire({
@@ -341,7 +345,7 @@ const BatchEnrollmentPage = () => {
     }
 
     const batch = batches.find(b => b.id === selectedBatch);
-    const headers = ["Roll Number", "Student Name", "Email", "Enrollment Date", "Status"];
+    const headers = ["Enrollment Number", "Student Name", "Email", "Enrollment Date", "Status"];
     const rows = enrollments.map(e => [
       e.rollNumber || "",
       e.userName,
@@ -530,7 +534,7 @@ const BatchEnrollmentPage = () => {
                               }}
                             />
                           </TableHead>
-                          <TableHead className="font-semibold text-gray-700">Roll Number</TableHead>
+                          <TableHead className="font-semibold text-gray-700">Enrollment Number</TableHead>
                           <TableHead className="font-semibold text-gray-700">Student Name</TableHead>
                           <TableHead className="font-semibold text-gray-700">Email</TableHead>
                           <TableHead className="font-semibold text-gray-700">Enrollment Date</TableHead>
@@ -662,21 +666,15 @@ const BatchEnrollmentPage = () => {
                       <div>
                         <div className="font-medium text-gray-900">{student.name}</div>
                         <div className="text-sm text-gray-500">{student.email}</div>
+                        {student.enrollmentNumber && (
+                          <div className="text-xs text-gray-400 font-mono">
+                            Enrollment: {student.enrollmentNumber}
+                          </div>
+                        )}
                         {student.departmentName && (
                           <div className="text-xs text-gray-400">{student.departmentName}</div>
                         )}
                       </div>
-                    </div>
-                    <div className="w-40">
-                      <Input
-                        placeholder="Roll Number"
-                        value={rollNumbers[student.id] || ""}
-                        onChange={(e) => setRollNumbers({
-                          ...rollNumbers,
-                          [student.id]: e.target.value
-                        })}
-                        className="border-gray-300"
-                      />
                     </div>
                   </div>
                 ))}
@@ -690,7 +688,6 @@ const BatchEnrollmentPage = () => {
               onClick={() => {
                 setOpenAddDialog(false);
                 setSelectedStudentsForAdd([]);
-                setRollNumbers({});
               }}
               disabled={submitting}
             >
@@ -752,4 +749,3 @@ const BatchEnrollmentPage = () => {
 };
 
 export default BatchEnrollmentPage;
-
