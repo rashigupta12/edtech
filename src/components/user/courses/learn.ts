@@ -99,12 +99,7 @@ export interface UserAssessmentAttempt {
   timeSpent: number;
 }
 
-export interface ProgressResponse {
-  progressPercentage: number;
-  lessonsProgress: LessonProgress[];
-  enrollmentId: string;
-  assessmentAttempts: Record<string, UserAssessmentAttempt[]>;
-}
+
 
 // --- Helper utilities ---
 export const safeJson = async (res: Response) => {
@@ -136,6 +131,44 @@ export const formatTime = (seconds: number) => {
   const secs = seconds % 60;
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
+
+
+export interface ProgressResponse {
+  enrollmentId: string;
+  courseId: string;
+  overallProgress: number;
+  completedLessons: number;
+  totalLessons: number;
+  completedAssessments: number;
+  totalAssessments: number;
+  status: string;
+  completedAt: string | null;
+  overallScore: number;
+  certificateEligible: boolean;
+  lessonsProgress: {
+    id: string;
+    title: string;
+    moduleId: string;
+    moduleTitle: string;
+    contentType: string;
+    hasQuiz: string;
+    quizRequired: boolean;
+    progress: {
+      lessonId: string;
+      isCompleted: boolean;
+      completedAt: string | null;
+      lastWatchedPosition: number;
+      watchDuration: number;
+      videoPercentageWatched: number;
+    } | null;
+    isComplete: boolean;
+    completionRules: any;
+    quizResult: any;
+  }[];
+  moduleAssessmentStatus: any[];
+  finalAssessmentStatus: any;
+  assessmentAttempts?: Record<string, UserAssessmentAttempt[]>;
+}
 
 
 

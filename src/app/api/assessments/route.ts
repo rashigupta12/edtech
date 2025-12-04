@@ -392,6 +392,7 @@ const updateAssessment = async (id: string, request: NextRequest) => {
 // GET ASSESSMENT WITH QUESTIONS
 const getAssessmentWithQuestions = async (id: string, userId?: string) => {
   try {
+    // Get assessment
     const [assessment] = await db
       .select()
       .from(AssessmentsTable)
@@ -416,11 +417,61 @@ const getAssessmentWithQuestions = async (id: string, userId?: string) => {
       shuffledQuestions = [...questions].sort(() => Math.random() - 0.5);
     }
 
+    // Get course information
+    const [course] = await db
+      .select()
+      .from(CoursesTable)
+      .where(eq(CoursesTable.id, assessment.courseId))
+      .limit(1);
+
+    // Get module information if available
+    let moduleInfo = null;
+    if (assessment.moduleId) {
+      const [module] = await db
+        .select()
+        .from(CourseModulesTable)
+        .where(eq(CourseModulesTable.id, assessment.moduleId))
+        .limit(1);
+      moduleInfo = module;
+    }
+
+    // Get lesson information if available
+    let lessonInfo = null;
+    if (assessment.lessonId) {
+      const [lesson] = await db
+        .select()
+        .from(CourseLessonsTable)
+        .where(eq(CourseLessonsTable.id, assessment.lessonId))
+        .limit(1);
+      lessonInfo = lesson;
+    }
+
+    // Return assessment with questions and related info
     return successResponse({
       ...assessment,
-      questions: shuffledQuestions,
+      questions: shuffledQuestions.map(q => ({
+        id: q.id,
+        assessmentId: q.assessmentId,
+        questionText: q.questionText,
+        questionType: q.questionType,
+        difficulty: q.difficulty,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation,
+        points: q.points || 1,
+        negativePoints: q.negativePoints || 0,
+        sortOrder: q.sortOrder,
+        questionBankId: q.questionBankId,
+        isActive: q.isActive,
+        createdAt: q.createdAt,
+        updatedAt: q.updatedAt,
+      })),
+      courseTitle: course?.title || 'Unknown Course',
+      moduleTitle: moduleInfo?.title || null,
+      lessonTitle: lessonInfo?.title || null,
     });
   } catch (error: any) {
+    console.error('getAssessmentWithQuestions error:', error);
     return errorResponse(error.message || 'Failed to get assessment', 'GET_ERROR', 500);
   }
 };
@@ -862,6 +913,7 @@ const getCourseAssessments = async (courseId: string) => {
 };
 
 // GET Handler
+// GET Handler
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -877,13 +929,17 @@ export async function GET(request: NextRequest) {
       questionsBank: searchParams.get('questionsBank') || undefined,
     };
 
-    // Route: GET /api/assessments?id=123&questions=true
-    if (params.id && parseBoolean(params.questions)) {
+    // Route: GET /api/assessments?id=123
+    if (params.id) {
       const validation = validateId(params.id);
       if (!validation.valid) {
         return errorResponse(validation.error!);
       }
-      return await getAssessmentWithQuestions(params.id, params.userId);
+      
+      // If questions parameter is true OR if no specific parameter is set, get with questions
+      if (parseBoolean(params.questions) || (!params.attempts && !params.questionsBank)) {
+        return await getAssessmentWithQuestions(params.id, params.userId);
+      }
     }
 
     // Route: GET /api/assessments?id=123&attempts=true&userId=456
@@ -903,15 +959,6 @@ export async function GET(request: NextRequest) {
     // Route: GET /api/assessments?courseId=123
     if (params.courseId) {
       return await getCourseAssessments(params.courseId);
-    }
-
-    // Route: GET /api/assessments?id=123
-    if (params.id) {
-      const validation = validateId(params.id);
-      if (!validation.valid) {
-        return errorResponse(validation.error!);
-      }
-      return await getAssessment(params.id);
     }
 
     return errorResponse('Invalid request parameters', 'INVALID_REQUEST', 400);

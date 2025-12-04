@@ -1,4 +1,3 @@
-// src/app/dashboard/user/courses/[courseId]/syllabus/page.tsx
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -22,9 +21,8 @@ import {
   Video,
   AlertCircle,
   BarChart3,
-  Bookmark,
-  Layers,
-  GraduationCap
+  GraduationCap,
+  Layers
 } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/auth';
 
@@ -72,28 +70,63 @@ interface Curriculum {
 }
 
 interface ProgressData {
-  progressPercentage: number;
+  enrollmentId: string;
+  courseId: string;
+  overallProgress: number;
   completedLessons: number;
   totalLessons: number;
   completedAssessments: number;
   totalAssessments: number;
+  status: string;
+  completedAt: string | null;
+  overallScore: number;
+  certificateEligible: boolean;
   lessonsProgress: Array<{
-    lessonId: string;
-    isCompleted: boolean;
-    quizAttempted?: boolean;
-    quizPassed?: boolean;
-  }>;
-  moduleAssessmentStatus?: Array<{
+    id: string;
+    title: string;
     moduleId: string;
-    passed: boolean;
-    attempted: boolean;
-    latestScore?: number;
+    moduleTitle: string;
+    contentType: string;
+    hasQuiz: string;
+    quizRequired: boolean;
+    progress: {
+      lessonId: string;
+      isCompleted: boolean;
+      completedAt: string | null;
+      lastWatchedPosition: number;
+      watchDuration: number;
+      videoPercentageWatched: number;
+      resourcesViewed: any;
+      quizAttempted: boolean;
+      quizPassed: boolean;
+    } | null;
+    isComplete: boolean;
+    completionRules: any;
+    quizResult: any;
   }>;
-  finalAssessmentStatus?: {
+  moduleAssessmentStatus: Array<{
+    moduleId: string;
+    moduleTitle: string;
+    assessmentId: string;
+    assessmentTitle: string;
+    hasAssessment: boolean;
+    assessmentRequired: boolean;
+    minimumPassingScore: number;
     passed: boolean;
     attempted: boolean;
-    latestScore?: number;
-  };
+    latestScore: number;
+    latestAttemptId?: string;
+  }>;
+  finalAssessmentStatus: {
+    id: string;
+    title: string;
+    passingScore: number;
+    isRequired: boolean;
+    passed: boolean;
+    attempted: boolean;
+    latestScore: number;
+    latestAttemptId: string;
+  } | null;
 }
 
 export default function SyllabusPage() {
@@ -116,14 +149,15 @@ export default function SyllabusPage() {
 
         const [curriculumRes, progressRes] = await Promise.all([
           fetch(`/api/courses?id=${courseId}&curriculum=true`),
-          userId ? fetch(`/api/progress?userId=${userId}&courseId=${courseId}`) : null,
+          userId ? fetch(`/api/progress?userId=${userId}&courseId=${courseId}`) : Promise.resolve(null),
         ]);
 
         const curriculumJson = await curriculumRes.json();
         setCurriculum(curriculumJson.data || null);
 
-        if (progressRes?.ok) {
+        if (progressRes && progressRes.ok) {
           const progressJson = await progressRes.json();
+          console.log('Progress data:', progressJson.data); // Debug log
           setProgress(progressJson.data || null);
         }
       } catch (err) {
@@ -137,77 +171,25 @@ export default function SyllabusPage() {
   }, [courseId, userId]);
 
   const getLessonProgress = (lessonId: string) => {
-    return progress?.lessonsProgress?.find(lp => lp.lessonId === lessonId);
+    return progress?.lessonsProgress?.find(lp => lp.id === lessonId);
   };
 
   const getModuleAssessmentStatus = (moduleId: string) => {
     return progress?.moduleAssessmentStatus?.find(ms => ms.moduleId === moduleId);
   };
 
-  const calculateModuleProgress = (module: Module) => {
-    if (!module.lessons.length || !progress) return 0;
-    const completed = module.lessons.filter(
-      lesson => getLessonProgress(lesson.id)?.isCompleted
-    ).length;
-    return Math.round((completed / module.lessons.length) * 100);
-  };
-
   const getContentTypeIcon = (contentType: string) => {
     switch (contentType) {
-      case 'VIDEO':
-        return <Video className="h-4 w-4" />;
-      case 'ARTICLE':
-        return <FileText className="h-4 w-4" />;
-      case 'QUIZ':
-        return <Target className="h-4 w-4" />;
-      default:
-        return <FileText className="h-4 w-4" />;
+      case 'VIDEO': return <Video className="h-4 w-4" />;
+      case 'ARTICLE': return <FileText className="h-4 w-4" />;
+      case 'QUIZ': return <Target className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
     }
   };
-
-  const totalLessons = curriculum?.modules.reduce(
-    (sum, m) => sum + m.lessons.length,
-    0
-  ) || 0;
-
-  const totalAssessments = () => {
-    let count = 0;
-    curriculum?.modules.forEach(module => {
-      if (module.hasAssessment) count++;
-      count += module.lessons.filter(lesson => lesson.hasQuiz).length;
-    });
-    if (curriculum?.finalAssessment) count++;
-    return count;
-  };
-
-  const completedAssessments = () => {
-    let count = 0;
-    
-    // Count completed module assessments
-    progress?.moduleAssessmentStatus?.forEach(status => {
-      if (status.passed) count++;
-    });
-    
-    // Count completed lesson quizzes
-    progress?.lessonsProgress?.forEach(lesson => {
-      if (lesson.quizPassed) count++;
-    });
-    
-    // Count final assessment
-    if (progress?.finalAssessmentStatus?.passed) {
-      count++;
-    }
-    
-    return count;
-  };
-
-  const assessmentProgress = totalAssessments() > 0 
-    ? Math.round((completedAssessments() / totalAssessments()) * 100)
-    : 0;
 
   if (loading) {
     return (
-      <div className="p-6 space-y-8 min-h-screen">
+      <div className="p-6 space-y-8 min-h-screen max-w-7xl mx-auto">
         <Skeleton className="h-12 w-80" />
         <Skeleton className="h-48 w-full" />
         <div className="space-y-6">
@@ -215,6 +197,15 @@ export default function SyllabusPage() {
             <Skeleton key={i} className="h-32 w-full rounded-xl" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (!curriculum) {
+    return (
+      <div className="p-6 text-center text-gray-600">
+        <p>Course curriculum not found.</p>
+        <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
       </div>
     );
   }
@@ -234,7 +225,7 @@ export default function SyllabusPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              {curriculum?.courseTitle || 'Course'} Syllabus
+              {curriculum.courseTitle || 'Course'} Syllabus
             </h1>
             <p className="text-gray-600 mt-2">
               Track your progress through all modules, lessons, and assessments
@@ -242,26 +233,16 @@ export default function SyllabusPage() {
           </div>
         </div>
 
-        <div className="flex gap-3">
-          {/* <Button 
-            onClick={() => router.push(`/dashboard/user/courses/${courseId}/assessments`)}
-            variant="outline"
-            className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
-          >
-            <Target className="mr-2 h-4 w-4" />
-            View Assessments
-          </Button> */}
-          <Button 
-            onClick={() => router.push(`/dashboard/user/courses/${courseId}/learn`)}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            <PlayCircle className="mr-2 h-5 w-5" />
-            Continue Learning
-          </Button>
-        </div>
+        <Button 
+          onClick={() => router.push(`/dashboard/user/courses/${courseId}/learn`)}
+          className="bg-green-600 hover:bg-green-700 text-white"
+        >
+          <PlayCircle className="mr-2 h-5 w-5" />
+          Continue Learning
+        </Button>
       </div>
 
-      {/* Summary Stats */}
+      {/* Summary Stats - Using actual data from backend */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-white border border-gray-200 shadow-sm">
           <CardContent className="pt-6">
@@ -271,7 +252,7 @@ export default function SyllabusPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Modules</p>
-                <p className="text-2xl font-bold text-gray-900">{curriculum?.modules.length || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{curriculum.modules.length}</p>
               </div>
             </div>
           </CardContent>
@@ -285,7 +266,12 @@ export default function SyllabusPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Lessons</p>
-                <p className="text-2xl font-bold text-gray-900">{totalLessons}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {progress?.totalLessons || curriculum.modules.reduce((s, m) => s + m.lessons.length, 0)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {progress?.completedLessons || 0} completed
+                </p>
               </div>
             </div>
           </CardContent>
@@ -299,9 +285,11 @@ export default function SyllabusPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Assessments</p>
-                <p className="text-2xl font-bold text-gray-900">{totalAssessments()}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {progress?.completedAssessments || 0} / {progress?.totalAssessments || 0}
+                </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {completedAssessments()} completed
+                  Passed: {progress?.completedAssessments || 0}
                 </p>
               </div>
             </div>
@@ -316,9 +304,9 @@ export default function SyllabusPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Overall Progress</p>
-                <p className="text-2xl font-bold text-gray-900">{progress?.progressPercentage || 0}%</p>
+                <p className="text-2xl font-bold text-gray-900">{progress?.overallProgress || 0}%</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {progress?.completedLessons || 0}/{progress?.totalLessons || 0} lessons
+                  Course status: {progress?.status || 'Not Started'}
                 </p>
               </div>
             </div>
@@ -331,47 +319,59 @@ export default function SyllabusPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-green-600" />
-            Learning Progress
+            Your Learning Progress
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-700 font-medium">Course Progress</span>
-                <span className="font-semibold text-gray-900">{progress?.progressPercentage || 0}%</span>
+                <span className="text-gray-700 font-medium">Overall Course Progress</span>
+                <span className="font-semibold text-gray-900">{progress?.overallProgress || 0}%</span>
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-2.5">
-                <div 
-                  className="bg-green-600 h-2.5 rounded-full" 
-                  style={{ width: `${progress?.progressPercentage || 0}%` }}
-                />
-              </div>
+              <Progress value={progress?.overallProgress || 0} className="h-3" />
             </div>
 
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-700 font-medium">Assessment Progress</span>
-                <span className="font-semibold text-gray-900">{assessmentProgress}%</span>
+                <span className="text-gray-700 font-medium">Lessons Completed</span>
+                <span className="font-semibold text-gray-900">
+                  {progress?.completedLessons || 0} of {progress?.totalLessons || 0}
+                </span>
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-2.5">
-                <div 
-                  className="bg-blue-600 h-2.5 rounded-full" 
-                  style={{ width: `${assessmentProgress}%` }}
-                />
+              <Progress 
+                value={progress && progress.totalLessons > 0 
+                  ? Math.round((progress.completedLessons / progress.totalLessons) * 100)
+                  : 0
+                } 
+                className="h-3"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 pt-4 border-t border-gray-200">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-gray-900">{progress?.completedLessons || 0}</div>
+                <div className="text-sm text-gray-600 mt-1">Lessons Completed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-gray-900">{progress?.overallScore || 0}%</div>
+                <div className="text-sm text-gray-600 mt-1">Average Score</div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">{progress?.completedLessons || 0}</div>
-                <div className="text-sm text-gray-600">Lessons Completed</div>
+            {progress?.certificateEligible && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Award className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-800">Certificate Eligible!</p>
+                    <p className="text-sm text-green-700">
+                      You have completed all requirements for a course certificate.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">{completedAssessments()}</div>
-                <div className="text-sm text-gray-600">Assessments Passed</div>
-              </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -381,15 +381,18 @@ export default function SyllabusPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">Course Curriculum</h2>
           <Badge variant="secondary" className="bg-gray-100 text-gray-700">
-            {totalLessons} lessons • {totalAssessments()} assessments
+            {progress?.totalLessons || 0} lessons • {progress?.totalAssessments || 0} assessments
           </Badge>
         </div>
 
         <Accordion type="single" collapsible className="space-y-4">
-          {curriculum?.modules.map((module, idx) => {
-            const moduleProgress = calculateModuleProgress(module);
+          {curriculum.modules.map((module, idx) => {
+            const lessonProgresses = module.lessons.map(l => getLessonProgress(l.id));
+            const completedLessonsInModule = lessonProgresses.filter(p => p?.progress?.isCompleted || p?.isComplete).length;
+            const moduleProgressPct = module.lessons.length > 0 
+              ? Math.round((completedLessonsInModule / module.lessons.length) * 100)
+              : 0;
             const moduleAssessmentStatus = getModuleAssessmentStatus(module.id);
-            const hasQuizLessons = module.lessons.filter(l => l.hasQuiz).length;
 
             return (
               <Card key={module.id} className="bg-white border border-gray-200 shadow-sm overflow-hidden">
@@ -399,7 +402,7 @@ export default function SyllabusPage() {
                       <div className="flex items-center gap-4">
                         <div className="h-12 w-12 rounded-lg bg-green-50 flex items-center justify-center font-bold text-green-700 relative border border-green-100">
                           {idx + 1}
-                          {moduleProgress === 100 && (
+                          {moduleProgressPct === 100 && (
                             <div className="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
                               <CheckCircle className="h-3 w-3 text-white" />
                             </div>
@@ -408,30 +411,28 @@ export default function SyllabusPage() {
                         <div className="text-left">
                           <h3 className="font-semibold text-lg text-gray-900">{module.title}</h3>
                           {module.description && (
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-1">
-                              {module.description}
-                            </p>
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-1">{module.description}</p>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4">
-                        <div className="flex flex-col items-end gap-1">
-                          <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-6">
+                        <div className="text-right">
+                          <div className="flex items-center gap-2 mb-1">
                             <Badge variant="secondary" className="bg-gray-100 text-gray-700">
                               {module.lessons.length} lessons
                             </Badge>
-                            {hasQuizLessons > 0 && (
-                              <Badge variant="secondary" className="bg-blue-50 text-blue-700">
-                                {hasQuizLessons} quizzes
+                            {module.hasAssessment && (
+                              <Badge variant="secondary" className="bg-purple-50 text-purple-700">
+                                Assessment
                               </Badge>
                             )}
                           </div>
                           <Badge 
-                            variant={moduleProgress === 100 ? 'default' : 'secondary'}
-                            className={moduleProgress === 100 ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-800'}
+                            variant={moduleProgressPct === 100 ? 'default' : 'secondary'}
+                            className={moduleProgressPct === 100 ? 'bg-green-100 text-green-800 hover:bg-green-200' : ''}
                           >
-                            {moduleProgress}% complete
+                            {moduleProgressPct}% Complete
                           </Badge>
                         </div>
                       </div>
@@ -439,7 +440,6 @@ export default function SyllabusPage() {
                   </AccordionTrigger>
 
                   <AccordionContent className="px-6 pb-6 bg-gray-50/50">
-                    {/* Module Description */}
                     {module.description && (
                       <>
                         <p className="text-gray-700 mb-4">{module.description}</p>
@@ -447,88 +447,54 @@ export default function SyllabusPage() {
                       </>
                     )}
 
-                    {/* Module Assessment Info */}
-                    {module.hasAssessment && (
+                    {module.hasAssessment && moduleAssessmentStatus && (
                       <div className={`mb-6 p-4 rounded-lg border ${
-                        moduleAssessmentStatus?.passed ? 'bg-green-50 border-green-200' :
-                        moduleAssessmentStatus?.attempted ? 'bg-amber-50 border-amber-200' :
+                        moduleAssessmentStatus.passed ? 'bg-green-50 border-green-200' :
+                        moduleAssessmentStatus.attempted ? 'bg-amber-50 border-amber-200' :
                         'bg-blue-50 border-blue-200'
                       }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Target className={`h-5 w-5 ${
-                              moduleAssessmentStatus?.passed ? 'text-green-600' :
-                              moduleAssessmentStatus?.attempted ? 'text-amber-600' : 'text-blue-600'
+                              moduleAssessmentStatus.passed ? 'text-green-600' :
+                              moduleAssessmentStatus.attempted ? 'text-amber-600' : 'text-blue-600'
                             }`} />
                             <div>
                               <p className="font-medium text-gray-900">Module Assessment</p>
-                              <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
-                                <span>Passing Score: {module.minimumPassingScore}%</span>
-                                {module.moduleAssessment?.timeLimit && (
-                                  <span>• Time Limit: {module.moduleAssessment.timeLimit} min</span>
-                                )}
-                                {module.moduleAssessment?.questionCount && (
-                                  <span>• {module.moduleAssessment.questionCount} questions</span>
-                                )}
+                              <div className="text-sm text-gray-600">
+                                Passing Score: {module.minimumPassingScore}% • {module.moduleAssessment?.questionCount || '?'} questions
                               </div>
                             </div>
                           </div>
                           <div className="text-right">
                             <Badge 
-                              variant={moduleAssessmentStatus?.passed ? 'default' : 
-                                      moduleAssessmentStatus?.attempted ? 'secondary' : 'outline'}
+                              variant={moduleAssessmentStatus.passed ? 'default' : 'secondary'}
                               className={
-                                moduleAssessmentStatus?.passed ? 'bg-green-600 hover:bg-green-700 text-white' :
-                                moduleAssessmentStatus?.attempted ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' :
-                                'border-blue-300 text-blue-700 bg-white'
+                                moduleAssessmentStatus.passed 
+                                  ? 'bg-green-600 text-white' 
+                                  : moduleAssessmentStatus.attempted 
+                                    ? 'bg-amber-100 text-amber-800' 
+                                    : 'bg-gray-100 text-gray-700'
                               }
                             >
-                              {moduleAssessmentStatus?.passed ? 'Passed' : 
-                               moduleAssessmentStatus?.attempted ? 'Failed' : 
-                               module.assessmentRequired ? 'Required' : 'Optional'}
+                              {moduleAssessmentStatus.passed ? 'Passed' : 
+                               moduleAssessmentStatus.attempted ? 'Failed' : 'Not Started'}
                             </Badge>
-                            {moduleAssessmentStatus?.attempted && moduleAssessmentStatus.latestScore && (
-                              <p className="text-sm mt-1 text-gray-600">
+                            {moduleAssessmentStatus.attempted && moduleAssessmentStatus.latestScore !== undefined && (
+                              <p className="text-sm text-gray-600 mt-1">
                                 Score: {moduleAssessmentStatus.latestScore}%
                               </p>
                             )}
                           </div>
                         </div>
-                        {module.assessmentRequired && !moduleAssessmentStatus?.passed && (
-                          <div className="mt-3 p-3 bg-white rounded border border-amber-200">
-                            <div className="flex items-center gap-2 text-amber-700">
-                              <AlertCircle className="h-4 w-4" />
-                              <span className="text-sm">
-                                {moduleAssessmentStatus?.attempted 
-                                  ? 'Retake required to pass this module'
-                                  : 'Must be passed to complete this module'}
-                              </span>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
 
-                    {/* Module Progress */}
-                    <div className="mb-6 bg-white p-4 rounded-lg border border-gray-200">
-                      <div className="flex justify-between text-sm mb-2 text-gray-700">
-                        <span className="font-medium">Module Progress</span>
-                        <span className="font-semibold text-gray-900">{moduleProgress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-2">
-                        <div 
-                          className="bg-green-600 h-2 rounded-full" 
-                          style={{ width: `${moduleProgress}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Lessons */}
                     <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-900 mb-2">Lessons</h4>
                       {module.lessons.map((lesson, lessonIdx) => {
-                        const lessonProgress = getLessonProgress(lesson.id);
-                        const isCompleted = lessonProgress?.isCompleted;
+                        const lp = getLessonProgress(lesson.id);
+                        const isCompleted = lp?.progress?.isCompleted || lp?.isComplete;
+                        const quizPassed = lp?.progress?.quizPassed || lp?.quizResult?.quizPassed;
 
                         return (
                           <div
@@ -538,24 +504,21 @@ export default function SyllabusPage() {
                             <div className="flex items-center gap-4 flex-1">
                               {isCompleted ? (
                                 <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center border border-green-200">
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  <CheckCircle className="h-5 w-5 text-green-600" />
                                 </div>
                               ) : (
-                                <div className="h-8 w-8 rounded-full border-2 border-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
+                                <div className="h-8 w-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-sm font-medium text-gray-600">
                                   {lessonIdx + 1}
                                 </div>
                               )}
 
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 truncate">{lesson.title}</p>
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">{lesson.title}</p>
                                 <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
-                                  <Badge 
-                                    variant="secondary" 
-                                    className="text-xs bg-gray-100 text-gray-700 flex items-center gap-1"
-                                  >
+                                  <div className="flex items-center gap-1">
                                     {getContentTypeIcon(lesson.contentType)}
-                                    {lesson.contentType}
-                                  </Badge>
+                                    <span>{lesson.contentType.toLowerCase()}</span>
+                                  </div>
                                   {lesson.videoDuration && (
                                     <span className="flex items-center gap-1">
                                       <Clock className="h-3 w-3" />
@@ -564,33 +527,25 @@ export default function SyllabusPage() {
                                   )}
                                   {lesson.hasQuiz && (
                                     <Badge 
-                                      variant="secondary" 
-                                      className={`text-xs flex items-center gap-1 ${
-                                        lessonProgress?.quizPassed ? 'bg-green-100 text-green-700' :
-                                        lessonProgress?.quizAttempted ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-700'
+                                      variant="secondary"
+                                      className={`text-xs ${
+                                        quizPassed ? 'bg-green-100 text-green-700' : 
+                                        lp?.progress?.quizAttempted ? 'bg-amber-100 text-amber-700' : 
+                                        'bg-blue-50 text-blue-700'
                                       }`}
                                     >
-                                      <Target className="h-3 w-3" />
-                                      Quiz {lesson.quizRequired ? 'Required' : 'Optional'}
-                                      {lessonProgress?.quizPassed && ' ✓'}
+                                      Quiz {quizPassed ? 'Passed' : lp?.progress?.quizAttempted ? 'Failed' : 'Pending'}
                                     </Badge>
                                   )}
                                 </div>
-                                {lesson.description && (
-                                  <p className="text-xs text-gray-600 mt-1 line-clamp-1">
-                                    {lesson.description}
-                                  </p>
-                                )}
                               </div>
                             </div>
 
                             <Button
                               size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                router.push(`/dashboard/user/courses/${courseId}/learn?lesson=${lesson.id}`)
-                              }
-                              className="bg-white border-gray-300 hover:bg-gray-50 text-gray-700 whitespace-nowrap hover:border-gray-400"
+                              variant={isCompleted ? "outline" : "default"}
+                              onClick={() => router.push(`/dashboard/user/courses/${courseId}/learn?lesson=${lesson.id}`)}
+                              className={isCompleted ? "border-gray-300" : "bg-green-600 hover:bg-green-700 text-white"}
                             >
                               {isCompleted ? 'Review' : 'Start'}
                               <PlayCircle className="ml-2 h-4 w-4" />
@@ -600,24 +555,18 @@ export default function SyllabusPage() {
                       })}
                     </div>
 
-                    {/* Module Actions */}
                     <div className="mt-6 flex gap-3">
                       <Button
                         className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() => router.push(`/dashboard/user/courses/${courseId}/modules/${module.id}`)}
+                        onClick={() => router.push(`/dashboard/user/courses/${courseId}/learn?module=${module.id}`)}
                       >
                         <BookOpen className="mr-2 h-4 w-4" />
-                        Module Details
+                        Start Module
                       </Button>
-                      {module.hasAssessment && (
+                      {module.hasAssessment && module.moduleAssessment && (
                         <Button
                           variant="outline"
-                          className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
-                          onClick={() => {
-                            if (module.moduleAssessment) {
-                              router.push(`/dashboard/user/courses/${courseId}/learn?assessment=${module.moduleAssessment.id}`);
-                            }
-                          }}
+                          onClick={() => router.push(`/dashboard/user/courses/${courseId}/learn?assessment=${module.moduleAssessment?.id}`)}
                         >
                           <Target className="mr-2 h-4 w-4" />
                           Take Assessment
@@ -633,133 +582,47 @@ export default function SyllabusPage() {
       </div>
 
       {/* Final Assessment */}
-      {curriculum?.finalAssessment && (
+      {curriculum.finalAssessment && (
         <Card className="bg-white border border-gray-200 shadow-sm">
-          <CardHeader className="border-b border-gray-200">
-            <CardTitle className="text-gray-900 flex items-center gap-2">
-              <div className="p-2 bg-purple-50 rounded-lg">
-                <Award className="h-5 w-5 text-purple-600" />
-              </div>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <Award className="h-6 w-6 text-purple-600" />
               Final Course Assessment
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div className="space-y-3">
-                <h3 className="text-xl font-semibold text-gray-900">{curriculum.finalAssessment.title}</h3>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4" />
-                    <span>Passing Score: {curriculum.finalAssessment.passingScore}%</span>
-                  </div>
-                  {curriculum.finalAssessment.timeLimit && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <span>Time Limit: {curriculum.finalAssessment.timeLimit} min</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4" />
-                    <span>{curriculum.finalAssessment.questionCount} questions</span>
-                  </div>
+          <CardContent>
+            <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+              <div>
+                <h3 className="text-xl font-semibold">{curriculum.finalAssessment.title}</h3>
+                <div className="flex gap-4 mt-2 text-sm text-gray-600">
+                  <span>Passing: {curriculum.finalAssessment.passingScore}%</span>
+                  {curriculum.finalAssessment.timeLimit && <span>• {curriculum.finalAssessment.timeLimit} min</span>}
+                  <span>• {curriculum.finalAssessment.questionCount} questions</span>
                 </div>
                 {progress?.finalAssessmentStatus && (
-                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${
-                    progress.finalAssessmentStatus.passed ? 'bg-green-100' :
-                    progress.finalAssessmentStatus.attempted ? 'bg-amber-100' :
-                    'bg-gray-100'
-                  }`}>
-                    <Badge 
-                      variant={progress.finalAssessmentStatus.passed ? 'default' : 
-                              progress.finalAssessmentStatus.attempted ? 'secondary' : 'outline'}
-                      className={
-                        progress.finalAssessmentStatus.passed ? 'bg-green-600 hover:bg-green-700 text-white' :
-                        progress.finalAssessmentStatus.attempted ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' :
-                        'border-gray-300 text-gray-700 bg-white'
-                      }
-                    >
+                  <div className="mt-3">
+                    <Badge className="mb-2" variant={progress.finalAssessmentStatus.passed ? "default" : "secondary"}>
                       {progress.finalAssessmentStatus.passed ? 'Passed' : 
-                       progress.finalAssessmentStatus.attempted ? 'Attempted' : 'Not Attempted'}
+                       progress.finalAssessmentStatus.attempted ? 'Failed' : 'Not Started'}
                     </Badge>
-                    {progress.finalAssessmentStatus.latestScore && (
-                      <span className="text-sm text-gray-600">
+                    {progress.finalAssessmentStatus.attempted && (
+                      <p className="text-sm text-gray-600">
                         Score: {progress.finalAssessmentStatus.latestScore}%
-                      </span>
+                      </p>
                     )}
                   </div>
                 )}
               </div>
               <Button
-                className="bg-green-600 hover:bg-green-700 text-white"
+                className="bg-purple-600 hover:bg-purple-700 text-white"
                 onClick={() => router.push(`/dashboard/user/courses/${courseId}/learn?assessment=${curriculum.finalAssessment?.id}`)}
-                disabled={!curriculum.finalAssessment.isRequired && curriculum.finalAssessment.isRequired === undefined}
               >
-                {progress?.finalAssessmentStatus?.passed ? 'Review' : 'Take Assessment'}
+                {progress?.finalAssessmentStatus?.passed ? 'Review' : 'Take Final Exam'}
               </Button>
             </div>
-            {!curriculum.finalAssessment.isRequired && (
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Note:</span> This final assessment is optional but recommended for 
-                  comprehensive learning evaluation.
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
-
-      {/* Completion Requirements */}
-      <Card className="bg-white border border-gray-200 shadow-sm">
-        <CardHeader className="border-b border-gray-200">
-          <CardTitle className="text-gray-900 flex items-center gap-2">
-            <div className="p-2 bg-green-50 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-            Course Completion Requirements
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900">Learning Requirements</h4>
-              <ul className="space-y-3 text-sm text-gray-700">
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Complete all required lessons</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Watch video content fully (if applicable)</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Pass all required lesson quizzes</span>
-                </li>
-              </ul>
-            </div>
-            <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900">Assessment Requirements</h4>
-              <ul className="space-y-3 text-sm text-gray-700">
-                <li className="flex items-start gap-3">
-                  <Target className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <span>Pass all required module assessments</span>
-                </li>
-                {curriculum?.finalAssessment?.isRequired && (
-                  <li className="flex items-start gap-3">
-                    <Award className="h-5 w-5 text-purple-500 mt-0.5 flex-shrink-0" />
-                    <span>Pass the final course assessment</span>
-                  </li>
-                )}
-                <li className="flex items-start gap-3">
-                  <BarChart3 className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                  <span>Achieve minimum overall passing score</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

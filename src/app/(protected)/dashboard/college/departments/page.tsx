@@ -1,11 +1,9 @@
 "use client";
 
-import { useCurrentUser } from "@/hooks/auth";
-import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -14,20 +12,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { useCurrentUser } from "@/hooks/auth";
 import {
+  Building2,
+  Edit,
   Loader2,
   Plus,
-  Edit,
-  Trash2,
-  Search,
-  Building2,
   Save,
-  X,
-  CheckCircle,
-  XCircle,
-  ArrowLeft,
+  Search,
+  Trash2,
+  X
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
 interface Department {

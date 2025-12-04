@@ -258,7 +258,7 @@ export default function CourseDetailPage() {
       </div>
 
       {/* Stats Cards */}
-     <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+     <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
   <Card className="bg-white border border-gray-200 shadow-sm">
     <CardContent className="pt-6">
       <div className="flex flex-col items-center text-center">
@@ -333,21 +333,6 @@ export default function CourseDetailPage() {
             Avg Quiz: {enrollment?.averageQuizScore !== null ? `${enrollment?.averageQuizScore}%` : 'N/A'}
           </span>
         </div>
-      </div>
-    </CardContent>
-  </Card>
-
-  <Card className="bg-white border border-gray-200 shadow-sm">
-    <CardContent className="pt-6">
-      <div className="flex flex-col items-center text-center">
-        <div className="p-3 bg-green-50 rounded-lg mb-3">
-          <BookOpen className="h-6 w-6 text-green-600" />
-        </div>
-        <p className="text-sm text-gray-600 mb-1">Modules</p>
-        <p className="text-2xl font-bold text-gray-900">{course.curriculum?.totalModules || 0}</p>
-        <p className="text-xs text-gray-500">
-          {course.curriculum?.totalLessons || 0} lessons
-        </p>
       </div>
     </CardContent>
   </Card>
@@ -660,7 +645,7 @@ export default function CourseDetailPage() {
             </Card>
           )}
 
-          <Card className="bg-white border border-gray-200 shadow-sm">
+          {/* <Card className="bg-white border border-gray-200 shadow-sm">
             <CardHeader className="border-b border-gray-200">
               <CardTitle className="text-gray-900 flex items-center gap-2">
                 <Layers className="h-5 w-5 text-green-600" />
@@ -706,7 +691,7 @@ export default function CourseDetailPage() {
                 </>
               )}
             </CardContent>
-          </Card>
+          </Card> */}
 
           <Card className="bg-white border border-gray-200 shadow-sm">
             <CardHeader className="border-b border-gray-200">

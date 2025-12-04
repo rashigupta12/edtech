@@ -15,19 +15,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  ArrowLeft,
   Edit,
   Eye,
   EyeOff,
   FolderOpen,
   GripVertical,
+  Layers,
   Plus,
   Save,
   Trash2,
-  X,
-  Layers
+  X
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
