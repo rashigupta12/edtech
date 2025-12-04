@@ -10,6 +10,9 @@ import {
 } from "@/db/schema";
 import { eq, and, like, or, sql, inArray } from "drizzle-orm";
 
+// Define the Gender type from your schema
+type Gender = "MALE" | "FEMALE" | "OTHER";
+
 // GET /api/students - Get all students or filtered by college
 export async function GET(request: NextRequest) {
   try {
@@ -243,10 +246,43 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Define interfaces for request body
+interface StudentRequestBody {
+  id?: string;
+  collegeId?: string;
+  dateOfBirth?: string | Date;
+  gender?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pinCode?: string;
+  educationLevel?: string;
+  institution?: string;
+  currentSemester?: number;
+  specialization?: string;
+  academicRecords?: unknown;
+  skills?: string[];
+  resumeUrl?: string;
+  linkedinUrl?: string;
+  enrollmentNumber?: string;
+  githubUrl?: string;
+}
+
+// Helper function to validate and cast gender
+const validateGender = (gender: string | undefined): Gender | null => {
+  if (!gender) return null;
+  const upperGender = gender.toUpperCase();
+  if (upperGender === "MALE" || upperGender === "FEMALE" || upperGender === "OTHER") {
+    return upperGender as Gender;
+  }
+  return null;
+};
+
 // POST /api/students - Create new student profile
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json() as StudentRequestBody;
     const {
       id,
       collegeId,
@@ -284,14 +320,15 @@ export async function POST(request: NextRequest) {
 
     let result;
     const now = new Date();
+    const validatedGender = validateGender(gender);
 
     if (existingProfile.length > 0) {
       result = await db
         .update(StudentProfilesTable)
         .set({
           collegeId,
-          dateOfBirth,
-          gender,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+          gender: validatedGender,
           address,
           city,
           state,
@@ -326,8 +363,8 @@ export async function POST(request: NextRequest) {
         .values({
           id,
           collegeId,
-          dateOfBirth,
-          gender,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+          gender: validatedGender,
           address,
           city,
           state,
@@ -357,10 +394,12 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Student POST error:", error);
     
-    if (error.code === "23503" || error.message?.includes("foreign key constraint")) {
+    const err = error as { code?: string; message?: string };
+    
+    if (err.code === "23503" || err.message?.includes("foreign key constraint")) {
       return NextResponse.json(
         { 
           success: false, 
@@ -380,6 +419,28 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Define interface for PUT request body
+interface UpdateStudentRequestBody {
+  collegeId?: string;
+  dateOfBirth?: string | Date;
+  gender?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pinCode?: string;
+  educationLevel?: string;
+  institution?: string;
+  currentSemester?: number;
+  enrollmentNumber?: string;
+  specialization?: string;
+  academicRecords?: unknown;
+  skills?: string[];
+  resumeUrl?: string;
+  linkedinUrl?: string;
+  githubUrl?: string;
+}
+
 // PUT /api/students?id={studentId} - Update student profile
 export async function PUT(request: NextRequest) {
   try {
@@ -393,15 +454,21 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body = await request.json() as UpdateStudentRequestBody;
 
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
     if (body.collegeId !== undefined) updateData.collegeId = body.collegeId;
     if (body.dateOfBirth !== undefined) updateData.dateOfBirth = body.dateOfBirth ? new Date(body.dateOfBirth) : null;
-    if (body.gender !== undefined) updateData.gender = body.gender;
+    
+    // Validate and cast gender
+    if (body.gender !== undefined) {
+      const validatedGender = validateGender(body.gender);
+      updateData.gender = validatedGender;
+    }
+    
     if (body.address !== undefined) updateData.address = body.address;
     if (body.city !== undefined) updateData.city = body.city;
     if (body.state !== undefined) updateData.state = body.state;
@@ -437,7 +504,7 @@ export async function PUT(request: NextRequest) {
       data: updated,
       message: "Student profile updated successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Student PUT error:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },

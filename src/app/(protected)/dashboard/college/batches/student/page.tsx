@@ -1,7 +1,7 @@
 "use client";
 
 import { useCurrentUser } from "@/hooks/auth";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,13 +35,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+
+interface Student {
+  id: string;
+  user?: {
+    name: string;
+    email: string;
+    mobile?: string;
+  };
+  enrollmentNumber?: string;
+  currentSemester?: number;
+  specialization?: string;
+  educationLevel?: string;
+  gender?: string;
+  institution?: string;
+  city?: string;
+  state?: string;
+}
+
+interface FormData {
+  name: string;
+  email: string;
+  mobile: string;
+  password: string;
+  enrollmentNo: string;
+  currentSemester: string;
+  specialization: string;
+  educationLevel: string;
+  gender: string;
+}
+
+interface ValidationErrors {
+  email: string;
+  mobile: string;
+  password: string;
+}
 
 const StudentPage = () => {
   const user = useCurrentUser();
   const [collegeId, setCollegeId] = useState<string>("");
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -51,31 +84,23 @@ const StudentPage = () => {
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
 
   const [collegeName, setCollegeName] = useState<string>("");
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
     mobile: "",
     password: "",
     enrollmentNo: "",
-    batchYear: new Date().getFullYear().toString(),
     currentSemester: "",
     specialization: "",
     educationLevel: "",
     gender: "",
-   
   });
 
-  const [validationErrors, setValidationErrors] = useState({
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({
     email: "",
     mobile: "",
     password: "",
   });
-
-  // Generate batch years (last 5 years + current + next 2 years)
-  const currentYear = new Date().getFullYear();
-  const batchYears = Array.from({ length: 8 }, (_, i) => 
-    (currentYear - 3 + i).toString()
-  );
 
   const genderOptions = [
     { value: "MALE", label: "Male" },
@@ -102,7 +127,7 @@ const StudentPage = () => {
     const mobileRegex = /^\d{0,10}$/;
     if (mobile && !mobileRegex.test(mobile)) return "Only digits allowed";
     if (mobile.length > 10) return "Max 10 digits allowed";
-    if (mobile.length === 10) return ""; // Valid 10-digit number
+    if (mobile.length === 10) return "";
     return mobile ? "Must be 10 digits" : "";
   };
 
@@ -112,24 +137,23 @@ const StudentPage = () => {
     return "";
   };
 
-const fetchCollegeId = async () => {
-  if (!user?.id) return;
-  try {
-    const res = await fetch(`/api/colleges?userId=${user.id}`, {
-      cache: "no-store",
-    });
-    const data = await res.json();
-    if (data.success) {
-      setCollegeId(data.data.id);
-      // Store the college name for later use
-      setCollegeName(data.data.collegeName);
+  const fetchCollegeId = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await fetch(`/api/colleges?userId=${user.id}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCollegeId(data.data.id);
+        setCollegeName(data.data.collegeName);
+      }
+    } catch (error) {
+      console.error("Error fetching college ID:", error);
     }
-  } catch (error) {
-    console.error("Error fetching college ID:", error);
-  }
-};
+  }, [user?.id]);
 
-  const loadStudents = async () => {
+  const loadStudents = useCallback(async () => {
     if (!collegeId) return;
     setLoading(true);
     try {
@@ -157,15 +181,15 @@ const fetchCollegeId = async () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [collegeId]);
 
   useEffect(() => {
     fetchCollegeId();
-  }, [user]);
+  }, [fetchCollegeId]);
 
   useEffect(() => {
     if (collegeId) loadStudents();
-  }, [collegeId]);
+  }, [collegeId, loadStudents]);
 
   // Open form in ADD mode
   const openAddForm = () => {
@@ -177,12 +201,10 @@ const fetchCollegeId = async () => {
       mobile: "",
       password: "",
       enrollmentNo: "",
-      batchYear: currentYear.toString(),
       currentSemester: "",
       specialization: "",
       educationLevel: "",
       gender: "",
-      
     });
     setValidationErrors({
       email: "",
@@ -193,22 +215,19 @@ const fetchCollegeId = async () => {
   };
 
   // Open form in EDIT mode
-  const openEditForm = (student: any) => {
+  const openEditForm = (student: Student) => {
     setIsEditMode(true);
     setEditingStudentId(student.id);
     setFormData({
       name: student.user?.name || "",
       email: student.user?.email || "",
       mobile: student.user?.mobile || "",
-      password: "", // Not shown in edit mode
-       enrollmentNo: student.enrollmentNumber || "",
-      batchYear: student.batchYear?.toString() || currentYear.toString(),
+      password: "",
+      enrollmentNo: student.enrollmentNumber || "",
       currentSemester: student.currentSemester?.toString() || "",
       specialization: student.specialization || "",
       educationLevel: student.educationLevel || "",
       gender: student.gender || "",
-     
-      
     });
     setValidationErrors({
       email: "",
@@ -226,7 +245,7 @@ const fetchCollegeId = async () => {
   };
 
   // Handle input changes with validation
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
     if (field === "email" && !isEditMode) {
@@ -276,7 +295,6 @@ const fetchCollegeId = async () => {
             institution: collegeName,
             educationLevel: formData.educationLevel,
             gender: formData.gender,
-            
           }),
         });
 
@@ -296,11 +314,12 @@ const fetchCollegeId = async () => {
           showConfirmButton: false,
           confirmButtonColor: "#059669",
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const error = err as Error;
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: "Failed to update student: " + err.message,
+          text: "Failed to update student: " + error.message,
           confirmButtonColor: "#059669",
         });
       } finally {
@@ -401,11 +420,12 @@ const fetchCollegeId = async () => {
           showConfirmButton: false,
           confirmButtonColor: "#059669",
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const error = err as Error;
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: err.message || "Failed to add student",
+          text: error.message || "Failed to add student",
           confirmButtonColor: "#059669",
         });
       } finally {
@@ -565,7 +585,6 @@ const fetchCollegeId = async () => {
                         <TableHead className="font-semibold text-gray-700">
                           Institution
                         </TableHead>
-                       
                         <TableHead className="font-semibold text-gray-700 text-right">
                           Actions
                         </TableHead>
@@ -636,7 +655,6 @@ const fetchCollegeId = async () => {
                               <span className="text-gray-400 text-sm">—</span>
                             )}
                           </TableCell>
-                         
                           <TableCell className="text-right space-x-1">
                             <Button
                               size="sm"
@@ -865,34 +883,21 @@ const fetchCollegeId = async () => {
                 />
               </div>
 
-              {/* Institution Field */}
-              {/* <div>
+              {/* Institution Display */}
+              <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
                   Institution
                 </label>
-                <Input
-                  placeholder="e.g., University/College name"
-                  value={formData.institution}
-                  onChange={(e) => handleInputChange("institution", e.target.value)}
-                  disabled={submitting}
-                  className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                />
-              </div> */}
-              {/* Institution Display */}
-<div>
-  <label className="text-sm font-medium text-gray-700 mb-2 block">
-    Institution
-  </label>
-  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md border border-gray-200">
-    <GraduationCap className="w-4 h-4 text-gray-500" />
-    <span className="text-sm text-gray-700">
-      {collegeName || "Loading college name..."}
-    </span>
-  </div>
-  <p className="text-xs text-gray-500 mt-1">
-    Institution is automatically set from your college
-  </p>
-</div>
+                <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md border border-gray-200">
+                  <GraduationCap className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-700">
+                    {collegeName || "Loading college name..."}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Institution is automatically set from your college
+                </p>
+              </div>
 
               {/* Education Level Field */}
               <div>
@@ -943,8 +948,6 @@ const fetchCollegeId = async () => {
                   </SelectContent>
                 </Select>
               </div>
-
-              
             </div>
           </div>
 
