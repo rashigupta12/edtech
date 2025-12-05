@@ -34,6 +34,9 @@ export default function Dashboard() {
       case "COLLEGE":
         router.replace("/dashboard/college");
         break;
+      case "FACULTY":
+        router.replace("/dashboard/faculty")
+        break;
       default:
         router.replace("/auth/login");
         break;

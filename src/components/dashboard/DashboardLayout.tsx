@@ -40,7 +40,7 @@ import { useState } from "react";
 
 type Props = {
   children: React.ReactNode;
-  role: "admin" | "agent" | "user";
+  role: "admin" | "agent" | "user" | "faculty";
 };
 
 const navConfigs = {
@@ -255,6 +255,70 @@ const navConfigs = {
     { title: "Dashboard", href: "/dashboard/user", icon: Home },
     { title: "My Courses", href: "/dashboard/user/courses", icon: BookOpen },
     { title: "Payments", href: "/dashboard/user/payments", icon: Wallet },
+  ] as const,
+
+  faculty: [
+    { title: "Dashboard", href: "/dashboard/college", icon: Home },
+    {
+      title: "Profile",
+      href: "/dashboard/faculty/profile",
+      icon: Users,
+    },
+    {
+      title: " Courses",
+      icon: Tag,
+      children: [
+        {
+          title: "All Courses",
+          href: "/dashboard/faculty/courses",
+          icon: List,
+        },
+        {
+          title: "Add course",
+          href: "/dashboard/faculty/courses/create",
+          icon: Ticket,
+        },
+      ],
+    },
+
+    {
+      title: " Departments",
+      icon: Tag,
+      children: [
+        {
+          title: "All Departments",
+          href: "/dashboard/faculty/departments",
+          icon: List,
+        },
+      ],
+    },
+    {
+      title: "Faculty",
+      href: "/dashboard/faculty/faculty",
+      icon: Users,
+    },
+    {
+      title: "Batch Management",
+      icon: Tag,
+      children: [
+        { title: "Batches", href: "/dashboard/faculty/batches", icon: List },
+        {
+          title: "Enrollments",
+          href: "/dashboard/faculty/batches/enrollment",
+          icon: Ticket,
+        },
+        {
+          title: "Courses",
+          href: "/dashboard/faculty/batches/courses",
+          icon: Ticket,
+        },
+        {
+          title: "Student",
+          href: "/dashboard/faculty/batches/student",
+          icon: Users,
+        },
+      ],
+    },
   ] as const,
 };
 
