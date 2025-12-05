@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface CourseData {
   id: string;
@@ -103,6 +103,28 @@ export default function CourseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
 
+ const fetchAssessmentProgress = useCallback(async () => {
+    if (!userId || !courseId) return;
+    
+    try {
+      setStatsLoading(true);
+      const progressRes = await fetch(`/api/progress?userId=${userId}&courseId=${courseId}`);
+      if (progressRes.ok) {
+        const progressJson = await progressRes.json();
+        if (progressJson.data) {
+          setAssessmentProgress({
+            moduleAssessmentStatus: progressJson.data.moduleAssessmentStatus || [],
+            finalAssessmentStatus: progressJson.data.finalAssessmentStatus || null
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load assessment progress', err);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [userId, courseId]);
+
   useEffect(() => {
     async function loadData() {
       if (!courseId) return;
@@ -135,29 +157,8 @@ export default function CourseDetailPage() {
     }
 
     loadData();
-  }, [courseId, userId]);
+  }, [courseId, userId, fetchAssessmentProgress]);
 
-  const fetchAssessmentProgress = async () => {
-    if (!userId) return;
-    
-    try {
-      setStatsLoading(true);
-      const progressRes = await fetch(`/api/progress?userId=${userId}&courseId=${courseId}`);
-      if (progressRes.ok) {
-        const progressJson = await progressRes.json();
-        if (progressJson.data) {
-          setAssessmentProgress({
-            moduleAssessmentStatus: progressJson.data.moduleAssessmentStatus || [],
-            finalAssessmentStatus: progressJson.data.finalAssessmentStatus || null
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load assessment progress', err);
-    } finally {
-      setStatsLoading(false);
-    }
-  };
 
   // Calculate assessment completion rate
   const calculateAssessmentCompletion = () => {

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useCurrentUser } from '@/hooks/auth';
 import { Award, BookOpen, Calendar, ChevronRight, Clock, FileText, Loader2, Sparkles, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface Course {
   id: string;
@@ -45,13 +45,7 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchEnrolledCourses();
-    }
-  }, [user]);
-
-  const fetchEnrolledCourses = async () => {
+ const fetchEnrolledCourses = useCallback(async () => {
     try {
       setLoading(true);
       // Fetch user's enrolled courses
@@ -82,7 +76,13 @@ export default function StudentDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchEnrolledCourses();
+    }
+  }, [user?.id, fetchEnrolledCourses]);
 
   const upcomingAssignments: Assignment[] = [
     { id: 1, title: 'Algorithm Analysis Essay', course: 'Data Structures', dueDate: 'Dec 5, 2025', status: 'pending' },

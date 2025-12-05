@@ -23,7 +23,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface CourseEnrollment {
   id: string;
@@ -64,16 +64,7 @@ export default function UserCoursesPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-
-    fetchEnrollments();
-  }, [userId]);
-
-  const fetchEnrollments = async () => {
+  const fetchEnrollments = useCallback(async () => {
     if (!userId) return;
 
     try {
@@ -97,7 +88,16 @@ export default function UserCoursesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    fetchEnrollments();
+  }, [userId, fetchEnrollments]);
 
   // Refresh progress for a specific course
   const refreshProgress = async (courseId: string, enrollmentId: string) => {
