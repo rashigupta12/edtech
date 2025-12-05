@@ -6,45 +6,48 @@ import {
   Mail,
   Phone,
   MapPin,
-  Star,
-  
+  BookOpen,
+  GraduationCap,
+  Users,
+  ChevronRight
 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 
 export function SiteFooter() {
   return (
-    <footer className="bg-slate-900 text-slate-300">
+    <footer className="bg-gradient-to-b from-gray-900 to-gray-950 text-gray-300">
       {/* Main Footer Content */}
-      <div className="container mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="container mx-auto px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Brand Section */}
-          <div className="lg:col-span-1">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                <Star className="w-6 h-6 text-white" />
+          <div className="lg:col-span-2">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-14 h-14 bg-gradient-to-br from-emerald-600 to-green-500 rounded-xl flex items-center justify-center shadow-lg">
+                <GraduationCap className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="font-bold text-lg text-white">Futuretek</h3>
-                <p className="text-sm text-blue-200">Institute of Astrological Sciences</p>
+                <h3 className="font-bold text-2xl text-white"> EduTech</h3>
+                <p className="text-sm text-emerald-400 font-medium">Learn & Grow</p>
               </div>
             </div>
-            <p className="text-slate-400 text-sm leading-relaxed mb-6">
-              Master ancient wisdom with modern teaching methodologies. Expert-led courses 
-              in KP Astrology, Financial Astrology, Vastu Shastra, and Astro-Vastu.
+            <p className="text-gray-400 text-base leading-relaxed mb-8 max-w-md">
+              Empowering learners worldwide with cutting-edge educational technology. 
+              Access thousands of courses, interactive content, and expert-led programs 
+              to accelerate your learning journey.
             </p>
             <div className="flex gap-4">
               {[
-                { icon: Facebook, href: "#", color: "hover:text-blue-400" },
-                { icon: Instagram, href: "#", color: "hover:text-pink-400" },
-                { icon: Twitter, href: "#", color: "hover:text-blue-300" },
-                { icon: Youtube, href: "#", color: "hover:text-red-400" },
+                { icon: Facebook, href: "#", label: "Facebook", color: "hover:bg-blue-600" },
+                { icon: Instagram, href: "#", label: "Instagram", color: "hover:bg-pink-600" },
+                { icon: Twitter, href: "#", label: "Twitter", color: "hover:bg-blue-500" },
+                { icon: Youtube, href: "#", label: "YouTube", color: "hover:bg-red-600" },
               ].map((social, index) => (
                 <a
                   key={index}
                   href={social.href}
-                  className={`text-slate-400 ${social.color} transition-colors duration-200`}
+                  className={`w-10 h-10 bg-gray-800 ${social.color} text-gray-300 hover:text-white rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-105`}
+                  aria-label={social.label}
                 >
                   <social.icon className="w-5 h-5" />
                 </a>
@@ -54,22 +57,51 @@ export function SiteFooter() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="font-semibold text-white mb-4 text-lg">
-              Quick Links
+            <h3 className="font-semibold text-white mb-6 text-lg flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-emerald-400" />
+              Resources
             </h3>
             <ul className="space-y-3">
               {[
-                { href: "/", label: "Home" },
                 { href: "/courses", label: "All Courses" },
-                { href: "/about", label: "About Institute" },
-                { href: "/contact", label: "Contact Us" },
-                { href: "/blogs", label: "Blog" },
+                { href: "/instructors", label: "Expert Instructors" },
+                { href: "/pricing", label: "Pricing Plans" },
+                { href: "/enterprise", label: "For Organizations" },
+                { href: "/certifications", label: "Certifications" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link 
                     href={link.href} 
-                    className="text-slate-400 hover:text-white transition-colors duration-200 text-sm"
+                    className="text-gray-400 hover:text-emerald-400 transition-colors duration-200 text-sm flex items-center gap-2 group"
                   >
+                    <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Company */}
+          <div>
+            <h3 className="font-semibold text-white mb-6 text-lg flex items-center gap-2">
+              <Users className="w-5 h-5 text-emerald-400" />
+              Company
+            </h3>
+            <ul className="space-y-3">
+              {[
+                { href: "/about", label: "About Us" },
+                { href: "/careers", label: "Careers" },
+                { href: "/blog", label: "Blog & Insights" },
+                { href: "/contact", label: "Contact Support" },
+                { href: "/legal", label: "Legal & Privacy" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link 
+                    href={link.href} 
+                    className="text-gray-400 hover:text-emerald-400 transition-colors duration-200 text-sm flex items-center gap-2 group"
+                  >
+                    <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                     {link.label}
                   </Link>
                 </li>
@@ -79,76 +111,90 @@ export function SiteFooter() {
 
           {/* Contact Info */}
           <div>
-            <h3 className="font-semibold text-white mb-4 text-lg">
-              Contact Info
+            <h3 className="font-semibold text-white mb-6 text-lg">
+              Get in Touch
             </h3>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
-                <Mail className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                <div className="w-8 h-8 bg-emerald-900/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Mail className="w-4 h-4 text-emerald-400" />
+                </div>
                 <div>
+                  <p className="text-xs text-gray-500 mb-1">Email</p>
                   <a
-                    href="mailto:info@futuretekastro.com"
-                    className="text-slate-400 hover:text-white transition-colors text-sm"
+                    href="mailto:support@ EduTech.com"
+                    className="text-gray-300 hover:text-emerald-400 transition-colors text-sm"
                   >
-                    info@futuretekastro.com
+                    support@ EduTech.com
                   </a>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <Phone className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                <div className="w-8 h-8 bg-emerald-900/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-4 h-4 text-emerald-400" />
+                </div>
                 <div>
-                  <a href="tel:+919876543210" className="text-slate-400 hover:text-white transition-colors text-sm">
-                    +91 98765 43210
+                  <p className="text-xs text-gray-500 mb-1">Phone</p>
+                  <a href="tel:+11234567890" className="text-gray-300 hover:text-emerald-400 transition-colors text-sm">
+                    +1 (123) 456-7890
                   </a>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                <div className="w-8 h-8 bg-emerald-900/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-4 h-4 text-emerald-400" />
+                </div>
                 <div>
-                  <span className="text-slate-400 text-sm leading-relaxed">
-                    New Delhi - 110001, India
+                  <p className="text-xs text-gray-500 mb-1">Location</p>
+                  <span className="text-gray-300 text-sm leading-relaxed">
+                    123 Learning Street<br />
+                    San Francisco, CA 94107
                   </span>
                 </div>
               </li>
             </ul>
           </div>
-
-          {/* Newsletter */}
-          <div>
-            <h3 className="font-semibold text-white mb-4 text-lg">
-              Newsletter
-            </h3>
-            <p className="text-slate-400 text-sm mb-4 leading-relaxed">
-              Get astrological insights and course updates.
-            </p>
-            <form className="space-y-3">
-              <Input
-                type="email"
-                placeholder="Enter your email"
-                className="bg-slate-800 border-slate-600 text-white placeholder-slate-400 focus:border-blue-500 h-10"
-                required
-              />
-              <Button 
-                type="submit" 
-                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white h-10 font-medium transition-colors duration-200"
-              >
-                Subscribe
-              </Button>
-            </form>
-          </div>
         </div>
+
+       
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-slate-700">
-        <div className="container mx-auto px-6 py-4">
+      <div className="bg-gray-900">
+        <div className="container mx-auto px-6 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             {/* Copyright */}
-            <div className="text-slate-400 text-sm">
-              &copy; 2024 Futuretek Institute. All rights reserved.
+            <div className="text-gray-500 text-sm text-center md:text-left">
+              &copy; {new Date().getFullYear()}  EduTech LMS. All rights reserved.
             </div>
             
+            {/* Additional Links */}
+            <div className="flex flex-wrap justify-center gap-6 text-sm">
+              <Link href="/privacy" className="text-gray-500 hover:text-emerald-400 transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="text-gray-500 hover:text-emerald-400 transition-colors">
+                Terms of Service
+              </Link>
+              <Link href="/cookies" className="text-gray-500 hover:text-emerald-400 transition-colors">
+                Cookie Policy
+              </Link>
+              <Link href="/sitemap" className="text-gray-500 hover:text-emerald-400 transition-colors">
+                Sitemap
+              </Link>
+            </div>
             
+            {/* Trust Badges */}
+            <div className="flex items-center gap-4 text-xs text-gray-500">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                <span>SSL Secured</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-2">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                <span>GDPR Compliant</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

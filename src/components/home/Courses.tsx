@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+
 interface Course {
   id: string;
   slug: string;
@@ -256,13 +257,15 @@ export default function FeaturedCourses() {
           ))}
         </div>
 
-        {/* View All Button */}
-        <div className="text-center mt-10">
-          <button className="inline-flex items-center gap-2 bg-white text-emerald-700 px-8 py-3 rounded-lg border-2 border-emerald-600 hover:bg-emerald-600 hover:text-white transition-all font-medium">
-            View All Courses
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </div>
+     <div className="text-center mt-10">
+  <Link 
+    href="/courses"
+    className="inline-flex items-center justify-center gap-2 bg-white text-emerald-700 px-8 py-3 rounded-lg border-2 border-emerald-600 hover:bg-emerald-600 hover:text-white transition-all font-medium"
+  >
+    View All Courses
+    <ArrowRight className="w-5 h-5" />
+  </Link>
+</div>
       </div>
     </section>
   );
