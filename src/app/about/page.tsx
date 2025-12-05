@@ -2,6 +2,7 @@ import React from 'react';
 import { BookOpen, Users, Target, Award, Globe, Heart, Sparkles, TrendingUp, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { SiteFooter } from '@/components/site-footer';
 
 export default function AboutPage() {
   return (
@@ -263,6 +264,7 @@ export default function AboutPage() {
     </div>
   </div>
 </section>
+<SiteFooter/>
     </div>
   );
 }

@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SiteFooter } from "@/components/site-footer";
 
 export default function ContactPage() {
   return (
@@ -268,6 +269,7 @@ export default function ContactPage() {
           </div>
         </div>
       </section>
+      <SiteFooter/>
     </div>
   );
 }
