@@ -2,327 +2,19 @@
 "use client";
 
 import {
-  BookOpen,
-  ChevronDown,
-  FileText,
-  Home,
-  LayoutDashboard,
-  List,
-  MessageCircle,
-  Plus,
-  Tag,
-  Ticket,
-  Users,
-  Wallet,
+  ChevronDown
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-
-// type NavItem =
-//   | {
-//       title: string;
-//       href: string;
-//       icon: React.ComponentType<{ className?: string }>;
-//       children?: never;
-//     }
-//   | {
-//       title: string;
-//       href?: never;
-//       icon: React.ComponentType<{ className?: string }>;
-//       children: {
-//         title: string;
-//         href: string;
-//         icon: React.ComponentType<{ className?: string }>;
-//       }[];
-//     };
+import { navConfigs } from "../navConfigs";
 
 type Props = {
   children: React.ReactNode;
-  role: "admin" | "agent" | "user" | "faculty";
-};
-
-const navConfigs = {
-  admin: [
-    { title: "Dashboard", href: "/dashboard/admin", icon: Home },
-    {
-      title: "Courses",
-      icon: BookOpen,
-      children: [
-        { title: "All Courses", href: "/dashboard/admin/courses", icon: List },
-        {
-          title: "Add Course",
-          href: "/dashboard/admin/courses/create",
-          icon: Plus,
-        },
-      ],
-    },
-
-    { title: "Categories", href: "/dashboard/admin/categories", icon: List },
-
-    {
-      title: "Bootcamp",
-      icon: BookOpen,
-      children: [
-        {
-          title: "All Bootcamps",
-          href: "/dashboard/admin/bootcamps",
-          icon: List,
-        },
-        {
-          title: "Add Bootcamp",
-          href: "/dashboard/admin/bootcamps/create",
-          icon: Plus,
-        },
-      ],
-    },
-
-    {
-      title: "College",
-      icon: BookOpen,
-      children: [
-        {
-          title: "List of Colleges",
-          href: "/dashboard/admin/colleges",
-          icon: List,
-        },
-        {
-          title: "Add College",
-          href: "/dashboard/admin/colleges/add",
-          icon: Plus,
-        },
-      ],
-    },
-    {
-      title: "Assignment",
-      icon: FileText,
-      children: [
-        {
-          title: "All Assignments",
-          href: "/dashboard/admin/assignments",
-          icon: List,
-        },
-        {
-          title: "Add Assignment",
-          href: "/dashboard/admin/assignments/create",
-          icon: Plus,
-        },
-      ],
-    },
-
-    { title: "CMS", href: "/dashboard/admin/cms", icon: LayoutDashboard },
-    {
-      title: "Testimonals",
-      href: "/dashboard/admin/testimonials",
-      icon: MessageCircle,
-    },
-
-    // {
-    //   title: "Astrologer ",
-    //   icon: Users,
-    //   children: [
-    //     { title: "All Astrologer", href: "/dashboard/admin/agent", icon: List },
-    //     {
-    //       title: "Add Astrologer",
-    //       href: "/dashboard/admin/agent/add",
-    //       icon: Plus,
-    //     },
-    //   ],
-    // },
-    // {
-    //   title: "Coupons",
-    //   icon: Tag,
-    //   children: [
-    //     {
-    //       title: "Coupon Types",
-    //       href: "/dashboard/admin/coupons-types",
-    //       icon: List,
-    //     },
-    //     {
-    //       title: "Add Type",
-    //       href: "/dashboard/admin/coupons-types/add",
-    //       icon: Plus,
-    //     },
-    //     { title: "All Coupons", href: "/dashboard/admin/coupons", icon: List },
-    //     {
-    //       title: "Add Coupon",
-    //       href: "/dashboard/admin/coupons/add",
-    //       icon: Plus,
-    //     },
-    //   ],
-    // },
-    // {
-    //   title: "Users",
-    //   icon: Users,
-    //   children: [
-    //     { title: "All Users", href: "/dashboard/admin/users", icon: List },
-    //     {
-    //       title: "Enrollments",
-    //       href: "/dashboard/admin/enrollments",
-    //       icon: Users,
-    //     },
-    //     {
-    //       title: "Revenue",
-    //       href: "/dashboard/admin/payments",
-    //       icon: CreditCard,
-    //     },
-    //   ],
-    // },
-    // {
-    //   title: "Certificates",
-    //   icon: Award,
-    //   children: [
-    //     {
-    //       title: "Pending Requests",
-    //       href: "/dashboard/admin/certificates/requests",
-    //       icon: List,
-    //     },
-    //     {
-    //       title: "All Certificates",
-    //       href: "/dashboard/admin/certificates",
-    //       icon: Award,
-    //     },
-    //   ],
-    // },
-  ] as const,
-
-  agent: [
-    { title: "Dashboard", href: "/dashboard/college", icon: Home },
-    {
-      title: "Profile",
-      href: "/dashboard/college/profile",
-      icon: Users,
-    },
-    {
-      title: " Courses",
-      icon: Tag,
-      children: [
-        {
-          title: "All Courses",
-          href: "/dashboard/college/courses",
-          icon: List,
-        },
-        {
-          title: "Add course",
-          href: "/dashboard/college/courses/create",
-          icon: Ticket,
-        },
-      ],
-    },
-
-    {
-      title: " Departments",
-      icon: Tag,
-      children: [
-        {
-          title: "All Departments",
-          href: "/dashboard/college/departments",
-          icon: List,
-        },
-      ],
-    },
-    {
-      title: "Faculty",
-      href: "/dashboard/college/faculty",
-      icon: Users,
-    },
-    {
-      title: "Batch Management",
-      icon: Tag,
-      children: [
-        { title: "Batches", href: "/dashboard/college/batches", icon: List },
-        {
-          title: "Enrollments",
-          href: "/dashboard/college/batches/enrollment",
-          icon: Ticket,
-        },
-        {
-          title: "Courses",
-          href: "/dashboard/college/batches/courses",
-          icon: Ticket,
-        },
-        {
-          title: "Student",
-          href: "/dashboard/college/batches/student",
-          icon: Users,
-        },
-      ],
-    },
-  ] as const,
-
-  user: [
-    { title: "Dashboard", href: "/dashboard/user", icon: Home },
-    { title: "My Courses", href: "/dashboard/user/courses", icon: BookOpen },
-    { title: "Payments", href: "/dashboard/user/payments", icon: Wallet },
-  ] as const,
-
-  faculty: [
-    { title: "Dashboard", href: "/dashboard/college", icon: Home },
-    {
-      title: "Profile",
-      href: "/dashboard/faculty/profile",
-      icon: Users,
-    },
-    {
-      title: " Courses",
-      icon: Tag,
-      children: [
-        {
-          title: "All Courses",
-          href: "/dashboard/faculty/courses",
-          icon: List,
-        },
-        {
-          title: "Add course",
-          href: "/dashboard/faculty/courses/create",
-          icon: Ticket,
-        },
-      ],
-    },
-
-    {
-      title: " Departments",
-      icon: Tag,
-      children: [
-        {
-          title: "All Departments",
-          href: "/dashboard/faculty/departments",
-          icon: List,
-        },
-      ],
-    },
-    {
-      title: "Faculty",
-      href: "/dashboard/faculty/faculty",
-      icon: Users,
-    },
-    {
-      title: "Batch Management",
-      icon: Tag,
-      children: [
-        { title: "Batches", href: "/dashboard/faculty/batches", icon: List },
-        {
-          title: "Enrollments",
-          href: "/dashboard/faculty/batches/enrollment",
-          icon: Ticket,
-        },
-        {
-          title: "Courses",
-          href: "/dashboard/faculty/batches/courses",
-          icon: Ticket,
-        },
-        {
-          title: "Student",
-          href: "/dashboard/faculty/batches/student",
-          icon: Users,
-        },
-      ],
-    },
-  ] as const,
+  role: "admin" | "college" | "faculty" | "student";
 };
 
 export default function DashboardLayout({ children, role }: Props) {
-  // const { data: session } = useSession();
   const pathname = usePathname();
   const [openMenus, setOpenMenus] = useState<string[]>([]);
 
@@ -336,19 +28,18 @@ export default function DashboardLayout({ children, role }: Props) {
 
   const isActive = (href: string) => pathname === href;
 
-  // const userName = session?.user?.name || "User";
-  // const initials = userName
-  //   .split(" ")
-  //   .map((n) => n[0])
-  //   .join("")
-  //   .toUpperCase()
-  //   .slice(0, 2);
-
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r fixed inset-y-0 left-0 overflow-y-auto pt-20 pb-10">
+      <aside className="w-64 bg-white border-r fixed inset-y-0 left-0 overflow-y-auto pt-24 pb-10">
         <div className="px-6">
+          {/* Role Badge */}
+          {/* <div className="mb-6 px-4 py-2 bg-blue-50 rounded-lg">
+            <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">
+              {role === "college" ? "College Dashboard" : `${role} Dashboard`}
+            </p>
+          </div> */}
+
           {/* Navigation */}
           <nav className="space-y-1">
             {items.map((item) => (

@@ -7,5 +7,5 @@ export default async function AgentLayout({ children }: { children: React.ReactN
   const session = await auth();
   if (!session || session.user.role !== "COLLEGE") redirect("/auth/login");
 
-  return <DashboardLayout role="agent">{children}</DashboardLayout>;
+  return <DashboardLayout role="college">{children}</DashboardLayout>;
 }
