@@ -14,7 +14,6 @@ import {
   BookOpen,
   Edit,
   Eye,
-  Filter,
   Plus,
   Search,
   Trash2,
@@ -22,7 +21,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Archive,
   Star,
   Building2,
 } from "lucide-react";
@@ -304,55 +302,7 @@ export default function CoursesPage() {
     }
   };
 
-  const handleArchive = async (id: string, title: string) => {
-    const result = await Swal.fire({
-      title: "Archive Course?",
-      html: `Archive <strong>"${title}"</strong>?`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#f59e0b",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Yes, archive it!",
-      cancelButtonText: "Cancel",
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      const res = await fetch(`/api/courses?id=${id}&archive=true`, {
-        method: "PUT",
-      });
-
-      const response = await res.json();
-
-      if (response.success) {
-        await Swal.fire({
-          icon: "success",
-          title: "Archived!",
-          text: "Course has been archived.",
-          timer: 2000,
-          showConfirmButton: false,
-          confirmButtonColor: "#059669",
-        });
-        await fetchCourses();
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Archive Failed",
-          text: response.error?.message || "Failed to archive course",
-          confirmButtonColor: "#059669",
-        });
-      }
-    } catch (err) {
-      console.error("Archive error:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "An error occurred while archiving the course.",
-        confirmButtonColor: "#059669",
-      });
-    }
-  };
+ 
 
   // Apply all filters
   const filteredCourses = courses.filter((course) => {
@@ -372,7 +322,7 @@ export default function CoursesPage() {
     "APPROVED",
     "PUBLISHED",
     "REJECTED",
-    "ARCHIVED",
+   
   ];
 
   const levelOptions = ["ALL", "Beginner", "Intermediate", "Advanced"];
@@ -389,8 +339,7 @@ export default function CoursesPage() {
         return "bg-gray-100 text-gray-800 border-gray-200";
       case "REJECTED":
         return "bg-red-100 text-red-800 border-red-200";
-      case "ARCHIVED":
-        return "bg-amber-100 text-amber-800 border-amber-200";
+      
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
@@ -408,7 +357,7 @@ export default function CoursesPage() {
         </div>
 
         <div className="flex gap-3">
-          <Button
+          {/* <Button
             asChild
             variant="outline"
             className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
@@ -417,13 +366,13 @@ export default function CoursesPage() {
               <Filter className="h-4 w-4" />
               Categories
             </Link>
-          </Button>
+          </Button> */}
           
           <Button
             asChild
             className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
           >
-            <Link href="/dashboard/college/courses/create" className="flex items-center gap-2">
+            <Link href="/dashboard/admin/courses/create" className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Add Course
             </Link>
@@ -731,17 +680,7 @@ export default function CoursesPage() {
                           </Button>
                         )}
 
-                        {/* Archive */}
-                        {(course.status === "PUBLISHED" || course.status === "APPROVED") && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="rounded-full hover:bg-amber-50 hover:text-amber-700"
-                            onClick={() => handleArchive(course.id, course.title)}
-                          >
-                            <Archive className="h-4 w-4" />
-                          </Button>
-                        )}
+                     
 
                         {/* Delete */}
                         <Button

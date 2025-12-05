@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Archive,
   BookOpen,
   Building2,
   Calendar,
@@ -24,7 +23,6 @@ import {
   Search,
   Trash2,
   Users,
-  XCircle
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -46,7 +44,6 @@ type Bootcamp = {
   createdAt: string;
   collegeName: string | null;
   thumbnailUrl: string | null;
-  
 };
 
 export default function BootcampsPage() {
@@ -57,7 +54,9 @@ export default function BootcampsPage() {
   const [collegeFilter, setCollegeFilter] = useState("ALL");
 
   // Extract unique colleges
-  const colleges = Array.from(new Set(bootcamps.map(b => b.collegeName).filter(Boolean)));
+  const colleges = Array.from(
+    new Set(bootcamps.map((b) => b.collegeName).filter(Boolean))
+  );
 
   const fetchBootcamps = useCallback(async () => {
     try {
@@ -70,7 +69,7 @@ export default function BootcampsPage() {
       });
 
       const response = await res.json();
-      
+
       if (response.success) {
         setBootcamps(response.data || []);
       }
@@ -106,12 +105,12 @@ export default function BootcampsPage() {
     if (!result.isConfirmed) return;
 
     try {
-      const res = await fetch(`/api/bootcamps?id=${id}`, { 
-        method: "DELETE" 
+      const res = await fetch(`/api/bootcamps?id=${id}`, {
+        method: "DELETE",
       });
-      
+
       const response = await res.json();
-      
+
       if (response.success) {
         await Swal.fire({
           icon: "success",
@@ -138,110 +137,9 @@ export default function BootcampsPage() {
     }
   };
 
-  const handleApprove = async (id: string, title: string) => {
-    const result = await Swal.fire({
-      title: "Approve Bootcamp?",
-      html: `Approve <strong>"${title}"</strong> for publishing?`,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#10b981",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Yes, approve it!",
-      cancelButtonText: "Cancel",
-    });
+ 
 
-    if (!result.isConfirmed) return;
 
-    try {
-      const res = await fetch(`/api/bootcamps?id=${id}&approve=true`, {
-        method: "POST",
-      });
-
-      const response = await res.json();
-
-      if (response.success) {
-        await Swal.fire({
-          icon: "success",
-          title: "Approved!",
-          text: "Bootcamp has been approved.",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-        await fetchBootcamps();
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Approval Failed",
-          text: response.error?.message || "Failed to approve bootcamp",
-        });
-      }
-    } catch (err) {
-      console.error("Approve error:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "An error occurred while approving the bootcamp.",
-      });
-    }
-  };
-
-  const handleReject = async (id: string, title: string) => {
-    const { value: reason } = await Swal.fire({
-      title: "Reject Bootcamp",
-      html: `Reject <strong>"${title}"</strong>?`,
-      input: "textarea",
-      inputLabel: "Rejection Reason",
-      inputPlaceholder: "Please provide a reason for rejection...",
-      inputAttributes: {
-        "aria-label": "Rejection reason",
-      },
-      showCancelButton: true,
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Reject Bootcamp",
-      inputValidator: (value) => {
-        if (!value) {
-          return "You need to provide a reason!";
-        }
-      },
-    });
-
-    if (!reason) return;
-
-    try {
-      const res = await fetch(`/api/bootcamps?id=${id}&reject=true`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-
-      const response = await res.json();
-
-      if (response.success) {
-        await Swal.fire({
-          icon: "success",
-          title: "Rejected!",
-          text: "Bootcamp has been rejected.",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-        await fetchBootcamps();
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Rejection Failed",
-          text: response.error?.message || "Failed to reject bootcamp",
-        });
-      }
-    } catch (err) {
-      console.error("Reject error:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "An error occurred while rejecting the bootcamp.",
-      });
-    }
-  };
 
   const handlePublish = async (id: string, title: string) => {
     const result = await Swal.fire({
@@ -290,86 +188,37 @@ export default function BootcampsPage() {
     }
   };
 
-  const handleArchive = async (id: string, title: string) => {
-    const result = await Swal.fire({
-      title: "Archive Bootcamp?",
-      html: `Archive <strong>"${title}"</strong>?`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#f59e0b",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Yes, archive it!",
-      cancelButtonText: "Cancel",
-    });
 
-    if (!result.isConfirmed) return;
-
-    try {
-      const res = await fetch(`/api/bootcamps?id=${id}&archive=true`, {
-        method: "PUT",
-      });
-
-      const response = await res.json();
-
-      if (response.success) {
-        await Swal.fire({
-          icon: "success",
-          title: "Archived!",
-          text: "Bootcamp has been archived.",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-        await fetchBootcamps();
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Archive Failed",
-          text: response.error?.message || "Failed to archive bootcamp",
-        });
-      }
-    } catch (err) {
-      console.error("Archive error:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "An error occurred while archiving the bootcamp.",
-      });
-    }
-  };
 
   // Apply all filters
   const filteredBootcamps = bootcamps.filter((bootcamp) => {
-    const matchesSearch = bootcamp.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "ALL" || bootcamp.status === statusFilter;
-    const matchesCollege = collegeFilter === "ALL" || bootcamp.collegeName === collegeFilter;
-    
+    const matchesSearch = bootcamp.title
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "ALL" || bootcamp.status === statusFilter;
+    const matchesCollege =
+      collegeFilter === "ALL" || bootcamp.collegeName === collegeFilter;
+
     return matchesSearch && matchesStatus && matchesCollege;
   });
 
-  const statusOptions = [
-    "ALL",
-    "DRAFT",
-    "PENDING_APPROVAL",
-    "APPROVED",
-    "PUBLISHED",
-    "REJECTED",
-    "ARCHIVED",
-  ];
+  const statusOptions = ["ALL", "DRAFT", "PUBLISHED"];
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PUBLISHED":
         return "bg-green-100 text-green-800 border-green-200";
       case "APPROVED":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "bg-emerald-100 text-emerald-800 border-emerald-200";
       case "PENDING_APPROVAL":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-amber-100 text-amber-800 border-amber-200";
       case "DRAFT":
         return "bg-gray-100 text-gray-800 border-gray-200";
       case "REJECTED":
         return "bg-red-100 text-red-800 border-red-200";
       case "ARCHIVED":
-        return "bg-purple-100 text-purple-800 border-purple-200";
+        return "bg-slate-100 text-slate-800 border-slate-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
@@ -380,20 +229,24 @@ export default function BootcampsPage() {
       {/* Header with Search and Filters */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex-1">
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-3xl font-bold text-gray-900">
             Bootcamp Management
           </h2>
           <p className="text-gray-600 mt-2">
-            Manage bootcamps, approvals, and multi-course programs across all colleges.
+            Manage bootcamps, approvals, and multi-course programs across all
+            colleges.
           </p>
         </div>
 
         <div className="flex gap-3">
           <Button
             asChild
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+            className="bg-green-600 hover:bg-green-700 text-white"
           >
-            <Link href="/dashboard/admin/bootcamps/create" className="flex items-center gap-2">
+            <Link
+              href="/dashboard/admin/bootcamps/create"
+              className="flex items-center gap-2"
+            >
               <Plus className="h-4 w-4" />
               Add Bootcamp
             </Link>
@@ -410,13 +263,13 @@ export default function BootcampsPage() {
             placeholder="Search bootcamps..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+            className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
           />
         </div>
 
         {/* Status Filter */}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+          <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -430,7 +283,7 @@ export default function BootcampsPage() {
 
         {/* College Filter */}
         <Select value={collegeFilter} onValueChange={setCollegeFilter}>
-          <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+          <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
             <SelectValue placeholder="All Colleges" />
           </SelectTrigger>
           <SelectContent>
@@ -445,26 +298,30 @@ export default function BootcampsPage() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
-              <BookOpen className="h-6 w-6 text-white" />
+            <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+              <BookOpen className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-blue-600">Total Bootcamps</p>
-              <p className="text-2xl font-bold text-gray-900">{bootcamps.length}</p>
+              <p className="text-sm font-medium text-gray-600">
+                Total Bootcamps
+              </p>
+              <p className="text-2xl font-bold text-gray-900">
+                {bootcamps.length}
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-2xl p-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
-              <CheckCircle className="h-6 w-6 text-white" />
+            <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+              <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-green-600">Published</p>
+              <p className="text-sm font-medium text-gray-600">Published</p>
               <p className="text-2xl font-bold text-gray-900">
                 {bootcamps.filter((b) => b.status === "PUBLISHED").length}
               </p>
@@ -472,29 +329,37 @@ export default function BootcampsPage() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl p-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center">
-              <Clock className="h-6 w-6 text-white" />
+            <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center">
+              <Clock className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-yellow-600">Pending</p>
+              <p className="text-sm font-medium text-gray-600">Pending</p>
               <p className="text-2xl font-bold text-gray-900">
-                {bootcamps.filter((b) => b.status === "PENDING_APPROVAL").length}
+                {
+                  bootcamps.filter((b) => b.status === "PENDING_APPROVAL")
+                    .length
+                }
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-2xl p-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
-              <Users className="h-6 w-6 text-white" />
+            <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <Users className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-purple-600">Total Students</p>
+              <p className="text-sm font-medium text-gray-600">
+                Total Students
+              </p>
               <p className="text-2xl font-bold text-gray-900">
-                {bootcamps.reduce((sum, bootcamp) => sum + bootcamp.currentEnrollments, 0)}
+                {bootcamps.reduce(
+                  (sum, bootcamp) => sum + bootcamp.currentEnrollments,
+                  0
+                )}
               </p>
             </div>
           </div>
@@ -502,16 +367,18 @@ export default function BootcampsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-12 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
             <p className="text-gray-600 mt-4">Loading bootcamps...</p>
           </div>
         ) : filteredBootcamps.length === 0 ? (
           <div className="p-12 text-center">
             <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No bootcamps found</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              No bootcamps found
+            </h3>
             <p className="text-gray-600 mb-6">
               {searchTerm || statusFilter !== "ALL" || collegeFilter !== "ALL"
                 ? "Try adjusting your search or filter criteria"
@@ -523,7 +390,7 @@ export default function BootcampsPage() {
                 setStatusFilter("ALL");
                 setCollegeFilter("ALL");
               }}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
               Clear Filters
             </Button>
@@ -531,38 +398,41 @@ export default function BootcampsPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-blue-500 to-purple-500 text-white border-b">
+              <thead className="bg-green-50 border-b border-green-100">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                     Bootcamp Details
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                     College
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                     Duration
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                     Price
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                     Students
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold uppercase tracking-wider">
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredBootcamps.map((bootcamp) => (
-                  <tr key={bootcamp.id} className="hover:bg-blue-50/30 transition-colors group">
+                  <tr
+                    key={bootcamp.id}
+                    className="hover:bg-green-50/30 transition-colors group"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-start gap-3">
                         <div className="flex-1">
-                          <div className="text-sm font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                          <div className="text-sm font-semibold text-gray-900 group-hover:text-green-700 transition-colors">
                             {bootcamp.title}
                           </div>
                           <div className="text-sm text-gray-500 mt-1 line-clamp-2">
@@ -571,7 +441,11 @@ export default function BootcampsPage() {
                           <div className="flex items-center gap-2 mt-2">
                             <Calendar className="h-3 w-3 text-gray-400" />
                             <span className="text-xs text-gray-500">
-                              {new Date(bootcamp.startDate).toLocaleDateString()} - {new Date(bootcamp.endDate).toLocaleDateString()}
+                              {new Date(
+                                bootcamp.startDate
+                              ).toLocaleDateString()}{" "}
+                              -{" "}
+                              {new Date(bootcamp.endDate).toLocaleDateString()}
                             </span>
                           </div>
                         </div>
@@ -588,7 +462,10 @@ export default function BootcampsPage() {
                     </td>
 
                     <td className="px-6 py-4">
-                      <Badge variant="outline" className="text-xs">
+                      <Badge
+                        variant="outline"
+                        className="text-xs bg-green-50 text-green-700 border-green-200"
+                      >
                         {bootcamp.duration}
                       </Badge>
                     </td>
@@ -615,7 +492,7 @@ export default function BootcampsPage() {
 
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-purple-600" />
+                        <Users className="h-4 w-4 text-emerald-600" />
                         <span className="text-sm font-semibold text-gray-900">
                           {bootcamp.currentEnrollments}
                           {bootcamp.maxStudents && ` / ${bootcamp.maxStudents}`}
@@ -626,18 +503,22 @@ export default function BootcampsPage() {
                     <td className="px-6 py-2 text-center">
                       <div className="flex items-center justify-end gap-1">
                         {/* View */}
-                        <Link href={`/dashboard/admin/bootcamps/${bootcamp.id}`}>
+                        <Link
+                          href={`/dashboard/admin/bootcamps/${bootcamp.id}`}
+                        >
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="rounded-full hover:bg-blue-50 hover:text-blue-700"
+                            className="rounded-full hover:bg-green-50 hover:text-green-700"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
 
                         {/* Edit */}
-                        <Link href={`/dashboard/admin/bootcamps/${bootcamp.id}/edit`}>
+                        <Link
+                          href={`/dashboard/admin/bootcamps/${bootcamp.id}/edit`}
+                        >
                           <Button
                             variant="ghost"
                             size="icon"
@@ -647,60 +528,34 @@ export default function BootcampsPage() {
                           </Button>
                         </Link>
 
-                        {/* Approve (only for pending) */}
-                        {bootcamp.status === "PENDING_APPROVAL" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="rounded-full hover:bg-green-50 hover:text-green-700"
-                            onClick={() => handleApprove(bootcamp.id, bootcamp.title)}
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                        )}
+                     
 
-                        {/* Reject (only for pending) */}
-                        {bootcamp.status === "PENDING_APPROVAL" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="rounded-full hover:bg-red-50 hover:text-red-700"
-                            onClick={() => handleReject(bootcamp.id, bootcamp.title)}
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        )}
+                       
 
                         {/* Publish (only for approved) */}
                         {bootcamp.status === "APPROVED" && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="rounded-full hover:bg-blue-50 hover:text-blue-700"
-                            onClick={() => handlePublish(bootcamp.id, bootcamp.title)}
+                            className="rounded-full hover:bg-green-50 hover:text-green-700"
+                            onClick={() =>
+                              handlePublish(bootcamp.id, bootcamp.title)
+                            }
                           >
                             <CheckCircle className="h-4 w-4" />
                           </Button>
                         )}
 
-                        {/* Archive */}
-                        {(bootcamp.status === "PUBLISHED" || bootcamp.status === "APPROVED") && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="rounded-full hover:bg-orange-50 hover:text-orange-700"
-                            onClick={() => handleArchive(bootcamp.id, bootcamp.title)}
-                          >
-                            <Archive className="h-4 w-4" />
-                          </Button>
-                        )}
+                     
 
                         {/* Delete */}
                         <Button
                           variant="ghost"
                           size="icon"
                           className="rounded-full text-red-600 hover:bg-red-50"
-                          onClick={() => handleDelete(bootcamp.id, bootcamp.title)}
+                          onClick={() =>
+                            handleDelete(bootcamp.id, bootcamp.title)
+                          }
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

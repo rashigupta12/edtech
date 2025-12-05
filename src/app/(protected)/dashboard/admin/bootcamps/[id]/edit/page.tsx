@@ -50,6 +50,7 @@ type Bootcamp = {
   isFree: boolean;
   price: number | null;
   maxStudents: number | null;
+  status: string;
 };
 
 export default function EditBootcampPage() {
@@ -74,6 +75,7 @@ export default function EditBootcampPage() {
     isFree: true,
     price: "",
     maxStudents: "",
+    status: "DRAFT",
   });
 
   // Courses to add
@@ -105,15 +107,18 @@ export default function EditBootcampPage() {
           collegeId: bootcamp.collegeId || "",
           thumbnailUrl: bootcamp.thumbnailUrl || "",
           duration: bootcamp.duration || "",
-          startDate: bootcamp.startDate.split('T')[0],
-          endDate: bootcamp.endDate.split('T')[0],
+          startDate: bootcamp.startDate.split("T")[0],
+          endDate: bootcamp.endDate.split("T")[0],
           isFree: bootcamp.isFree,
           price: bootcamp.price ? String(bootcamp.price) : "",
           maxStudents: bootcamp.maxStudents ? String(bootcamp.maxStudents) : "",
+          status: bootcamp.status || "DRAFT",
         });
 
         // Fetch bootcamp courses
-        const coursesRes = await fetch(`/api/bootcamps?id=${params.id}&courses=true`);
+        const coursesRes = await fetch(
+          `/api/bootcamps?id=${params.id}&courses=true`
+        );
         const coursesData = await coursesRes.json();
         if (coursesData.success) {
           setBootcampCourses(coursesData.data);
@@ -175,9 +180,12 @@ export default function EditBootcampPage() {
     if (!result.isConfirmed) return;
 
     try {
-      const res = await fetch(`/api/bootcamps?id=${params.id}&courseId=${courseId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/bootcamps?id=${params.id}&courseId=${courseId}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       const response = await res.json();
 
@@ -223,6 +231,7 @@ export default function EditBootcampPage() {
       duration: formData.duration || null,
       price: formData.price ? Number(formData.price) : null,
       maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
+      status: formData.status,
     };
 
     try {
@@ -308,8 +317,12 @@ export default function EditBootcampPage() {
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Bootcamp</h1>
-              <p className="text-gray-600">Update bootcamp details and manage courses.</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Edit Bootcamp
+              </h1>
+              <p className="text-gray-600">
+                Update bootcamp details and manage courses.
+              </p>
             </div>
           </div>
         </div>
@@ -318,7 +331,9 @@ export default function EditBootcampPage() {
           {/* Basic Information */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50 border-b">
-              <CardTitle className="text-xl text-gray-900">Basic Information</CardTitle>
+              <CardTitle className="text-xl text-gray-900">
+                Basic Information
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -349,7 +364,9 @@ export default function EditBootcampPage() {
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => handleFieldChange("description", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("description", e.target.value)
+                    }
                     placeholder="Comprehensive bootcamp covering multiple courses..."
                     rows={6}
                   />
@@ -360,7 +377,10 @@ export default function EditBootcampPage() {
                   <Select
                     value={formData.collegeId || "NONE"}
                     onValueChange={(value) =>
-                      handleFieldChange("collegeId", value === "NONE" ? "" : value)
+                      handleFieldChange(
+                        "collegeId",
+                        value === "NONE" ? "" : value
+                      )
                     }
                   >
                     <SelectTrigger>
@@ -376,13 +396,33 @@ export default function EditBootcampPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      handleFieldChange("status", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DRAFT">Draft</SelectItem>
+
+                      <SelectItem value="PUBLISHED">Published</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <div>
                   <Label htmlFor="duration">Duration</Label>
                   <Input
                     id="duration"
                     value={formData.duration}
-                    onChange={(e) => handleFieldChange("duration", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("duration", e.target.value)
+                    }
                     placeholder="16 weeks"
                   />
                 </div>
@@ -393,7 +433,9 @@ export default function EditBootcampPage() {
                     id="startDate"
                     type="date"
                     value={formData.startDate}
-                    onChange={(e) => handleFieldChange("startDate", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("startDate", e.target.value)
+                    }
                     required
                   />
                 </div>
@@ -404,7 +446,9 @@ export default function EditBootcampPage() {
                     id="endDate"
                     type="date"
                     value={formData.endDate}
-                    onChange={(e) => handleFieldChange("endDate", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("endDate", e.target.value)
+                    }
                     required
                   />
                 </div>
@@ -415,7 +459,9 @@ export default function EditBootcampPage() {
                     id="thumbnailUrl"
                     type="url"
                     value={formData.thumbnailUrl}
-                    onChange={(e) => handleFieldChange("thumbnailUrl", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("thumbnailUrl", e.target.value)
+                    }
                     placeholder="https://example.com/bootcamp-thumbnail.jpg"
                   />
                 </div>
@@ -426,7 +472,9 @@ export default function EditBootcampPage() {
                     id="maxStudents"
                     type="number"
                     value={formData.maxStudents}
-                    onChange={(e) => handleFieldChange("maxStudents", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("maxStudents", e.target.value)
+                    }
                     placeholder="200"
                   />
                 </div>
@@ -445,7 +493,9 @@ export default function EditBootcampPage() {
                   type="checkbox"
                   id="isFree"
                   checked={formData.isFree}
-                  onChange={(e) => handleFieldChange("isFree", e.target.checked)}
+                  onChange={(e) =>
+                    handleFieldChange("isFree", e.target.checked)
+                  }
                   className="rounded"
                 />
                 <Label htmlFor="isFree">This bootcamp is free</Label>
@@ -471,7 +521,9 @@ export default function EditBootcampPage() {
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-50 border-b">
               <div>
-                <CardTitle className="text-xl text-gray-900">Current Courses</CardTitle>
+                <CardTitle className="text-xl text-gray-900">
+                  Current Courses
+                </CardTitle>
                 <p className="text-sm text-gray-500 mt-1">
                   {bootcampCourses.length} courses in this bootcamp
                 </p>
@@ -494,7 +546,9 @@ export default function EditBootcampPage() {
                         {index + 1}
                       </span>
                       <div className="flex-1">
-                        <p className="font-medium text-gray-900">{course.title}</p>
+                        <p className="font-medium text-gray-900">
+                          {course.title}
+                        </p>
                         <p className="text-sm text-gray-500">{course.slug}</p>
                       </div>
                       <Button
@@ -518,9 +572,12 @@ export default function EditBootcampPage() {
             <Card className="border border-gray-200 hover:shadow-md transition-shadow">
               <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50 border-b">
                 <div>
-                  <CardTitle className="text-xl text-gray-900">Add More Courses</CardTitle>
+                  <CardTitle className="text-xl text-gray-900">
+                    Add More Courses
+                  </CardTitle>
                   <p className="text-sm text-gray-500 mt-1">
-                    Select additional courses to add ({selectedNewCourses.length} selected)
+                    Select additional courses to add (
+                    {selectedNewCourses.length} selected)
                   </p>
                 </div>
               </CardHeader>
@@ -544,7 +601,9 @@ export default function EditBootcampPage() {
                           className="mt-1"
                         />
                         <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900">{course.title}</h4>
+                          <h4 className="font-semibold text-gray-900">
+                            {course.title}
+                          </h4>
                           <p className="text-sm text-gray-500">{course.slug}</p>
                         </div>
                       </div>
@@ -563,7 +622,7 @@ export default function EditBootcampPage() {
             <Button
               type="submit"
               disabled={saving}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8"
+              className="bg-green-600 text-white px-8"
             >
               <Save className="h-4 w-4 mr-2" />
               {saving ? "Saving…" : "Update Bootcamp"}

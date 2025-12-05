@@ -166,27 +166,32 @@ export default function AddCollegePage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen to-white p-4 md:p-6">
       <div className="w-full mx-auto">
+        {/* Header Section */}
+        <div className="mb-4">
           <Link
-                    href="/dashboard/admin/colleges"
-                    className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Colleges
-                  </Link>
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Add New College</h1>
-          <p className="text-gray-600 mt-2">
-            Fill in the details below to register a new college in the system.
-          </p>
+            href="/dashboard/admin/colleges"
+            className="inline-flex items-center text-sm text-emerald-700 hover:text-emerald-900 mb-6"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Colleges
+          </Link>
+          
+          <div className="mb-2">
+            <h1 className="text-3xl font-bold text-gray-900">Add New College</h1>
+            <p className="text-gray-600 mt-2">
+              Fill in the details below to register a new college in the system.
+            </p>
+          </div>
         </div>
 
+        {/* Error Alert */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
@@ -200,41 +205,56 @@ export default function AddCollegePage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl">
-          <div className="px-4 py-6 sm:p-8">
-            <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="px-6 py-4 sm:p-6">
+            <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-6">
               
-              {/* College Basic Information */}
-              <div className="sm:col-span-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
+              {/* Section Headers */}
+              <div className="sm:col-span-6 mb-4">
+                <div className="border-b border-emerald-100 pb-4">
+                  <h2 className="text-xl font-semibold text-emerald-800 flex items-center">
+                     Basic Information
+                  </h2>
+                </div>
               </div>
 
+              {/* College Name */}
               <div className="sm:col-span-3">
-                <label htmlFor="collegeName" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="collegeName" className="block text-sm font-medium text-gray-700 mb-2">
                   College Name *
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="text"
                     id="collegeName"
                     name="collegeName"
                     value={formData.collegeName}
                     onChange={handleInputChange}
-                    className={`block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 ${
-                      errors.collegeName ? 'ring-red-300 focus:ring-red-500' : 'ring-gray-300 focus:ring-indigo-600'
+                    className={`block w-full rounded-lg border px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none sm:text-sm ${
+                      errors.collegeName 
+                        ? 'border-red-300 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
                     }`}
+                    placeholder="Enter college name"
                   />
                   {errors.collegeName && (
-                    <p className="mt-2 text-sm text-red-600">{errors.collegeName}</p>
+                    <p className="mt-2 text-sm text-red-600 flex items-center">
+                      <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.collegeName}
+                    </p>
                   )}
                 </div>
               </div>
 
+              {/* College Code */}
               <div className="sm:col-span-3">
-                <label htmlFor="collegeCode" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="collegeCode" className="block text-sm font-medium text-gray-700 mb-2">
                   College Code *
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="text"
                     id="collegeCode"
@@ -242,111 +262,151 @@ export default function AddCollegePage() {
                     value={formData.collegeCode}
                     onChange={handleInputChange}
                     maxLength={10}
-                    className={`block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 ${
-                      errors.collegeCode ? 'ring-red-300 focus:ring-red-500' : 'ring-gray-300 focus:ring-indigo-600'
+                    className={`block w-full rounded-lg border px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none sm:text-sm ${
+                      errors.collegeCode 
+                        ? 'border-red-300 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
                     }`}
+                    placeholder="e.g., CO1234"
                   />
                   {errors.collegeCode && (
-                    <p className="mt-2 text-sm text-red-600">{errors.collegeCode}</p>
+                    <p className="mt-2 text-sm text-red-600 flex items-center">
+                      <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.collegeCode}
+                    </p>
                   )}
                 </div>
               </div>
 
+              {/* Registration Number */}
               <div className="sm:col-span-3">
-                <label htmlFor="registrationNumber" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="registrationNumber" className="block text-sm font-medium text-gray-700 mb-2">
                   Registration Number
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="text"
                     id="registrationNumber"
                     name="registrationNumber"
                     value={formData.registrationNumber}
                     onChange={handleInputChange}
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:text-sm"
+                    placeholder="Optional registration number"
                   />
                 </div>
               </div>
 
-              {/* Contact Information */}
-              <div className="sm:col-span-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
+              {/* Contact Information Section */}
+              <div className="sm:col-span-6 mt-8 mb-4">
+                <div className="border-b border-emerald-100 pb-4">
+                  <h2 className="text-xl font-semibold text-emerald-800 flex items-center">
+                     Contact Information
+                  </h2>
+                </div>
               </div>
 
+              {/* Address */}
               <div className="sm:col-span-6">
-                <label htmlFor="address" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
                   Address *
                 </label>
-                <div className="mt-2">
+                <div>
                   <textarea
                     id="address"
                     name="address"
                     rows={3}
                     value={formData.address}
                     onChange={handleInputChange}
-                    className={`block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 ${
-                      errors.address ? 'ring-red-300 focus:ring-red-500' : 'ring-gray-300 focus:ring-indigo-600'
+                    className={`block w-full rounded-lg border px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none sm:text-sm ${
+                      errors.address 
+                        ? 'border-red-300 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
                     }`}
+                    placeholder="Full college address"
                   />
                   {errors.address && (
-                    <p className="mt-2 text-sm text-red-600">{errors.address}</p>
+                    <p className="mt-2 text-sm text-red-600 flex items-center">
+                      <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.address}
+                    </p>
                   )}
                 </div>
               </div>
 
+              {/* City, State, Country */}
               <div className="sm:col-span-2">
-                <label htmlFor="city" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
                   City *
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="text"
                     id="city"
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
-                    className={`block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 ${
-                      errors.city ? 'ring-red-300 focus:ring-red-500' : 'ring-gray-300 focus:ring-indigo-600'
+                    className={`block w-full rounded-lg border px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none sm:text-sm ${
+                      errors.city 
+                        ? 'border-red-300 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
                     }`}
+                    placeholder="City"
                   />
                   {errors.city && (
-                    <p className="mt-2 text-sm text-red-600">{errors.city}</p>
+                    <p className="mt-2 text-sm text-red-600 flex items-center">
+                      <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.city}
+                    </p>
                   )}
                 </div>
               </div>
 
               <div className="sm:col-span-2">
-                <label htmlFor="state" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
                   State *
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="text"
                     id="state"
                     name="state"
                     value={formData.state}
                     onChange={handleInputChange}
-                    className={`block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 ${
-                      errors.state ? 'ring-red-300 focus:ring-red-500' : 'ring-gray-300 focus:ring-indigo-600'
+                    className={`block w-full rounded-lg border px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none sm:text-sm ${
+                      errors.state 
+                        ? 'border-red-300 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
                     }`}
+                    placeholder="State"
                   />
                   {errors.state && (
-                    <p className="mt-2 text-sm text-red-600">{errors.state}</p>
+                    <p className="mt-2 text-sm text-red-600 flex items-center">
+                      <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.state}
+                    </p>
                   )}
                 </div>
               </div>
 
               <div className="sm:col-span-2">
-                <label htmlFor="country" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
                   Country *
                 </label>
-                <div className="mt-2">
+                <div>
                   <select
                     id="country"
                     name="country"
                     value={formData.country}
                     onChange={handleInputChange}
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:text-sm"
                   >
                     <option value="India">India</option>
                     <option value="Other">Other</option>
@@ -354,171 +414,215 @@ export default function AddCollegePage() {
                 </div>
               </div>
 
+              {/* PIN Code */}
               <div className="sm:col-span-2">
-                <label htmlFor="pinCode" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="pinCode" className="block text-sm font-medium text-gray-700 mb-2">
                   PIN Code *
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="text"
                     id="pinCode"
                     name="pinCode"
                     value={formData.pinCode}
                     onChange={handleInputChange}
-                    className={`block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 ${
-                      errors.pinCode ? 'ring-red-300 focus:ring-red-500' : 'ring-gray-300 focus:ring-indigo-600'
+                    className={`block w-full rounded-lg border px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none sm:text-sm ${
+                      errors.pinCode 
+                        ? 'border-red-300 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
                     }`}
+                    placeholder="e.g., 560001"
                   />
                   {errors.pinCode && (
-                    <p className="mt-2 text-sm text-red-600">{errors.pinCode}</p>
+                    <p className="mt-2 text-sm text-red-600 flex items-center">
+                      <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.pinCode}
+                    </p>
                   )}
                 </div>
               </div>
 
+              {/* Contact Email */}
               <div className="sm:col-span-2">
-                <label htmlFor="contactEmail" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-700 mb-2">
                   Contact Email *
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="email"
                     id="contactEmail"
                     name="contactEmail"
                     value={formData.contactEmail}
                     onChange={handleInputChange}
-                    className={`block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 ${
-                      errors.contactEmail ? 'ring-red-300 focus:ring-red-500' : 'ring-gray-300 focus:ring-indigo-600'
+                    className={`block w-full rounded-lg border px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none sm:text-sm ${
+                      errors.contactEmail 
+                        ? 'border-red-300 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
                     }`}
+                    placeholder="contact@college.edu"
                   />
                   {errors.contactEmail && (
-                    <p className="mt-2 text-sm text-red-600">{errors.contactEmail}</p>
+                    <p className="mt-2 text-sm text-red-600 flex items-center">
+                      <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.contactEmail}
+                    </p>
                   )}
                 </div>
               </div>
 
+              {/* Contact Phone */}
               <div className="sm:col-span-2">
-                <label htmlFor="contactPhone" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="contactPhone" className="block text-sm font-medium text-gray-700 mb-2">
                   Contact Phone *
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="tel"
                     id="contactPhone"
                     name="contactPhone"
                     value={formData.contactPhone}
                     onChange={handleInputChange}
-                    className={`block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 ${
-                      errors.contactPhone ? 'ring-red-300 focus:ring-red-500' : 'ring-gray-300 focus:ring-indigo-600'
+                    className={`block w-full rounded-lg border px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none sm:text-sm ${
+                      errors.contactPhone 
+                        ? 'border-red-300 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
                     }`}
+                    placeholder="+91 9876543210"
                   />
                   {errors.contactPhone && (
-                    <p className="mt-2 text-sm text-red-600">{errors.contactPhone}</p>
+                    <p className="mt-2 text-sm text-red-600 flex items-center">
+                      <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.contactPhone}
+                    </p>
                   )}
                 </div>
               </div>
 
+              {/* Website URL */}
               <div className="sm:col-span-3">
-                <label htmlFor="websiteUrl" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="websiteUrl" className="block text-sm font-medium text-gray-700 mb-2">
                   Website URL
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="url"
                     id="websiteUrl"
                     name="websiteUrl"
                     value={formData.websiteUrl}
                     onChange={handleInputChange}
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:text-sm"
+                    placeholder="https://www.college.edu"
                   />
                 </div>
               </div>
 
-              {/* Additional Information */}
-              <div className="sm:col-span-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h2>
+              {/* Additional Information Section */}
+              <div className="sm:col-span-6 mt-8 mb-4">
+                <div className="border-b border-emerald-100 pb-4">
+                  <h2 className="text-xl font-semibold text-emerald-800 flex items-center">
+                     Additional Information
+                  </h2>
+                </div>
               </div>
 
+              {/* About College */}
               <div className="sm:col-span-6">
-                <label htmlFor="about" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="about" className="block text-sm font-medium text-gray-700 mb-2">
                   About College
                 </label>
-                <div className="mt-2">
+                <div>
                   <textarea
                     id="about"
                     name="about"
                     rows={4}
                     value={formData.about}
                     onChange={handleInputChange}
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:text-sm"
+                    placeholder="Brief description about the college..."
                   />
                 </div>
               </div>
 
-              {/* Bank Details */}
-              <div className="sm:col-span-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Bank Details (Optional)</h2>
+              {/* Bank Details Section */}
+              <div className="sm:col-span-6 mt-8 mb-4">
+                <div className="border-b border-emerald-100 pb-4">
+                  <h2 className="text-xl font-semibold text-emerald-800 flex items-center">
+                     Bank Details (Optional)
+                  </h2>
+                </div>
               </div>
 
+              {/* Bank Details */}
               <div className="sm:col-span-3">
-                <label htmlFor="bankName" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="bankName" className="block text-sm font-medium text-gray-700 mb-2">
                   Bank Name
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="text"
                     id="bankName"
                     name="bankName"
                     value={formData.bankName}
                     onChange={handleInputChange}
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:text-sm"
+                    placeholder="Bank name"
                   />
                 </div>
               </div>
 
               <div className="sm:col-span-3">
-                <label htmlFor="accountHolderName" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="accountHolderName" className="block text-sm font-medium text-gray-700 mb-2">
                   Account Holder Name
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="text"
                     id="accountHolderName"
                     name="accountHolderName"
                     value={formData.accountHolderName}
                     onChange={handleInputChange}
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:text-sm"
+                    placeholder="Account holder's name"
                   />
                 </div>
               </div>
 
               <div className="sm:col-span-3">
-                <label htmlFor="bankAccountNumber" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="bankAccountNumber" className="block text-sm font-medium text-gray-700 mb-2">
                   Account Number
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="text"
                     id="bankAccountNumber"
                     name="bankAccountNumber"
                     value={formData.bankAccountNumber}
                     onChange={handleInputChange}
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:text-sm"
+                    placeholder="Account number"
                   />
                 </div>
               </div>
 
               <div className="sm:col-span-3">
-                <label htmlFor="ifscCode" className="block text-sm font-medium leading-6 text-gray-900">
+                <label htmlFor="ifscCode" className="block text-sm font-medium text-gray-700 mb-2">
                   IFSC Code
                 </label>
-                <div className="mt-2">
+                <div>
                   <input
                     type="text"
                     id="ifscCode"
                     name="ifscCode"
                     value={formData.ifscCode}
                     onChange={handleInputChange}
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:text-sm"
+                    placeholder="e.g., SBIN0001234"
                   />
                 </div>
               </div>
@@ -526,20 +630,31 @@ export default function AddCollegePage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-x-6 border-t border-gray-900/10 px-4 py-4 sm:px-8">
+          {/* Form Actions */}
+          <div className="flex items-center justify-end gap-x-4 border-t border-emerald-100 px-6 py-5 sm:px-10">
             <button
               type="button"
               onClick={() => router.back()}
-              className="text-sm font-semibold leading-6 text-gray-900"
+              className="text-sm font-medium text-gray-700 hover:text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
             >
-              {isSubmitting ? 'Creating...' : 'Create College'}
+              {isSubmitting ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creating...
+                </span>
+              ) : (
+                'Create College'
+              )}
             </button>
           </div>
         </form>
