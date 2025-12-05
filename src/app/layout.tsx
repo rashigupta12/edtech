@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
+import { SiteFooter } from "@/components/site-footer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,6 +29,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Providers>
             <SiteHeader />
             <main className="flex-1">{children}</main>
+            <SiteFooter/>
           </Providers>
         </SessionProvider>
       </body>

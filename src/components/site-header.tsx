@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   BookOpen,
-  Briefcase,
+
   ChevronDown,
   Info,
   LayoutDashboard,
@@ -190,8 +190,8 @@ function Sidebar({
 
   const menuItems = [
     { href: "/about", label: "About", icon: Info },
-    { href: "/career", label: "Career", icon: Briefcase },
-    { href: "/blogs", label: "Blogs", icon: BookOpen },
+    // { href: "/career", label: "Career", icon: Briefcase },
+    // { href: "/blogs", label: "Blogs", icon: BookOpen },
     { href: "/contact", label: "Contact Us", icon: Mail },
   ];
 
@@ -404,8 +404,8 @@ export function SiteHeader() {
         <nav className="hidden lg:flex items-center gap-8 text-sm font-medium">
           <CoursesDropdown courses={courses} loading={isLoading} />
           <NavLink href="/about">About</NavLink>
-          <NavLink href="/career">Career</NavLink>
-          <NavLink href="/blogs">Blogs</NavLink>
+          {/* <NavLink href="/career">Career</NavLink> */}
+          {/* <NavLink href="/blogs">Blogs</NavLink> */}
           <NavLink href="/contact">Contact Us</NavLink>
         </nav>
 
