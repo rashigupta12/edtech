@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowLeft, Edit, FileText, Trash2, Calendar, Award, User, Clock, BookOpen } from 'lucide-react';
 
 interface Assignment {
   id: string;
@@ -73,7 +74,7 @@ export default function AssignmentDetailPage() {
       const result = await response.json();
 
       if (result.success) {
-        router.push('/admin/assignments');
+        router.push('/dashboard/admin/assignments');
       } else {
         alert(result.error?.message || 'Failed to delete assignment');
       }
@@ -86,7 +87,7 @@ export default function AssignmentDetailPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white p-6">
         <div className="max-w-4xl mx-auto">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
@@ -103,16 +104,17 @@ export default function AssignmentDetailPage() {
   // Error or not found
   if (error || !assignment) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white p-6">
         <div className="max-w-4xl mx-auto">
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             {error || 'Assignment not found'}
           </div>
           <Link
-            href="/admin/assignments"
-            className="inline-block mt-4 text-blue-600 hover:text-blue-900"
+            href="/dashboard/admin/assignments"
+            className="inline-flex items-center gap-2 mt-4 text-emerald-600 hover:text-emerald-900"
           >
-            ← Back to Assignments
+            <ArrowLeft className="h-4 w-4" />
+            Back to Assignments
           </Link>
         </div>
       </div>
@@ -120,102 +122,150 @@ export default function AssignmentDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen  p-4 md:p-2">
+      <div className="w-full mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/admin/assignments"
-            className="text-blue-600 hover:text-blue-900 mb-4 inline-block"
+            href="/dashboard/admin/assignments"
+            className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-900 mb-4"
           >
-            ← Back to Assignments
+            <ArrowLeft className="h-4 w-4" />
+            Back to Assignments
           </Link>
-          <div className="flex justify-between items-start">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{assignment.title}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{assignment.title}</h1>
               <p className="text-gray-600 mt-2">Assignment Details</p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               <Link
-                href={`/admin/assignments/${assignmentId}/edit`}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                href={`/dashboard/admin/assignments/${assignmentId}/edit`}
+                className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors text-sm"
               >
+                <Edit className="h-4 w-4" />
                 Edit
               </Link>
               <Link
-                href={`/admin/assignments/${assignmentId}/submissions`}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                href={`/dashboard/admin/assignments/${assignmentId}/submissions`}
+                className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
               >
-                View Submissions
+                <FileText className="h-4 w-4" />
+                Submissions
               </Link>
               <button
                 onClick={deleteAssignment}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
               >
+                <Trash2 className="h-4 w-4" />
                 Delete
               </button>
             </div>
           </div>
         </div>
 
-        {/* Assignment Details */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Course ID</h3>
-              <p className="mt-1 text-sm text-gray-900">{assignment.courseId}</p>
+        {/* Assignment Details Card */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border border-emerald-100">
+          {/* Details Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <BookOpen className="h-4 w-4" />
+                Course ID
+              </div>
+              <p className="text-sm font-medium text-gray-900 pl-6">{assignment.courseId}</p>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Module ID</h3>
-              <p className="mt-1 text-sm text-gray-900">
+            
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <BookOpen className="h-4 w-4" />
+                Module ID
+              </div>
+              <p className="text-sm font-medium text-gray-900 pl-6">
                 {assignment.moduleId || 'Not assigned to module'}
               </p>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Due Date</h3>
-              <p className="mt-1 text-sm text-gray-900">
+            
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Calendar className="h-4 w-4" />
+                Due Date
+              </div>
+              <p className="text-sm font-medium text-gray-900 pl-6">
                 {assignment.dueDate
                   ? new Date(assignment.dueDate).toLocaleString()
                   : 'No due date'}
               </p>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Maximum Score</h3>
-              <p className="mt-1 text-sm text-gray-900">{assignment.maxScore}</p>
+            
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Award className="h-4 w-4" />
+                Maximum Score
+              </div>
+              <p className="text-sm font-medium text-emerald-700 pl-6">{assignment.maxScore}</p>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Created By</h3>
-              <p className="mt-1 text-sm text-gray-900">{assignment.createdBy}</p>
+            
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <User className="h-4 w-4" />
+                Created By
+              </div>
+              <p className="text-sm font-medium text-gray-900 pl-6">{assignment.createdBy}</p>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Created At</h3>
-              <p className="mt-1 text-sm text-gray-900">
+            
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Clock className="h-4 w-4" />
+                Created At
+              </div>
+              <p className="text-sm font-medium text-gray-900 pl-6">
                 {new Date(assignment.createdAt).toLocaleString()}
               </p>
             </div>
           </div>
 
+          {/* Description */}
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Description</h3>
-            <p className="text-gray-900 whitespace-pre-wrap">{assignment.description}</p>
+            <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+              <div className="h-2 w-2 bg-emerald-500 rounded-full"></div>
+              Description
+            </h3>
+            <div className="bg-emerald-50 rounded-lg p-4">
+              <p className="text-gray-900 whitespace-pre-wrap">{assignment.description}</p>
+            </div>
           </div>
 
+          {/* Instructions */}
           {assignment.instructions && (
             <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">Instructions</h3>
-              <p className="text-gray-900 whitespace-pre-wrap">{assignment.instructions}</p>
+              <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                Instructions
+              </h3>
+              <div className="bg-blue-50 rounded-lg p-4">
+                <p className="text-gray-900 whitespace-pre-wrap">{assignment.instructions}</p>
+              </div>
             </div>
           )}
 
+          {/* Attachments */}
           {assignment.attachments && Object.keys(assignment.attachments).length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-2">Attachments</h3>
-              <pre className="text-sm text-gray-900 bg-gray-50 p-4 rounded-lg overflow-x-auto">
-                {JSON.stringify(assignment.attachments, null, 2)}
-              </pre>
+              <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                <div className="h-2 w-2 bg-purple-500 rounded-full"></div>
+                Attachments
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
+                <pre className="text-sm text-gray-900">
+                  {JSON.stringify(assignment.attachments, null, 2)}
+                </pre>
+              </div>
             </div>
           )}
         </div>
+
+       
       </div>
     </div>
   );

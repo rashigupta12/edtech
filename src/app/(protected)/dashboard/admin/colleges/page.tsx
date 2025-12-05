@@ -410,7 +410,7 @@ const handleAdminCreated = async (newAdminUserId: string) => {
             </select>
             <Button
               asChild
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+              className="bg-green-600 text-white"
             >
               <Link
                 href="/dashboard/admin/colleges/add"

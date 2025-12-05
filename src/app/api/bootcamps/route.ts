@@ -222,6 +222,7 @@ const updateBootcamp = async (id: string, request: NextRequest) => {
       ...(body.collegeId !== undefined && { collegeId: body.collegeId || null }),
       ...(body.thumbnailUrl !== undefined && { thumbnailUrl: body.thumbnailUrl?.trim() || null }),
       ...(body.duration !== undefined && { duration: body.duration?.trim() || null }),
+       ...(body.status !== undefined && { status: body.status }),
       ...(body.startDate !== undefined && { startDate: parseDate(body.startDate) }),
       ...(body.endDate !== undefined && { endDate: parseDate(body.endDate) }),
       ...(body.maxStudents !== undefined && { maxStudents: body.maxStudents ? Number(body.maxStudents) : null }),

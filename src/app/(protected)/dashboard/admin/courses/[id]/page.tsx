@@ -403,22 +403,7 @@ export default function ViewCoursePage() {
     }
   };
 
-  const handleArchive = async () => {
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&archive=true`, {
-        method: "PUT",
-      });
-      const response = await res.json();
-
-      if (response.success) {
-        Swal.fire("Archived", "Course has been archived.", "success");
-        fetchCourse();
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "Error archiving course", "error");
-    }
-  };
+ 
 
   const handleAddModule = () => {
     setShowModuleForm(true);
@@ -474,7 +459,7 @@ export default function ViewCoursePage() {
       APPROVED: "bg-blue-500",
       PUBLISHED: "bg-green-500",
       REJECTED: "bg-red-500",
-      ARCHIVED: "bg-purple-500",
+     
     };
     return colors[status] || "bg-gray-500";
   };
@@ -1292,7 +1277,7 @@ export default function ViewCoursePage() {
                     </Button>
                   )}
 
-                  {(course.status === "PUBLISHED" ||
+                  {/* {(course.status === "PUBLISHED" ||
                     course.status === "APPROVED") && (
                     <Button
                       onClick={handleArchive}
@@ -1301,7 +1286,7 @@ export default function ViewCoursePage() {
                     >
                       Archive
                     </Button>
-                  )}
+                  )} */}
 
                   <Button
                     onClick={handleDelete}

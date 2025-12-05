@@ -1,10 +1,10 @@
-// src/app/(protected)/dashboard/admin/bootcamps/create/page.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NumberInput } from "@/components/ui/number-input";
 import {
   Select,
   SelectContent,
@@ -17,7 +17,7 @@ import { useCurrentUser } from "@/hooks/auth";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
 type College = {
@@ -29,6 +29,40 @@ type Course = {
   id: string;
   title: string;
   slug: string;
+};
+
+// Move generateSlug outside the component to make it stable
+const generateSlug = (text: string) => {
+  // First, clean the input
+  const cleaned = text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "") // Remove special characters
+    .replace(/[\s_-]+/g, " ") // Normalize spaces and underscores to single space
+    .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
+
+  // Split into words
+  const words = cleaned.split(/\s+/).filter((word) => word.length > 0);
+
+  // Generate slug based on word count
+  let slug = "";
+
+  if (words.length === 0) {
+    return ""; // Empty input case
+  } else if (words.length === 1) {
+    // Single word: take first three letters
+    slug = words[0].substring(0, 3);
+  } else {
+    // Multiple words: take first letter of each word
+    slug = words.map((word) => word[0]).join("");
+  }
+
+  // Ensure the slug doesn't end up empty
+  if (!slug) {
+    return words[0] || "";
+  }
+
+  return slug;
 };
 
 export default function CreateBootcampPage() {
@@ -51,13 +85,14 @@ export default function CreateBootcampPage() {
     isFree: true,
     price: "",
     maxStudents: "",
+    status: "DRAFT",
   });
 
   // Selected courses for bootcamp
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
 
- /* --------------------------------------------------------------
-     1. Fetch colleges & courses – inlined (no missing deps)
+  /* --------------------------------------------------------------
+     1. Fetch colleges & courses
      -------------------------------------------------------------- */
   useEffect(() => {
     const loadData = async () => {
@@ -78,31 +113,36 @@ export default function CreateBootcampPage() {
     };
 
     loadData();
-  }, []); // runs only once on mount
-
-  /* --------------------------------------------------------------
-     2. Auto-generate slug from title – memoized with useCallback
-     -------------------------------------------------------------- */
-  const generateSlug = useCallback((title: string) => {
-    return title
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/[\s_-]+/g, "-")
-      .replace(/^-+|-+$/g, "");
   }, []);
 
+  /* --------------------------------------------------------------
+     2. Auto-generate slug from title
+     -------------------------------------------------------------- */
   useEffect(() => {
-    if (formData.title && !formData.slug) {
+    // Only generate slug if:
+    // 1. There's a title
+    // 2. Slug is empty OR user hasn't manually edited it
+    if (formData.title.trim()) {
       const newSlug = generateSlug(formData.title);
-      setFormData((prev) => ({ ...prev, slug: newSlug }));
+
+      // Check if the current slug appears to be manually edited
+      // If slug is empty or matches a previous auto-generation pattern, update it
+      if (
+        !formData.slug ||
+        formData.slug === generateSlug(formData.title.slice(0, -1))
+      ) {
+        setFormData((prev) => ({ ...prev, slug: newSlug }));
+      }
     }
-  }, [formData.title, formData.slug, generateSlug]); // now fully correct
+  }, [formData.title]); // Only depend on title
 
   /* --------------------------------------------------------------
-     Rest of the component (unchanged, only tiny clean-ups)
+     Rest of the component
      -------------------------------------------------------------- */
-  const handleFieldChange = (field: keyof typeof formData, value: string | boolean) => {
+  const handleFieldChange = (
+    field: keyof typeof formData,
+    value: string | boolean
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -144,6 +184,7 @@ export default function CreateBootcampPage() {
       thumbnailUrl: formData.thumbnailUrl || null,
       price: formData.price ? Number(formData.price) : null,
       maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
+       status: formData.status || "DRAFT",
     };
 
     try {
@@ -185,7 +226,11 @@ export default function CreateBootcampPage() {
       }
     } catch (err) {
       console.error(err);
-      Swal.fire({ icon: "error", title: "Error", text: "An unexpected error occurred" });
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "An unexpected error occurred",
+      });
     } finally {
       setLoading(false);
     }
@@ -206,7 +251,9 @@ export default function CreateBootcampPage() {
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Bootcamp</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Create New Bootcamp
+              </h1>
               <p className="text-gray-600">
                 Fill in the bootcamp details and select courses to bundle.
               </p>
@@ -218,7 +265,9 @@ export default function CreateBootcampPage() {
           {/* Basic Information */}
           <Card className="border border-gray-200 hover:shadow-md transition-shadow">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50 border-b">
-              <CardTitle className="text-xl text-gray-900">Basic Information</CardTitle>
+              <CardTitle className="text-xl text-gray-900">
+                Basic Information
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -239,12 +288,11 @@ export default function CreateBootcampPage() {
                     id="slug"
                     value={formData.slug}
                     onChange={(e) => handleFieldChange("slug", e.target.value)}
-                    placeholder="full-stack-web-development-bootcamp"
+                    placeholder="fswd"
                     required
+                    disabled
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    URL-friendly version of the title (auto-generated)
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Auto-generated</p>
                 </div>
 
                 <div className="md:col-span-2">
@@ -252,7 +300,9 @@ export default function CreateBootcampPage() {
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => handleFieldChange("description", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("description", e.target.value)
+                    }
                     placeholder="Comprehensive bootcamp covering multiple courses..."
                     rows={6}
                   />
@@ -262,7 +312,12 @@ export default function CreateBootcampPage() {
                   <Label htmlFor="collegeId">College (Optional)</Label>
                   <Select
                     value={formData.collegeId || "NONE"}
-                    onValueChange={(value) => handleFieldChange("collegeId", value === "NONE" ? "" : value)}
+                    onValueChange={(value) =>
+                      handleFieldChange(
+                        "collegeId",
+                        value === "NONE" ? "" : value
+                      )
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select college" />
@@ -277,13 +332,34 @@ export default function CreateBootcampPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      handleFieldChange("status", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DRAFT">Draft</SelectItem>
+                     
+                     
+                      <SelectItem value="PUBLISHED">Published</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <div>
                   <Label htmlFor="duration">Duration</Label>
                   <Input
                     id="duration"
                     value={formData.duration}
-                    onChange={(e) => handleFieldChange("duration", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("duration", e.target.value)
+                    }
                     placeholder="16 weeks"
                   />
                 </div>
@@ -294,7 +370,9 @@ export default function CreateBootcampPage() {
                     id="startDate"
                     type="date"
                     value={formData.startDate}
-                    onChange={(e) => handleFieldChange("startDate", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("startDate", e.target.value)
+                    }
                     required
                   />
                 </div>
@@ -305,7 +383,9 @@ export default function CreateBootcampPage() {
                     id="endDate"
                     type="date"
                     value={formData.endDate}
-                    onChange={(e) => handleFieldChange("endDate", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("endDate", e.target.value)
+                    }
                     required
                   />
                 </div>
@@ -316,18 +396,21 @@ export default function CreateBootcampPage() {
                     id="thumbnailUrl"
                     type="url"
                     value={formData.thumbnailUrl}
-                    onChange={(e) => handleFieldChange("thumbnailUrl", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("thumbnailUrl", e.target.value)
+                    }
                     placeholder="https://example.com/bootcamp-thumbnail.jpg"
                   />
                 </div>
 
                 <div>
                   <Label htmlFor="maxStudents">Max Students</Label>
-                  <Input
+                  <NumberInput
                     id="maxStudents"
-                    type="number"
                     value={formData.maxStudents}
-                    onChange={(e) => handleFieldChange("maxStudents", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("maxStudents", e.target.value)
+                    }
                     placeholder="200"
                   />
                 </div>
@@ -346,7 +429,9 @@ export default function CreateBootcampPage() {
                   type="checkbox"
                   id="isFree"
                   checked={formData.isFree}
-                  onChange={(e) => handleFieldChange("isFree", e.target.checked)}
+                  onChange={(e) =>
+                    handleFieldChange("isFree", e.target.checked)
+                  }
                   className="rounded"
                 />
                 <Label htmlFor="isFree">This bootcamp is free</Label>
@@ -355,9 +440,8 @@ export default function CreateBootcampPage() {
               {!formData.isFree && (
                 <div>
                   <Label htmlFor="price">Price ($)</Label>
-                  <Input
+                  <NumberInput
                     id="price"
-                    type="number"
                     step="0.01"
                     value={formData.price}
                     onChange={(e) => handleFieldChange("price", e.target.value)}
@@ -373,9 +457,12 @@ export default function CreateBootcampPage() {
             <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-50 border-b">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl text-gray-900">Select Courses</CardTitle>
+                  <CardTitle className="text-xl text-gray-900">
+                    Select Courses
+                  </CardTitle>
                   <p className="text-sm text-gray-500 mt-1">
-                    Choose courses to include in this bootcamp ({selectedCourses.length} selected)
+                    Choose courses to include in this bootcamp (
+                    {selectedCourses.length} selected)
                   </p>
                 </div>
               </div>
@@ -405,7 +492,9 @@ export default function CreateBootcampPage() {
                           className="mt-1"
                         />
                         <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900">{course.title}</h4>
+                          <h4 className="font-semibold text-gray-900">
+                            {course.title}
+                          </h4>
                           <p className="text-sm text-gray-500">{course.slug}</p>
                         </div>
                       </div>
@@ -421,7 +510,9 @@ export default function CreateBootcampPage() {
                   </p>
                   <div className="space-y-2">
                     {selectedCourses.map((courseId, index) => {
-                      const course = availableCourses.find((c) => c.id === courseId);
+                      const course = availableCourses.find(
+                        (c) => c.id === courseId
+                      );
                       return (
                         <div
                           key={courseId}
@@ -430,7 +521,9 @@ export default function CreateBootcampPage() {
                           <span className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">
                             {index + 1}
                           </span>
-                          <span className="text-sm text-gray-700">{course?.title}</span>
+                          <span className="text-sm text-gray-700">
+                            {course?.title}
+                          </span>
                         </div>
                       );
                     })}

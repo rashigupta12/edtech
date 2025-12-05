@@ -4,6 +4,7 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCurrentUser } from '@/hooks/auth';
+import { ArrowLeft, Plus, Loader } from 'lucide-react';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -161,24 +162,35 @@ export default function CreateAssignmentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen  p-4 md:p-6">
+      <div className="w-full mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Create Assignment</h1>
-          <p className="text-gray-600 mt-2">Create a new assignment for a course</p>
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-900 mb-6 transition-colors text-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Assignments
+          </button>
+          
+          <div className="mb-2">
+            <h1 className="text-3xl font-bold text-gray-900">Create New Assignment</h1>
+            <p className="text-gray-600 mt-2">Create a new assignment for a course</p>
+          </div>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            {error}
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-700">{error}</p>
           </div>
         )}
 
         {/* Form */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-emerald-100">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Course & Module Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -190,7 +202,7 @@ export default function CreateAssignmentPage() {
                   onChange={handleChange}
                   required
                   disabled={coursesLoading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-gray-100 transition-colors"
                 >
                   <option value="">Select a course</option>
                   {courses.map((course) => (
@@ -200,7 +212,7 @@ export default function CreateAssignmentPage() {
                   ))}
                 </select>
                 {coursesLoading && (
-                  <p className="text-sm text-gray-500 mt-1">Loading courses...</p>
+                  <p className="text-sm text-gray-500 mt-2">Loading courses...</p>
                 )}
               </div>
 
@@ -213,7 +225,7 @@ export default function CreateAssignmentPage() {
                   value={formData.moduleId}
                   onChange={handleChange}
                   disabled={!formData.courseId || modulesLoading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-gray-100 transition-colors"
                 >
                   <option value="">Select a module</option>
                   {modules.map((module) => (
@@ -223,17 +235,18 @@ export default function CreateAssignmentPage() {
                   ))}
                 </select>
                 {modulesLoading && (
-                  <p className="text-sm text-gray-500 mt-1">Loading modules...</p>
+                  <p className="text-sm text-gray-500 mt-2">Loading modules...</p>
                 )}
                 {!formData.courseId && (
-                  <p className="text-sm text-gray-500 mt-1">Select a course first</p>
+                  <p className="text-sm text-gray-500 mt-2">Select a course first</p>
                 )}
               </div>
             </div>
 
+            {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Title *
+                Assignment Title *
               </label>
               <input
                 type="text"
@@ -241,11 +254,12 @@ export default function CreateAssignmentPage() {
                 value={formData.title}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                 placeholder="Enter assignment title"
               />
             </div>
 
+            {/* Description */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description *
@@ -256,36 +270,38 @@ export default function CreateAssignmentPage() {
                 onChange={handleChange}
                 required
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                 placeholder="Enter assignment description"
               />
             </div>
 
+            {/* Instructions */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Instructions
+                Instructions (Optional)
               </label>
               <textarea
                 name="instructions"
                 value={formData.instructions}
                 onChange={handleChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter assignment instructions (optional)"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                placeholder="Enter assignment instructions"
               />
             </div>
 
+            {/* Due Date & Max Score */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Due Date
+                  Due Date (Optional)
                 </label>
                 <input
                   type="datetime-local"
                   name="dueDate"
                   value={formData.dueDate}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                 />
               </div>
 
@@ -300,25 +316,36 @@ export default function CreateAssignmentPage() {
                   onChange={handleChange}
                   min="1"
                   max="1000"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end space-x-4 pt-6">
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-6 border-t border-emerald-100">
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading || !formData.courseId}
-                className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-2 bg-emerald-600 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
-                {loading ? 'Creating...' : 'Create Assignment'}
+                {loading ? (
+                  <>
+                    <Loader className="h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Create Assignment
+                  </>
+                )}
               </button>
             </div>
           </form>

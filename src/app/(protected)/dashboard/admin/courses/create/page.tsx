@@ -90,6 +90,33 @@ type Module = {
   requireAllLessonsComplete: boolean;
   moduleAssessment?: Assessment;
 };
+const generateSlug = (text: string) => {
+  const cleaned = text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "") 
+    .replace(/[\s_-]+/g, " ")
+    .replace(/^-+|-+$/g, "");
+  
+  // Split into words
+  const words = cleaned.split(/\s+/).filter(word => word.length > 0);
+  
+  let slug = "";
+  
+  if (words.length === 0) {
+    return "";
+  } else if (words.length === 1) {
+    slug = words[0].substring(0, 3);
+  } else {
+    slug = words.map(word => word[0]).join("");
+  }
+  
+  if (!slug) {
+    return words[0] || "";
+  }
+  
+  return slug;
+};
 
 export default function CreateCoursePage() {
   const router = useRouter();
@@ -194,14 +221,15 @@ export default function CreateCoursePage() {
 
     fetchData();
   }, []);
-  const generateSlug = (text: string) => {
-    return text
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, "") // Remove special characters
-      .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with hyphens
-      .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
-  };
+ useEffect(() => {
+  if (formData.title.trim()) {
+    const newSlug = generateSlug(formData.title);
+    
+    if (!formData.slug || formData.slug === generateSlug(formData.title.slice(0, -1))) {
+      setFormData((prev) => ({ ...prev, slug: newSlug }));
+    }
+  }
+}, [formData.title]); // Only depend on title
 
   const handleVideoUploadComplete = (
     moduleIndex: number,
@@ -261,13 +289,7 @@ export default function CreateCoursePage() {
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Auto-generate slug when title changes and slug is empty
-    if (field === "title" && typeof value === "string") {
-      if (value.trim() && !formData.slug) {
-        const generatedSlug = generateSlug(value);
-        setFormData((prev) => ({ ...prev, slug: generatedSlug }));
-      }
-    }
+  
   };
 
   const addLearningOutcome = () => {
@@ -1161,6 +1183,7 @@ for (let i = 0; i < modules.length; i++) {
                     onChange={(e) => handleFieldChange("slug", e.target.value)}
                     placeholder="web-development-bootcamp"
                     required
+                    disabled
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     URL-friendly version of the title (auto-generated)

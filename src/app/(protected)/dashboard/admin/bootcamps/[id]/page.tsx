@@ -450,17 +450,17 @@ export default function ViewBootcampPage() {
                   )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">Duration</span>
-                    <span className="font-medium">{bootcamp.duration}</span>
+                    <span className="font-medium">{bootcamp.duration} Weeks</span>
                   </div>
                 </div>
 
                 <div className="space-y-2 pt-4 border-t">
-                  <Button asChild variant="outline" className="w-full">
+                  {/* <Button asChild variant="outline" className="w-full">
                     <Link href={`/bootcamps/${bootcamp.slug}`} target="_blank">
                       <Eye className="h-4 w-4 mr-2" />
                       View Live Page
                     </Link>
-                  </Button>
+                  </Button> */}
 
                   <Button
                     asChild
