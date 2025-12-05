@@ -2,7 +2,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface Blog {
   id: string;
@@ -27,12 +27,7 @@ export default function BlogPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const blogsPerPage = 9;
 
-  // Fetch on mount & when page changes
-  useEffect(() => {
-    fetchBlogs();
-  }, [currentPage]);
-
-  const fetchBlogs = async () => {
+    const fetchBlogs = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams({
@@ -55,7 +50,11 @@ export default function BlogPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, blogsPerPage]);
+
+  useEffect(() => {
+    fetchBlogs();
+  }, [fetchBlogs]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {

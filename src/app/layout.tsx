@@ -10,8 +10,8 @@ import { SessionProvider } from "next-auth/react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Futuretek Institute Of Astrological Sciences",
-  description: "Expert-led courses in KP Astrology, Financial Astrology, Vastu Shastra, and Astro-Vastu.",
+  title: "Edutech",
+  description: "Learning Management System",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

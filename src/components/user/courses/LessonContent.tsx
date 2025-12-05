@@ -26,7 +26,7 @@ import {
   Video,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface LessonContentProps {
   lesson: Lesson;
@@ -144,7 +144,8 @@ export default function LessonContent({
   };
 
   // Send progress update
-  async function sendProgressUpdate(lessonId: string, position: number) {
+const sendProgressUpdate = useCallback(
+  async (lessonId: string, position: number) => {
     if (!userId) return;
     try {
       await fetch(
@@ -160,8 +161,9 @@ export default function LessonContent({
     } catch (err) {
       console.error("sendProgressUpdate error", err);
     }
-  }
-
+  },
+  [userId]
+);
   const handleProgressUpdate = (positionSec: number) => {
     latestPositionRef.current = positionSec;
 
@@ -175,15 +177,15 @@ export default function LessonContent({
     }, 2000);
   };
 
-  useEffect(() => {
-    return () => {
-      if (progressTimeoutRef.current) {
-        sendProgressUpdate(lesson.id, latestPositionRef.current).catch(
-          () => {}
-        );
-      }
-    };
-  }, [lesson.id]);
+useEffect(() => {
+  return () => {
+    if (progressTimeoutRef.current) {
+      sendProgressUpdate(lesson.id, latestPositionRef.current).catch(
+        () => {}
+      );
+    }
+  };
+}, [lesson.id, sendProgressUpdate]);
 
   async function markLessonComplete(lessonId: string) {
     if (!userId) return;

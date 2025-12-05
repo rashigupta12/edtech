@@ -81,41 +81,39 @@ export function CoursesCatalog() {
   const isAdminOrJyotishi = userRole === "ADMIN" || userRole === "JYOTISHI";
 
   // Determine which courses should be visible
-  const getVisibleCourses = (allCourses: Course[]): Course[] => {
-    if (isAdminOrJyotishi) {
-      // Show everything except archived/rejected (useful during development)
-      return allCourses.filter(c => !["ARCHIVED", "REJECTED"].includes(c.status));
-    }
-    // Public users: only fully published courses
-    return allCourses.filter(c => c.status === "PUBLISHED");
-  };
+const getVisibleCourses = useCallback((allCourses: Course[]): Course[] => {
+  if (isAdminOrJyotishi) {
+    return allCourses.filter(c => !["ARCHIVED", "REJECTED"].includes(c.status));
+  }
+  return allCourses.filter(c => c.status === "PUBLISHED");
+}, [isAdminOrJyotishi]);
 
-  // Map status → section
-  const getCategoryFromStatus = (status: CourseStatus): keyof typeof scrollRefs | null => {
-    if (isAdminOrJyotishi) {
-      switch (status) {
-        case "PUBLISHED":
-          return "REGISTRATION_OPEN";
-        case "APPROVED":
-          return "ONGOING";
-        case "DRAFT":
-        case "PENDING_APPROVAL":
-          return "UPCOMING";
-        default:
-          return null;
-      }
-    }
-
-    // Public view
+const getCategoryFromStatus = useCallback((status: CourseStatus): keyof typeof scrollRefs | null => {
+  if (isAdminOrJyotishi) {
     switch (status) {
       case "PUBLISHED":
         return "REGISTRATION_OPEN";
       case "APPROVED":
         return "ONGOING";
+      case "DRAFT":
+      case "PENDING_APPROVAL":
+        return "UPCOMING";
       default:
         return null;
     }
-  };
+  }
+
+  switch (status) {
+    case "PUBLISHED":
+      return "REGISTRATION_OPEN";
+    case "APPROVED":
+      return "ONGOING";
+    default:
+      return null;
+  }
+}, [isAdminOrJyotishi]);
+
+
 
   useEffect(() => {
     let mounted = true;
@@ -163,7 +161,7 @@ export function CoursesCatalog() {
     if (status !== "loading") loadData();
 
     return () => { mounted = false; };
-  }, [userId, status, isAdminOrJyotishi]);
+  }, [userId, status, isAdminOrJyotishi, getVisibleCourses]);
 
   const courseCategories: CourseCategory[] = useMemo(() => {
     const grouped = {
@@ -203,7 +201,7 @@ export function CoursesCatalog() {
         courses: grouped.UPCOMING,
       },
     ];
-  }, [courses]);
+  }, [courses, getCategoryFromStatus]);
 
   const getPlainText = useCallback((html?: string) => {
     if (!html) return "No description available";
@@ -212,15 +210,16 @@ export function CoursesCatalog() {
     return (div.textContent || div.innerText || "").trim();
   }, []);
 
-  const scroll = useCallback((direction: "left" | "right", category: keyof typeof scrollRefs) => {
-    const container = scrollRefs[category].current;
-    if (!container) return;
-    const scrollAmount = 296;
-    container.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth",
-    });
-  }, []);
+const scroll = useCallback((direction: "left" | "right", category: keyof typeof scrollRefs) => {
+  const container = scrollRefs[category].current;
+  if (!container) return;
+  const scrollAmount = 296;
+  container.scrollBy({
+    left: direction === "left" ? -scrollAmount : scrollAmount,
+    behavior: "smooth",
+  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
   const getPriceDisplay = (course: Course) => {
     if (course.isFree) {

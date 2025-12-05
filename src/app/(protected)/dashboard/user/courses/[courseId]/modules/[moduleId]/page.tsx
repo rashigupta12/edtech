@@ -25,9 +25,6 @@ export default function ModulePage() {
   const [progress, setProgress] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // -----------------------------
-  // Fetch curriculum
-  // -----------------------------
   useEffect(() => {
     async function loadCurriculum() {
       try {
@@ -43,9 +40,6 @@ export default function ModulePage() {
     loadCurriculum();
   }, [courseId]);
 
-  // -----------------------------
-  // Fetch progress
-  // -----------------------------
   useEffect(() => {
     if (!userId) return;
 
@@ -61,18 +55,15 @@ export default function ModulePage() {
     loadProgress();
   }, [userId, courseId]);
 
-  // -----------------------------
-  // Memo: get selected module
-  // -----------------------------
   const moduleData = useMemo(() => {
     return curriculum?.modules?.find((m: { id: string | string[] | undefined; }) => m.id === moduleId);
   }, [curriculum, moduleId]);
 
-  const moduleLessons = moduleData?.lessons || [];
+  // Wrap moduleLessons in useMemo to stabilize its reference
+  const moduleLessons = useMemo(() => {
+    return moduleData?.lessons || [];
+  }, [moduleData]);
 
-  // -----------------------------
-  // Calculate Module Progress
-  // -----------------------------
   const moduleProgress = useMemo(() => {
     if (!progress?.lessonsProgress || !moduleLessons.length) return 0;
     const completed = moduleLessons.filter((lesson: { id: any; }) =>

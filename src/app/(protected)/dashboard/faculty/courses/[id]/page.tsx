@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
 type Assessment = {
@@ -128,8 +128,7 @@ export default function ViewCoursePage() {
     title: "",
     description: "",
   });
-
-  const fetchCourse = async () => {
+  const fetchCourse = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`/api/courses?id=${params.id}`);
@@ -151,21 +150,9 @@ export default function ViewCoursePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id, router]);
 
-  const fetchModules = async () => {
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&modules=true`);
-      const response = await res.json();
-
-      if (response.success) {
-        setModules(response.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch modules:", err);
-    }
-  };
-  const fetchCurriculum = async () => {
+  const fetchCurriculum = useCallback(async () => {
     try {
       const res = await fetch(`/api/courses?id=${params.id}&curriculum=true`);
       const response = await res.json();
@@ -178,9 +165,9 @@ export default function ViewCoursePage() {
     } catch (err) {
       console.error("Failed to fetch curriculum:", err);
     }
-  };
+  }, [params.id]);
 
-  const fetchAssessments = async () => {
+  const fetchAssessments = useCallback(async () => {
     try {
       const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
       const response = await res.json();
@@ -210,36 +197,7 @@ export default function ViewCoursePage() {
     } catch (err) {
       console.error("Failed to fetch assessments:", err);
     }
-  };
-  const fetchModulesWithLessons = async () => {
-    try {
-      // First get modules
-      const modulesRes = await fetch(
-        `/api/courses?id=${params.id}&modules=true`
-      );
-      const modulesData = await modulesRes.json();
-
-      if (modulesData.success) {
-        const modulesWithLessons = await Promise.all(
-          modulesData.data.map(async (module: Module) => {
-            // Then get lessons for each module
-            const lessonsRes = await fetch(
-              `/api/courses?id=${params.id}&moduleId=${module.id}&lessons=true`
-            );
-            const lessonsData = await lessonsRes.json();
-
-            return {
-              ...module,
-              lessons: lessonsData.success ? lessonsData.data : [],
-            };
-          })
-        );
-        setModules(modulesWithLessons);
-      }
-    } catch (err) {
-      console.error("Failed to fetch modules with lessons:", err);
-    }
-  };
+  }, [params.id]);
 
   useEffect(() => {
     if (params.id) {
@@ -247,7 +205,7 @@ export default function ViewCoursePage() {
       fetchCurriculum();
       fetchAssessments();
     }
-  }, [params.id]);
+  }, [params.id, fetchCourse, fetchCurriculum, fetchAssessments]);
 
   const handleDelete = async () => {
     const result = await Swal.fire({
