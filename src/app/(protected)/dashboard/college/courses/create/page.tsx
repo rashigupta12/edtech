@@ -19,7 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Save, Plus, X, ChevronDown, FileText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import { useCurrentUser } from "@/hooks/auth";
 import { FileUpload } from "@/components/Videoupload";
@@ -134,7 +134,7 @@ export default function CreateCoursePage() {
     price: "",
     discountPrice: "",
     maxStudents: "",
-    status: "PENDING_APPROVAL",
+    status: "DRAFT",
     hasFinalAssessment: true,
     finalAssessmentRequired: true,
     minimumCoursePassingScore: 60,
@@ -194,14 +194,46 @@ export default function CreateCoursePage() {
 
     fetchData();
   }, []);
-  const generateSlug = (text: string) => {
-    return text
+
+  // Wrap the slug generation logic in useCallback
+  const generateSlug = useCallback((text: string) => {
+    const cleaned = text
       .toLowerCase()
       .trim()
-      .replace(/[^\w\s-]/g, "") // Remove special characters
-      .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with hyphens
-      .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
-  };
+      .replace(/[^\w\s-]/g, "")
+      .replace(/[\s_-]+/g, " ")
+      .replace(/^-+|-+$/g, "");
+    
+    // Split into words
+    const words = cleaned.split(/\s+/).filter(word => word.length > 0);
+    
+    let slug = "";
+    
+    if (words.length === 0) {
+      return "";
+    } else if (words.length === 1) {
+      slug = words[0].substring(0, 3);
+    } else {
+      slug = words.map(word => word[0]).join("");
+    }
+    
+    if (!slug) {
+      return words[0] || "";
+    }
+    
+    return slug;
+  }, []);
+
+  // Update useEffect to include formData.slug in dependencies
+  useEffect(() => {
+    if (formData.title.trim()) {
+      const newSlug = generateSlug(formData.title);
+      
+      if (!formData.slug || formData.slug === generateSlug(formData.title.slice(0, -1))) {
+        setFormData((prev) => ({ ...prev, slug: newSlug }));
+      }
+    }
+  }, [formData.title, formData.slug, generateSlug]);
 
   const handleVideoUploadComplete = (
     moduleIndex: number,
@@ -232,22 +264,14 @@ export default function CreateCoursePage() {
 
       const data = await res.json();
       if (data.success) {
-        const newCategory = data.data;
-
-        // Add to categories list first
-        setCategories([...categories, newCategory]);
-
-        // Then select it - use the new category's ID
-        setFormData((prev) => ({ ...prev, categoryId: newCategory.id }));
-
-        // Close the new category input
+        setCategories([...categories, data.data]);
+        setFormData((prev) => ({ ...prev, categoryId: data.data.id }));
         setShowNewCategory(false);
         setNewCategoryName("");
-
         Swal.fire({
           icon: "success",
           title: "Category Created!",
-          text: `"${newCategory.name}" has been selected`, // Updated message
+          text: "New category has been added successfully",
           timer: 1500,
         });
       }
@@ -269,13 +293,7 @@ export default function CreateCoursePage() {
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Auto-generate slug when title changes and slug is empty
-    if (field === "title" && typeof value === "string") {
-      if (value.trim() && !formData.slug) {
-        const generatedSlug = generateSlug(value);
-        setFormData((prev) => ({ ...prev, slug: generatedSlug }));
-      }
-    }
+  
   };
 
   const addLearningOutcome = () => {
@@ -566,7 +584,7 @@ const updateAssessment = (
     const payload = {
       ...formData,
       createdBy,
-      status: "PENDING_APPROVAL",
+      status: formData.status,
       collegeId: formData.collegeId || null,
       thumbnailUrl: formData.thumbnailUrl || null,
       previewVideoUrl: formData.previewVideoUrl || null,
@@ -1160,7 +1178,7 @@ for (let i = 0; i < modules.length; i++) {
                     required
                   />
                 </div>
-{/* 
+
                 <div className="md:col-span-2">
                   <Label htmlFor="slug">Slug *</Label>
                   <Input
@@ -1169,11 +1187,12 @@ for (let i = 0; i < modules.length; i++) {
                     onChange={(e) => handleFieldChange("slug", e.target.value)}
                     placeholder="web-development-bootcamp"
                     required
+                    disabled
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     URL-friendly version of the title (auto-generated)
                   </p>
-                </div> */}
+                </div>
 
                 <div className="md:col-span-2">
                   <Label htmlFor="shortDescription">Short Description</Label>
@@ -1205,10 +1224,8 @@ for (let i = 0; i < modules.length; i++) {
                   <Label htmlFor="categoryId">Category *</Label>
                   <div className="space-y-2">
                     <Select
-                      key={formData.categoryId || "default"}
                       value={formData.categoryId}
                       onValueChange={(value) => {
-                        console.log("Selected value:", value);
                         if (value === "new-category") {
                           setShowNewCategory(true);
                         } else {
@@ -1217,12 +1234,7 @@ for (let i = 0; i < modules.length; i++) {
                       }}
                     >
                       <SelectTrigger>
-                        {/* Show the selected category name */}
-                        <SelectValue placeholder="Select category">
-                          {categories.find(
-                            (cat) => cat.id === formData.categoryId
-                          )?.name || "Select category"}
-                        </SelectValue>
+                        <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((cat) => (
@@ -1275,7 +1287,7 @@ for (let i = 0; i < modules.length; i++) {
                   </div>
                 </div>
 
-                {/* <div>
+                <div>
                   <Label htmlFor="collegeId">College (Optional)</Label>
                   <Select
                     value={formData.collegeId || "NONE"}
@@ -1298,7 +1310,7 @@ for (let i = 0; i < modules.length; i++) {
                       ))}
                     </SelectContent>
                   </Select>
-                </div> */}
+                </div>
 
                 <div>
                   <Label htmlFor="level">Level</Label>
@@ -1328,7 +1340,7 @@ for (let i = 0; i < modules.length; i++) {
                     placeholder="English"
                   />
                 </div>
-                {/* <div>
+                <div>
                   <Label htmlFor="status">Status</Label>
                   <Select
                     value={formData.status}
@@ -1347,10 +1359,10 @@ for (let i = 0; i < modules.length; i++) {
                       <SelectItem value="APPROVED">Approved</SelectItem>
                       <SelectItem value="REJECTED">Rejected</SelectItem>
                       <SelectItem value="PUBLISHED">Published</SelectItem>
-                      <SelectItem value="ARCHIVED">Archived</SelectItem>
+                      {/* <SelectItem value="ARCHIVED">Archived</SelectItem> */}
                     </SelectContent>
                   </Select>
-                </div> */}
+                </div>
 
                 <div>
                   <Label htmlFor="duration">Duration</Label>
@@ -1368,6 +1380,7 @@ for (let i = 0; i < modules.length; i++) {
                   <Label htmlFor="maxStudents">Max Students</Label>
                   <NumberInput
                     id="maxStudents"
+                   
                     value={formData.maxStudents}
                     onChange={(e) =>
                       handleFieldChange("maxStudents", e.target.value)

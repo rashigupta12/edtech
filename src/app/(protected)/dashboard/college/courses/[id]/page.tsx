@@ -129,85 +129,87 @@ export default function ViewCoursePage() {
     description: "",
   });
 
-  const fetchCourse = useCallback(async () => {
-  try {
-    setLoading(true);
-    const res = await fetch(`/api/courses?id=${params.id}`);
-    const response = await res.json();
+    const fetchCourse = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/courses?id=${params.id}`);
+      const response = await res.json();
 
-    if (response.success) {
-      setCourse(response.data);
-    } else {
-      throw new Error("Course not found");
+      if (response.success) {
+        setCourse(response.data);
+      } else {
+        throw new Error("Course not found");
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Not Found",
+        text: "Course not found",
+      });
+      router.back();
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error(err);
-    Swal.fire({
-      icon: "error",
-      title: "Not Found",
-      text: "Course not found",
-    });
-    router.back();
-  } finally {
-    setLoading(false);
-  }
-}, [params.id, router]);
+  }, [params.id, router]);
 
-const fetchCurriculum = useCallback(async () => {
-  try {
-    const res = await fetch(`/api/courses?id=${params.id}&curriculum=true`);
-    const response = await res.json();
+  // Wrap fetchCurriculum in useCallback
+  const fetchCurriculum = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/courses?id=${params.id}&curriculum=true`);
+      const response = await res.json();
 
-    if (response.success) {
-      setModules(response.data.modules || []);
-    } else {
-      console.error("Failed to fetch curriculum:", response.error);
+      if (response.success) {
+        setModules(response.data.modules || []);
+      } else {
+        console.error("Failed to fetch curriculum:", response.error);
+      }
+    } catch (err) {
+      console.error("Failed to fetch curriculum:", err);
     }
-  } catch (err) {
-    console.error("Failed to fetch curriculum:", err);
-  }
-}, [params.id]);
+  }, [params.id]);
 
-const fetchAssessments = useCallback(async () => {
-  try {
-    const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
-    const response = await res.json();
+  // Wrap fetchAssessments in useCallback
+  const fetchAssessments = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
+      const response = await res.json();
 
-    if (response.success) {
-      const assessmentsData = response.data?.assessments || [];
+      if (response.success) {
+        const assessmentsData = response.data?.assessments || [];
 
-      // Fetch questions for each assessment
-      const assessmentsWithQuestions = await Promise.all(
-        assessmentsData.map(async (assessment: Assessment) => {
-          const questionsRes = await fetch(
-            `/api/assessments?id=${assessment.id}&questions=true`
-          );
-          const questionsData = await questionsRes.json();
+        // Fetch questions for each assessment
+        const assessmentsWithQuestions = await Promise.all(
+          assessmentsData.map(async (assessment: Assessment) => {
+            const questionsRes = await fetch(
+              `/api/assessments?id=${assessment.id}&questions=true`
+            );
+            const questionsData = await questionsRes.json();
 
-          return {
-            ...assessment,
-            questions: questionsData.success
-              ? questionsData.data?.questions || []
-              : [],
-          };
-        })
-      );
+            return {
+              ...assessment,
+              questions: questionsData.success
+                ? questionsData.data?.questions || []
+                : [],
+            };
+          })
+        );
 
-      setAssessments(assessmentsWithQuestions);
+        setAssessments(assessmentsWithQuestions);
+      }
+    } catch (err) {
+      console.error("Failed to fetch assessments:", err);
     }
-  } catch (err) {
-    console.error("Failed to fetch assessments:", err);
-  }
-}, [params.id]);
+  }, [params.id]);
 
-// Update useEffect
-useEffect(() => {
-  if (params.id) {
-    fetchCourse();
-    fetchCurriculum();
-    fetchAssessments();
-  }
-}, [params.id, fetchCourse, fetchCurriculum, fetchAssessments]);
+  // Update useEffect with proper dependencies
+  useEffect(() => {
+    if (params.id) {
+      fetchCourse();
+      fetchCurriculum();
+      fetchAssessments();
+    }
+  }, [params.id, fetchCourse, fetchCurriculum, fetchAssessments]);
 
   const handleDelete = async () => {
     const result = await Swal.fire({
@@ -363,22 +365,7 @@ useEffect(() => {
     }
   };
 
-  const handleArchive = async () => {
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&archive=true`, {
-        method: "PUT",
-      });
-      const response = await res.json();
-
-      if (response.success) {
-        Swal.fire("Archived", "Course has been archived.", "success");
-        fetchCourse();
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "Error archiving course", "error");
-    }
-  };
+ 
 
   const handleAddModule = () => {
     setShowModuleForm(true);
@@ -434,7 +421,7 @@ useEffect(() => {
       APPROVED: "bg-blue-500",
       PUBLISHED: "bg-green-500",
       REJECTED: "bg-red-500",
-      ARCHIVED: "bg-purple-500",
+     
     };
     return colors[status] || "bg-gray-500";
   };
@@ -1252,7 +1239,7 @@ useEffect(() => {
                     </Button>
                   )}
 
-                  {(course.status === "PUBLISHED" ||
+                  {/* {(course.status === "PUBLISHED" ||
                     course.status === "APPROVED") && (
                     <Button
                       onClick={handleArchive}
@@ -1261,7 +1248,7 @@ useEffect(() => {
                     >
                       Archive
                     </Button>
-                  )}
+                  )} */}
 
                   <Button
                     onClick={handleDelete}

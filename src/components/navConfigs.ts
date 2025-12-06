@@ -78,16 +78,16 @@ export const navConfigs = {
           href: "/dashboard/admin/courses/create",
           icon: Plus,
         },
-        {
-          title: "Course Approvals",
-          href: "/dashboard/admin/courses/approvals",
-          icon: ClipboardList,
-        },
-        {
-          title: "Course Analytics",
-          href: "/dashboard/admin/courses/analytics",
-          icon: TrendingUp,
-        },
+        // {
+        //   title: "Course Approvals",
+        //   href: "/dashboard/admin/courses/approvals",
+        //   icon: ClipboardList,
+        // },
+        // {
+        //   title: "Course Analytics",
+        //   href: "/dashboard/admin/courses/analytics",
+        //   icon: TrendingUp,
+        // },
       ],
     },
 
@@ -277,11 +277,11 @@ export const navConfigs = {
           href: "/dashboard/college/departments",
           icon: List,
         },
-        {
-          title: "HOD Assignments",
-          href: "/dashboard/college/departments/hod",
-          icon: Users,
-        },
+        // {
+        //   title: "HOD Assignments",
+        //   href: "/dashboard/college/departments/hod",
+        //   icon: Users,
+        // },
       ],
     },
 
