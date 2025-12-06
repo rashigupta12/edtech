@@ -504,7 +504,7 @@ export default function EditCoursePage() {
     if (params.id) {
       fetchData();
     }
-  }, [params.id, router, fetchAssessments]); // Add fetchAssessments to dependencies
+  }, [params.id, router]); // Add fetchAssessments to dependencies
 
   const handleFieldChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -1022,13 +1022,16 @@ export default function EditCoursePage() {
     };
 
     // Update the saveAssessment function inside renderAssessmentEditor:
-    const saveAssessment = async () => {
+  const saveAssessment = async () => {
       try {
         const assessmentToSave = assessment!;
         let endpoint = "";
         let method = "POST";
 
-        if (assessmentToSave.id) {
+        // Check if this is an existing assessment (has valid UUID)
+        const hasValidId = assessmentToSave.id && UUID_REGEX.test(assessmentToSave.id);
+
+        if (hasValidId) {
           method = "PUT";
           // Use the new update endpoint
           endpoint = `/api/assessments?id=${assessmentToSave.id}`;

@@ -42,6 +42,14 @@ const errorResponse = (message: string, code = 'ERROR', status = 400): NextRespo
   return NextResponse.json({ success: false, error: { code, message } }, { status });
 };
 
+// Check if URL is for YouTube or Vimeo
+const isExternalVideo = (videoUrl: string | null): boolean => {
+  if (!videoUrl) return false;
+  return videoUrl.includes('youtube.com') || 
+         videoUrl.includes('youtu.be') || 
+         videoUrl.includes('vimeo.com');
+};
+
 // ===========================
 // HELPER FUNCTIONS
 // ===========================
@@ -115,10 +123,12 @@ const updateEnrollmentProgress = async (enrollmentId: string, courseId: string, 
       .from(CourseLessonsTable)
       .where(eq(CourseLessonsTable.courseId, courseId));
 
-    // Get lessons completed according to completion rules
+    // Get lessons with video URLs to check if they're external
     const lessons = await db
       .select({
-        id: CourseLessonsTable.id
+        id: CourseLessonsTable.id,
+        videoUrl: CourseLessonsTable.videoUrl,
+        contentType: CourseLessonsTable.contentType
       })
       .from(CourseLessonsTable)
       .where(eq(CourseLessonsTable.courseId, courseId));
@@ -152,9 +162,13 @@ const updateEnrollmentProgress = async (enrollmentId: string, courseId: string, 
         .limit(1);
 
       if (lessonProgress) {
-        // Check video requirement
-        const videoComplete = !completionRules?.requireVideoWatched ||
-          (lessonProgress.videoPercentageWatched || 0) >= (completionRules.minVideoWatchPercentage || 90);
+        // Check if it's a video lesson with external video (YouTube/Vimeo)
+        const isExternalVideoContent = lesson.contentType === 'VIDEO' && isExternalVideo(lesson.videoUrl);
+        
+        // For external videos, skip video percentage check
+        const videoComplete = !completionRules?.requireVideoWatched || 
+                             isExternalVideoContent ||
+                             (lessonProgress.videoPercentageWatched || 0) >= (completionRules.minVideoWatchPercentage || 90);
 
         // Check quiz requirement
         const quizResult = await checkLessonQuizCompletion(lesson.id, userId, enrollmentId);
@@ -270,35 +284,6 @@ const updateEnrollmentProgress = async (enrollmentId: string, courseId: string, 
 // CONTROLLERS
 // ===========================
 
-// GET LEARNING OVERVIEW
-const getLearningOverview = async (userId: string) => {
-  const [totalEnrollments] = await db
-    .select({ count: count() })
-    .from(EnrollmentsTable)
-    .where(eq(EnrollmentsTable.userId, userId));
-
-  const [completedLessons] = await db
-    .select({ count: count() })
-    .from(LessonProgressTable)
-    .where(and(eq(LessonProgressTable.userId, userId), eq(LessonProgressTable.isCompleted, true)));
-
-  const enrollments = await db
-    .select({
-      enrollmentId: EnrollmentsTable.id,
-      courseId: EnrollmentsTable.courseId,
-      progress: EnrollmentsTable.progress,
-      status: EnrollmentsTable.status,
-    })
-    .from(EnrollmentsTable)
-    .where(eq(EnrollmentsTable.userId, userId));
-
-  return successResponse({
-    totalCourses: totalEnrollments?.count || 0,
-    completedLessons: completedLessons?.count || 0,
-    enrollments,
-  });
-};
-
 // GET COURSE PROGRESS
 const getCourseProgress = async (courseId: string, userId: string) => {
   try {
@@ -322,7 +307,7 @@ const getCourseProgress = async (courseId: string, userId: string) => {
     // Update progress first
     const progressData = await updateEnrollmentProgress(enrollment.id, courseId, userId);
 
-    // Get all lessons in course
+    // Get all lessons in course with video URLs
     const lessons = await db
       .select({
         id: CourseLessonsTable.id,
@@ -330,6 +315,7 @@ const getCourseProgress = async (courseId: string, userId: string) => {
         moduleId: CourseLessonsTable.moduleId,
         moduleTitle: CourseModulesTable.title,
         contentType: CourseLessonsTable.contentType,
+        videoUrl: CourseLessonsTable.videoUrl,
         hasQuiz: CourseLessonsTable.hasQuiz,
         quizRequired: CourseLessonsTable.quizRequired,
       })
@@ -370,14 +356,19 @@ const getCourseProgress = async (courseId: string, userId: string) => {
           .where(eq(LessonCompletionRulesTable.lessonId, lesson.id))
           .limit(1);
 
+        // Check if it's an external video
+        const isExternalVideoContent = lesson.contentType === 'VIDEO' && isExternalVideo(lesson.videoUrl);
+
         // Check quiz completion
         const quizResult = await checkLessonQuizCompletion(lesson.id, userId, enrollment.id);
 
         // Check if lesson is complete based on rules
         let isComplete = false;
         if (lessonProgress) {
-          const videoComplete = !completionRules?.requireVideoWatched ||
-            (lessonProgress.videoPercentageWatched || 0) >= (completionRules.minVideoWatchPercentage || 90);
+          // For external videos, skip video percentage requirement
+          const videoComplete = !completionRules?.requireVideoWatched || 
+                               isExternalVideoContent ||
+                               (lessonProgress.videoPercentageWatched || 0) >= (completionRules.minVideoWatchPercentage || 90);
 
           const quizComplete = !completionRules?.requireQuizPassed || quizResult.quizPassed;
 
@@ -403,6 +394,7 @@ const getCourseProgress = async (courseId: string, userId: string) => {
           isComplete,
           completionRules,
           quizResult,
+          isExternalVideo: isExternalVideoContent,
         };
       })
     );
@@ -498,6 +490,29 @@ const getCourseProgress = async (courseId: string, userId: string) => {
       };
     }
 
+    // Get all assessment attempts for the course
+    const assessmentAttempts = await db
+      .select({
+        attemptId: AssessmentAttemptsTable.id,
+        assessmentId: AssessmentAttemptsTable.assessmentId,
+        score: AssessmentAttemptsTable.score,
+        percentage: AssessmentAttemptsTable.percentage,
+        passed: AssessmentAttemptsTable.passed,
+        status: AssessmentAttemptsTable.status,
+        startedAt: AssessmentAttemptsTable.startedAt,
+        timeSpent: AssessmentAttemptsTable.timeSpent,
+      })
+      .from(AssessmentAttemptsTable)
+      .innerJoin(AssessmentsTable, eq(AssessmentAttemptsTable.assessmentId, AssessmentsTable.id))
+      .where(
+        and(
+          eq(AssessmentAttemptsTable.userId, userId),
+          eq(AssessmentAttemptsTable.enrollmentId, enrollment.id),
+          eq(AssessmentsTable.courseId, courseId)
+        )
+      )
+      .orderBy(desc(AssessmentAttemptsTable.startedAt));
+
     return successResponse({
       enrollmentId: enrollment.id,
       courseId,
@@ -513,102 +528,11 @@ const getCourseProgress = async (courseId: string, userId: string) => {
       lessonsProgress,
       moduleAssessmentStatus,
       finalAssessmentStatus,
+      assessmentAttempts, // Include all attempts for frontend filtering
     });
   } catch (error: any) {
     console.error('getCourseProgress error:', error);
     return errorResponse(error.message || 'Failed to get course progress', 'PROGRESS_ERROR', 500);
-  }
-};
-
-// UPDATE COURSE PROGRESS
-const updateCourseProgress = async (courseId: string, userId: string, request: NextRequest) => {
-  try {
-    const body = await request.json();
-
-    const [enrollment] = await db
-      .select()
-      .from(EnrollmentsTable)
-      .where(and(eq(EnrollmentsTable.courseId, courseId), eq(EnrollmentsTable.userId, userId)))
-      .limit(1);
-
-    if (!enrollment) {
-      return errorResponse('Not enrolled in this course', 'NOT_ENROLLED', 404);
-    }
-
-    const [updated] = await db
-      .update(EnrollmentsTable)
-      .set({
-        progress: body.progress || enrollment.progress,
-        lastAccessedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(EnrollmentsTable.id, enrollment.id))
-      .returning();
-
-    return successResponse(updated, 'Progress updated successfully');
-  } catch (error: any) {
-    return errorResponse(error.message || 'Failed to update progress', 'UPDATE_ERROR', 500);
-  }
-};
-
-// GET LESSON PROGRESS
-const getLessonProgress = async (lessonId: string, userId: string) => {
-  try {
-    // Get lesson details first
-    const [lesson] = await db
-      .select({
-        id: CourseLessonsTable.id,
-        title: CourseLessonsTable.title,
-        courseId: CourseLessonsTable.courseId,
-        hasQuiz: CourseLessonsTable.hasQuiz,
-        quizRequired: CourseLessonsTable.quizRequired,
-      })
-      .from(CourseLessonsTable)
-      .where(eq(CourseLessonsTable.id, lessonId))
-      .limit(1);
-
-    if (!lesson) {
-      return errorResponse('Lesson not found', 'NOT_FOUND', 404);
-    }
-
-    // Get enrollment
-    const [enrollment] = await db
-      .select({
-        id: EnrollmentsTable.id,
-      })
-      .from(EnrollmentsTable)
-      .where(and(eq(EnrollmentsTable.courseId, lesson.courseId), eq(EnrollmentsTable.userId, userId)))
-      .limit(1);
-
-    if (!enrollment) {
-      return errorResponse('Not enrolled in this course', 'NOT_ENROLLED', 404);
-    }
-
-    const [progress] = await db
-      .select()
-      .from(LessonProgressTable)
-      .where(and(eq(LessonProgressTable.lessonId, lessonId), eq(LessonProgressTable.userId, userId)))
-      .limit(1);
-
-    if (!progress) {
-      return successResponse({
-        lessonId,
-        userId,
-        enrollmentId: enrollment.id,
-        isCompleted: false,
-        lastWatchedPosition: 0,
-        watchDuration: 0,
-        videoPercentageWatched: 0,
-        resourcesViewed: null,
-        quizAttempted: false,
-        quizPassed: false,
-      });
-    }
-
-    return successResponse(progress);
-  } catch (error: any) {
-    console.error('getLessonProgress error:', error);
-    return errorResponse(error.message || 'Failed to get lesson progress', 'LESSON_PROGRESS_ERROR', 500);
   }
 };
 
@@ -623,6 +547,8 @@ const updateLessonProgress = async (lessonId: string, userId: string, request: N
         id: CourseLessonsTable.id,
         title: CourseLessonsTable.title,
         courseId: CourseLessonsTable.courseId,
+        videoUrl: CourseLessonsTable.videoUrl,
+        contentType: CourseLessonsTable.contentType,
         hasQuiz: CourseLessonsTable.hasQuiz,
         quizRequired: CourseLessonsTable.quizRequired,
       })
@@ -709,6 +635,8 @@ const markLessonComplete = async (lessonId: string, userId: string) => {
       .select({
         id: CourseLessonsTable.id,
         courseId: CourseLessonsTable.courseId,
+        videoUrl: CourseLessonsTable.videoUrl,
+        contentType: CourseLessonsTable.contentType,
         hasQuiz: CourseLessonsTable.hasQuiz,
         quizRequired: CourseLessonsTable.quizRequired,
       })
@@ -738,7 +666,10 @@ const markLessonComplete = async (lessonId: string, userId: string) => {
       .where(eq(LessonCompletionRulesTable.lessonId, lessonId))
       .limit(1);
 
-    // Check if lesson has required quiz
+    // Check if it's an external video (YouTube/Vimeo)
+    const isExternalVideoContent = lesson.contentType === 'VIDEO' && isExternalVideo(lesson.videoUrl);
+
+    // Check if lesson has required quiz (skip for external videos if video watching is required)
     if (lesson.hasQuiz && lesson.quizRequired && completionRules?.requireQuizPassed) {
       // Get lesson quiz
       const [quiz] = await db
@@ -775,6 +706,32 @@ const markLessonComplete = async (lessonId: string, userId: string) => {
       }
     }
 
+    // Check video percentage requirement (skip for external videos)
+    if (completionRules?.requireVideoWatched && !isExternalVideoContent) {
+      // Get current progress to check video percentage
+      const [existingProgress] = await db
+        .select({
+          videoPercentageWatched: LessonProgressTable.videoPercentageWatched
+        })
+        .from(LessonProgressTable)
+        .where(
+          and(
+            eq(LessonProgressTable.lessonId, lessonId),
+            eq(LessonProgressTable.userId, userId),
+            eq(LessonProgressTable.enrollmentId, enrollment.id)
+          )
+        )
+        .limit(1);
+
+      if (existingProgress && (existingProgress.videoPercentageWatched || 0) < (completionRules.minVideoWatchPercentage || 90)) {
+        return errorResponse(
+          `You must watch at least ${completionRules.minVideoWatchPercentage}% of the video to complete this lesson`,
+          'VIDEO_REQUIREMENT_NOT_MET',
+          403
+        );
+      }
+    }
+
     // Check existing progress
     const [existingProgress] = await db
       .select()
@@ -797,7 +754,10 @@ const markLessonComplete = async (lessonId: string, userId: string) => {
           isCompleted: true,
           completedAt: new Date(),
           updatedAt: new Date(),
-          videoPercentageWatched: completionRules?.requireVideoWatched ? 100 : existingProgress.videoPercentageWatched,
+          // For external videos, set video percentage to 100 if required
+          videoPercentageWatched: completionRules?.requireVideoWatched ? 
+            (isExternalVideoContent ? 100 : existingProgress.videoPercentageWatched) : 
+            existingProgress.videoPercentageWatched,
         })
         .where(eq(LessonProgressTable.id, existingProgress.id))
         .returning();
@@ -811,7 +771,8 @@ const markLessonComplete = async (lessonId: string, userId: string) => {
           enrollmentId: enrollment.id,
           isCompleted: true,
           completedAt: new Date(),
-          videoPercentageWatched: completionRules?.requireVideoWatched ? 100 : 0,
+          // For external videos, set video percentage to 100 if required
+          videoPercentageWatched: completionRules?.requireVideoWatched && isExternalVideoContent ? 100 : 0,
         })
         .returning();
     }
@@ -826,16 +787,6 @@ const markLessonComplete = async (lessonId: string, userId: string) => {
   }
 };
 
-// GET BOOTCAMP PROGRESS
-const getBootcampProgress = async (bootcampId: string, userId: string) => {
-  // Implementation similar to course progress but for bootcamps
-  return successResponse({
-    bootcampId,
-    userId,
-    message: 'Bootcamp progress tracking',
-  });
-};
-
 // ===========================
 // ROUTE HANDLERS
 // ===========================
@@ -846,31 +797,30 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId');
     const courseId = searchParams.get('courseId');
     const lessonId = searchParams.get('lessonId');
-    const bootcampId = searchParams.get('bootcampId');
-    const overview = searchParams.get('overview');
 
     if (!userId) return errorResponse('userId is required');
 
     const userValidation = validateId(userId);
     if (!userValidation.valid) return errorResponse(userValidation.error!);
 
-    // GET /api/progress?userId=123&overview=true
-    if (parseBoolean(overview)) {
-      return await getLearningOverview(userId);
-    }
-
-    // GET /api/progress?userId=123&bootcampId=456
-    if (bootcampId) {
-      const validation = validateId(bootcampId);
-      if (!validation.valid) return errorResponse(validation.error!);
-      return await getBootcampProgress(bootcampId, userId);
-    }
-
     // GET /api/progress?userId=123&lessonId=789
     if (lessonId) {
       const validation = validateId(lessonId);
       if (!validation.valid) return errorResponse(validation.error!);
-      return await getLessonProgress(lessonId, userId);
+      
+      // Simplified: just return basic info for this endpoint
+      const [progress] = await db
+        .select()
+        .from(LessonProgressTable)
+        .where(and(eq(LessonProgressTable.lessonId, lessonId), eq(LessonProgressTable.userId, userId)))
+        .limit(1);
+      
+      return successResponse(progress || {
+        lessonId,
+        userId,
+        isCompleted: false,
+        videoPercentageWatched: 0
+      });
     }
 
     // GET /api/progress?userId=123&courseId=456
@@ -880,7 +830,7 @@ export async function GET(request: NextRequest) {
       return await getCourseProgress(courseId, userId);
     }
 
-    return errorResponse('courseId, lessonId, or overview parameter is required');
+    return errorResponse('courseId or lessonId parameter is required');
   } catch (error: any) {
     console.error('GET error:', error);
     return errorResponse(error.message || 'Internal server error', 'INTERNAL_ERROR', 500);
@@ -920,7 +870,6 @@ export async function PUT(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
-    const courseId = searchParams.get('courseId');
     const lessonId = searchParams.get('lessonId');
 
     if (!userId) return errorResponse('userId is required');
@@ -935,14 +884,7 @@ export async function PUT(request: NextRequest) {
       return await updateLessonProgress(lessonId, userId, request);
     }
 
-    // PUT /api/progress?userId=123&courseId=456
-    if (courseId) {
-      const validation = validateId(courseId);
-      if (!validation.valid) return errorResponse(validation.error!);
-      return await updateCourseProgress(courseId, userId, request);
-    }
-
-    return errorResponse('courseId or lessonId is required');
+    return errorResponse('lessonId is required');
   } catch (error: any) {
     console.error('PUT error:', error);
     return errorResponse(error.message || 'Internal server error', 'INTERNAL_ERROR', 500);

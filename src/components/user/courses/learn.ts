@@ -36,6 +36,7 @@ export interface Assessment {
 }
 
 export interface Lesson {
+  completionRules: any;
   id: string;
   title: string;
   description?: string;

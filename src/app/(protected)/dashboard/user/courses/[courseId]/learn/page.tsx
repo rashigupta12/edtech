@@ -31,7 +31,7 @@ import {
   Video,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 export default function CourseLearnPage() {
   const { courseId } = useParams() as { courseId: string };
@@ -58,6 +58,9 @@ export default function CourseLearnPage() {
   const [showStartDialog, setShowStartDialog] = useState<boolean>(false);
   const [selectedAssessment, setSelectedAssessment] =
     useState<Assessment | null>(null);
+
+  // Refs for preserving scroll position
+  const curriculumTabRef = useRef<HTMLDivElement>(null);
 
   // Fetch curriculum
   useEffect(() => {
@@ -112,39 +115,46 @@ export default function CourseLearnPage() {
     };
   }, [courseId]);
 
-  // Fetch progress
-  useEffect(() => {
-    let mounted = true;
+  // Fetch progress - wrapped in useCallback to prevent infinite loops
+  const fetchProgress = useCallback(async () => {
     if (!userId || !courseId) return;
 
-    async function fetchProgress() {
-      setIsProgressLoading(true);
-      try {
-        // Add cache-busting parameter to avoid disk cache
-        const timestamp = new Date().getTime();
-        const res = await fetch(
-          `/api/progress?userId=${encodeURIComponent(
-            userId ?? ""
-          )}&courseId=${encodeURIComponent(courseId)}&t=${timestamp}`
-        );
-        if (!res.ok) throw new Error("Failed to fetch progress");
-        const json = await safeJson(res);
-        if (!mounted) return;
+    setIsProgressLoading(true);
+    try {
+      // Add cache-busting parameter to avoid disk cache
+      const timestamp = new Date().getTime();
+      const res = await fetch(
+        `/api/progress?userId=${encodeURIComponent(
+          userId ?? ""
+        )}&courseId=${encodeURIComponent(courseId)}&t=${timestamp}`
+      );
+      if (!res.ok) throw new Error("Failed to fetch progress");
+      const json = await safeJson(res);
 
-        setProgress(json?.data ?? null);
-      } catch (err) {
-        console.error("fetchProgress error", err);
-      } finally {
-        if (mounted) setIsProgressLoading(false);
-      }
+      setProgress(json?.data ?? null);
+    } catch (err) {
+      console.error("fetchProgress error", err);
+    } finally {
+      setIsProgressLoading(false);
     }
-
-    fetchProgress();
-
-    return () => {
-      mounted = false;
-    };
   }, [userId, courseId]);
+
+  // Initial progress fetch
+  useEffect(() => {
+    fetchProgress();
+  }, [fetchProgress]);
+
+  // Preserve expanded modules when progress updates
+  useEffect(() => {
+    if (curriculum && selectedModuleId) {
+      // Ensure the current module stays expanded
+      setExpandedModules(prev => {
+        const newSet = new Set(prev);
+        newSet.add(selectedModuleId);
+        return newSet;
+      });
+    }
+  }, [selectedModuleId, curriculum]);
 
   // Start assessment - Navigate to assessment page
   const handleStartAssessment = (assessment: Assessment) => {
@@ -264,6 +274,21 @@ export default function CourseLearnPage() {
     setSelectedLessonId(lessonId);
     setSelectedModuleId(moduleId);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Handler for when a lesson is marked complete
+  const handleLessonCompleted = () => {
+    // Refresh progress data
+    fetchProgress();
+    
+    // Keep the current module expanded
+    if (selectedModuleId) {
+      setExpandedModules(prev => {
+        const newSet = new Set(prev);
+        newSet.add(selectedModuleId);
+        return newSet;
+      });
+    }
   };
 
   // Error state
@@ -402,7 +427,7 @@ export default function CourseLearnPage() {
             onOpenChange={setShowStartDialog}
             onStart={confirmStartAssessment}
             previousAttempts={getPreviousAttempts(selectedAssessment.id)}
-            isLoading={false} // Add this line
+            isLoading={false}
           />
         )}
 
@@ -433,10 +458,11 @@ export default function CourseLearnPage() {
                   <TabsContent
                     value="curriculum"
                     className="flex-1 overflow-auto p-4"
+                    ref={curriculumTabRef}
                   >
                     <div className="space-y-4">
-                     {curriculum.modules.map((mod) => {
-  const isExpanded = expandedModules.has(mod.id);
+                      {curriculum.modules.map((mod) => {
+                        const isExpanded = expandedModules.has(mod.id);
                         const moduleAttempts = mod.moduleAssessment
                           ? getPreviousAttempts(mod.moduleAssessment.id)
                           : [];
@@ -445,11 +471,11 @@ export default function CourseLearnPage() {
                         );
 
                         return (
-                          <div key={module.id} className="space-y-2">
+                          <div key={mod.id} className="space-y-2">
                             <Button
                               variant="ghost"
                               className="w-full justify-between hover:bg-gray-50 p-3"
-                              onClick={() => toggleModule(module.id)}
+                              onClick={() => toggleModule(mod.id)}
                             >
                               <div className="flex items-center gap-2">
                                 {isExpanded ? (
@@ -500,7 +526,7 @@ export default function CourseLearnPage() {
                                           : "hover:bg-gray-50 text-gray-800"
                                       }`}
                                       onClick={() =>
-                                        handleLessonSelect(lesson.id, module.id)
+                                        handleLessonSelect(lesson.id, mod.id)
                                       }
                                     >
                                       <div className="flex items-center gap-2 w-full">
@@ -709,6 +735,7 @@ export default function CourseLearnPage() {
                     userId={userId}
                     onLessonSelect={handleLessonSelect}
                     onStartAssessment={handleStartAssessment}
+                    onLessonCompleted={handleLessonCompleted} // Added this prop
                     prevLesson={prevLesson}
                     nextLesson={nextLesson}
                     selectedModuleId={selectedModuleId}
@@ -725,20 +752,20 @@ export default function CourseLearnPage() {
                       Select a lesson from the curriculum to start your learning
                       journey.
                     </p>
-<Button
-  onClick={() => {
-    const firstLesson = allLessons[0];
-    const mod = curriculum.modules.find((m) =>
-      m.lessons.some((l) => l.id === firstLesson?.id)
-    );
-    if (firstLesson && mod) {
-      handleLessonSelect(firstLesson.id, mod.id);
-    }
-  }}
-  className="bg-emerald-600 hover:bg-emerald-700 text-white"
->
-  Start First Lesson
-</Button>
+                    <Button
+                      onClick={() => {
+                        const firstLesson = allLessons[0];
+                        const mod = curriculum.modules.find((m) =>
+                          m.lessons.some((l) => l.id === firstLesson?.id)
+                        );
+                        if (firstLesson && mod) {
+                          handleLessonSelect(firstLesson.id, mod.id);
+                        }
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      Start First Lesson
+                    </Button>
                   </div>
                 )}
               </CardContent>
