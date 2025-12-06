@@ -354,6 +354,8 @@ export default function CoursesPage() {
     }
   };
 
+
+  
   // Apply all filters
   const filteredCourses = courses.filter((course) => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -408,7 +410,7 @@ export default function CoursesPage() {
         </div>
 
         <div className="flex gap-3">
-          <Button
+          {/* <Button
             asChild
             variant="outline"
             className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
@@ -417,7 +419,7 @@ export default function CoursesPage() {
               <Filter className="h-4 w-4" />
               Categories
             </Link>
-          </Button>
+          </Button> */}
           
           <Button
             asChild
@@ -561,18 +563,15 @@ export default function CoursesPage() {
                 ? "Try adjusting your search or filter criteria"
                 : "Create your first course to get started!"}
             </p>
-            <Button
-              onClick={() => {
-                setSearchTerm("");
-                setStatusFilter("ALL");
-                setCollegeFilter("ALL");
-                setCategoryFilter("ALL");
-                setLevelFilter("ALL");
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              Clear Filters
-            </Button>
+              <Button
+            asChild
+            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+          >
+            <Link href="/dashboard/faculty/courses/create" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add Course
+            </Link>
+          </Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
