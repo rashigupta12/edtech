@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import { NumberInput } from "@/components/ui/number-input";
 
@@ -230,11 +230,192 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
     value: string;
   } | null>(null);
 
-  // Fetch course data
-  useEffect(() => {
-    const fetchData = async () => {
+
+
+  // Fetch assessments function
+const fetchAssessments = useCallback(async () => {
+  try {
+    console.log("Fetching assessments for course:", params.id);
+    const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
+    const response = await res.json();
+
+    console.log("Assessments API response:", response);
+
+    const assessmentsData =
+      response.success && response.data?.assessments
+        ? response.data.assessments
+        : [];
+
+    console.log("Assessments data (array):", assessmentsData);
+
+    if (!Array.isArray(assessmentsData)) {
+      console.error("Assessments data is not an array:", assessmentsData);
+      return;
+    }
+
+    // Separate assessments by type
+    const courseFinal = assessmentsData.find(
+      (a: any) => a.assessmentLevel === "COURSE_FINAL"
+    );
+    if (courseFinal) {
+      console.log("Found course final assessment:", courseFinal);
+
       try {
-        setLoading(true);
+        const questionsRes = await fetch(
+          `/api/assessments?id=${courseFinal.id}&questions=true`
+        );
+        const questionsData = await questionsRes.json();
+        console.log("Questions API response for final:", questionsData);
+
+        if (questionsData.success) {
+          const questionsArray = questionsData.data?.questions || [];
+          if (Array.isArray(questionsArray)) {
+            courseFinal.questions = questionsArray;
+          } else {
+            courseFinal.questions = [];
+          }
+        } else {
+          courseFinal.questions = [];
+        }
+      } catch (error) {
+        console.error("Error fetching questions for final assessment:", error);
+        courseFinal.questions = [];
+      }
+
+      setCourseFinalAssessment(courseFinal);
+    }
+
+    // Use modules from state via functional update to avoid dependency
+    setModules((currentModules) => {
+      const updatedModules = [...currentModules];
+
+      // Process each assessment
+      for (const assessment of assessmentsData) {
+        console.log("Processing assessment:", assessment);
+
+        if (
+          assessment.assessmentLevel === "MODULE_ASSESSMENT" &&
+          assessment.moduleId
+        ) {
+          const moduleIndex = updatedModules.findIndex(
+            (m) => m.id === assessment.moduleId
+          );
+          if (moduleIndex !== -1) {
+            console.log(`Attaching module assessment to module ${moduleIndex}`);
+
+            // Fetch questions for module assessment
+            fetch(`/api/assessments?id=${assessment.id}&questions=true`)
+              .then((res) => res.json())
+              .then((questionsData) => {
+                console.log("Questions API response for module:", questionsData);
+                if (questionsData.success) {
+                  const questionsArray = questionsData.data?.questions || [];
+                  assessment.questions = Array.isArray(questionsArray)
+                    ? questionsArray
+                    : [];
+                } else {
+                  assessment.questions = [];
+                }
+
+                // Update the specific module with questions
+                setModules((prevModules) =>
+                  prevModules.map((mod, idx) =>
+                    idx === moduleIndex
+                      ? {
+                          ...mod,
+                          moduleAssessment: assessment,
+                          hasAssessment: true,
+                        }
+                      : mod
+                  )
+                );
+              })
+              .catch((error) => {
+                console.error("Error fetching questions for module assessment:", error);
+                assessment.questions = [];
+              });
+
+            updatedModules[moduleIndex].moduleAssessment = assessment;
+            updatedModules[moduleIndex].hasAssessment = true;
+          }
+        }
+
+        if (
+          assessment.assessmentLevel === "LESSON_QUIZ" &&
+          assessment.lessonId
+        ) {
+          console.log(`Looking for lesson ${assessment.lessonId} for quiz`);
+
+          for (const currentModule of updatedModules) {
+            const lessonIndex = currentModule.lessons.findIndex(
+              (l) => l.id === assessment.lessonId
+            );
+            if (lessonIndex !== -1) {
+              console.log(
+                `Attaching quiz to lesson ${lessonIndex} in module ${currentModule.title}`
+              );
+
+              // Fetch questions for lesson quiz
+              fetch(`/api/assessments?id=${assessment.id}&questions=true`)
+                .then((res) => res.json())
+                .then((questionsData) => {
+                  console.log("Questions API response for lesson:", questionsData);
+                  if (questionsData.success) {
+                    const questionsArray = questionsData.data?.questions || [];
+                    assessment.questions = Array.isArray(questionsArray)
+                      ? questionsArray
+                      : [];
+                  } else {
+                    assessment.questions = [];
+                  }
+
+                  // Update the specific lesson with questions
+                  setModules((prevModules) =>
+                    prevModules.map((mod) =>
+                      mod.id === currentModule.id
+                        ? {
+                            ...mod,
+                            lessons: mod.lessons.map((lesson, idx) =>
+                              idx === lessonIndex
+                                ? {
+                                    ...lesson,
+                                    quiz: assessment,
+                                    hasQuiz: true,
+                                  }
+                                : lesson
+                            ),
+                          }
+                        : mod
+                    )
+                  );
+                })
+                .catch((error) => {
+                  console.error("Error fetching questions for lesson quiz:", error);
+                  assessment.questions = [];
+                });
+
+              currentModule.lessons[lessonIndex].quiz = assessment;
+              currentModule.lessons[lessonIndex].hasQuiz = true;
+              break;
+            }
+          }
+        }
+      }
+
+      console.log("Updated modules with assessments:", updatedModules);
+      return updatedModules;
+    });
+  } catch (error) {
+    console.error("Failed to fetch assessments:", error);
+  }
+}, [params.id]); // Only depend on params.id
+
+
+  // Fetch course data
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
 
         // Fetch course
         const courseRes = await fetch(`/api/courses?id=${params.id}`, {
@@ -294,17 +475,14 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
         }
 
         // Fetch curriculum with lessons
-        const curriculumRes = await fetch(
-          `/api/courses?id=${params.id}&curriculum=true`
-        );
-        const curriculumData = await curriculumRes.json();
-        if (curriculumData.success) {
-          const loadedModules = curriculumData.data.modules || [];
-          setModules(loadedModules);
-
-          // Fetch assessments after modules are loaded
-          fetchAssessments(loadedModules);
-        }
+       const curriculumRes = await fetch(
+        `/api/courses?id=${params.id}&curriculum=true`
+      );
+      const curriculumData = await curriculumRes.json();
+      if (curriculumData.success) {
+        const loadedModules = curriculumData.data.modules || [];
+        setModules(loadedModules);
+      }
 
         // Fetch categories
         const categoriesRes = await fetch("/api/categories");
@@ -330,181 +508,6 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
     }
   }, [params.id, router]);
 
-  // Fetch assessments function
-  const fetchAssessments = async (modulesData: Module[] = modules) => {
-    try {
-      console.log("Fetching assessments for course:", params.id);
-      const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
-      const response = await res.json();
-
-      console.log("Assessments API response:", response);
-
-      // The assessments are nested inside response.data.assessments
-      const assessmentsData =
-        response.success && response.data?.assessments
-          ? response.data.assessments
-          : [];
-
-      console.log("Assessments data (array):", assessmentsData);
-
-      if (!Array.isArray(assessmentsData)) {
-        console.error("Assessments data is not an array:", assessmentsData);
-        return;
-      }
-
-      // Separate assessments by type
-      const courseFinal = assessmentsData.find(
-        (a: any) => a.assessmentLevel === "COURSE_FINAL"
-      );
-      if (courseFinal) {
-        console.log("Found course final assessment:", courseFinal);
-
-        // Fetch questions for the assessment using correct API endpoint
-        try {
-          const questionsRes = await fetch(
-            `/api/assessments?id=${courseFinal.id}&questions=true`
-          );
-          const questionsData = await questionsRes.json();
-          console.log("Questions API response for final:", questionsData);
-
-          if (questionsData.success) {
-            // The questions are in questionsData.data.questions
-            const questionsArray = questionsData.data?.questions || [];
-            if (Array.isArray(questionsArray)) {
-              courseFinal.questions = questionsArray;
-            } else {
-              courseFinal.questions = [];
-            }
-          } else {
-            courseFinal.questions = [];
-          }
-        } catch (error) {
-          console.error(
-            "Error fetching questions for final assessment:",
-            error
-          );
-          courseFinal.questions = [];
-        }
-
-        setCourseFinalAssessment(courseFinal);
-      }
-
-      // Update modules with their assessments
-      const updatedModules = [...modulesData];
-
-      // Process each assessment
-    for (const assessment of assessmentsData) {
-  console.log("Processing assessment:", assessment);
-
-  if (
-    assessment.assessmentLevel === "MODULE_ASSESSMENT" &&
-    assessment.moduleId
-  ) {
-    const moduleIndex = updatedModules.findIndex(
-      (m) => m.id === assessment.moduleId
-    );
-    if (moduleIndex !== -1) {
-      console.log(`Attaching module assessment to module ${moduleIndex}`);
-
-      // Fetch questions for module assessment using correct API endpoint
-      try {
-        const questionsRes = await fetch(
-          `/api/assessments?id=${assessment.id}&questions=true`
-        );
-        const questionsData = await questionsRes.json();
-        console.log("Questions API response for module:", questionsData);
-
-        if (questionsData.success) {
-          const questionsArray = questionsData.data?.questions || [];
-          if (Array.isArray(questionsArray)) {
-            assessment.questions = questionsArray;
-          } else {
-            assessment.questions = [];
-          }
-        } else {
-          assessment.questions = [];
-        }
-      } catch (error) {
-        console.error(
-          "Error fetching questions for module assessment:",
-          error
-        );
-        assessment.questions = [];
-      }
-
-      updatedModules[moduleIndex].moduleAssessment = assessment;
-      updatedModules[moduleIndex].hasAssessment = true;
-    } else {
-      console.log(
-        `Module ${assessment.moduleId} not found for assessment`
-      );
-    }
-  }
-
-  if (
-    assessment.assessmentLevel === "LESSON_QUIZ" &&
-    assessment.lessonId
-  ) {
-    console.log(`Looking for lesson ${assessment.lessonId} for quiz`);
-    let found = false;
-
-    for (const currentModule of updatedModules) { // Changed from 'module' to 'currentModule'
-      const lessonIndex = currentModule.lessons.findIndex(
-        (l) => l.id === assessment.lessonId
-      );
-      if (lessonIndex !== -1) {
-        console.log(
-          `Attaching quiz to lesson ${lessonIndex} in module ${currentModule.title}`
-        );
-
-        // Fetch questions for lesson quiz using correct API endpoint
-        try {
-          const questionsRes = await fetch(
-            `/api/assessments?id=${assessment.id}&questions=true`
-          );
-          const questionsData = await questionsRes.json();
-          console.log(
-            "Questions API response for lesson:",
-            questionsData
-          );
-
-          if (questionsData.success) {
-            const questionsArray = questionsData.data?.questions || [];
-            if (Array.isArray(questionsArray)) {
-              assessment.questions = questionsArray;
-            } else {
-              assessment.questions = [];
-            }
-          } else {
-            assessment.questions = [];
-          }
-        } catch (error) {
-          console.error(
-            "Error fetching questions for lesson quiz:",
-            error
-          );
-          assessment.questions = [];
-        }
-
-        currentModule.lessons[lessonIndex].quiz = assessment;
-        currentModule.lessons[lessonIndex].hasQuiz = true;
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      console.log(`Lesson ${assessment.lessonId} not found for quiz`);
-    }
-  }
-}
-
-      setModules(updatedModules);
-      console.log("Updated modules with assessments:", updatedModules);
-    } catch (error) {
-      console.error("Failed to fetch assessments:", error);
-    }
-  };
 
   const handleFieldChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

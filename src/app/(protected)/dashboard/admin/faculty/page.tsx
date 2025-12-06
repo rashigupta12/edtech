@@ -1,8 +1,9 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
+/*eslint-disable @typescript-eslint/no-unused-vars*/
 "use client";
 
 import { useCurrentUser } from "@/hooks/auth";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,8 +27,8 @@ import {
   Save,
   X,
   Users,
-  ArrowLeft,
-  Lock,
+  Building2,
+  School,
 } from "lucide-react";
 import {
   Select,
@@ -50,6 +51,7 @@ const facultyRoles = [
     icon: <Crown className="w-3 h-3 inline ml-1" />,
   },
   { value: "VISITING_FACULTY", label: "Visiting Faculty" },
+  { value: "ADMIN_FACULTY", label: "Admin Faculty" },
 ];
 
 const permissionsList = [
@@ -61,12 +63,13 @@ const permissionsList = [
 
 const FacultyPage = () => {
   const user = useCurrentUser();
-  const [collegeId, setCollegeId] = useState<string>("");
+  const [colleges, setColleges] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [facultyList, setFacultyList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [collegeFilter, setCollegeFilter] = useState<string>("all");
 
   const [openForm, setOpenForm] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -77,6 +80,7 @@ const FacultyPage = () => {
     email: "",
     mobile: "",
     password: "",
+    collegeId: "",
     departmentId: "",
     facultyRole: "LECTURER",
     designation: "Lecturer",
@@ -119,39 +123,65 @@ const FacultyPage = () => {
     return "";
   };
 
- // Wrap fetchCollegeId in useCallback (place before first useEffect)
-const fetchCollegeId = useCallback(async () => {
-  if (!user?.id) return;
-  const res = await fetch(`/api/colleges?userId=${user.id}`, {
-    cache: "no-store",
-  });
-  const data = await res.json();
-  if (data.success) setCollegeId(data.data.id);
-}, [user?.id]);
+  // Load all colleges
+  const loadColleges = async () => {
+    try {
+      const res = await fetch(`/api/colleges`);
+      const data = await res.json();
+      setColleges(data.data || []);
+    } catch (err) {
+      console.error("Failed to load colleges");
+    }
+  };
 
-// Wrap loadData in useCallback (place before second useEffect)
-const loadData = useCallback(async () => {
-  if (!collegeId) return;
-  setLoading(true);
-  const [deptRes, facRes] = await Promise.all([
-    fetch(`/api/departments?collegeId=${collegeId}`),
-    fetch(`/api/faculty?collegeId=${collegeId}`),
-  ]);
-  const deptData = await deptRes.json();
-  const facData = await facRes.json();
-  setDepartments(deptData.data || []);
-  setFacultyList(facData.data || []);
-  setLoading(false);
-}, [collegeId]);
+  // Load departments based on selected college
+  const loadDepartments = async (collegeId: string) => {
+    if (!collegeId) {
+      setDepartments([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/departments?collegeId=${collegeId}`);
+      const data = await res.json();
+      setDepartments(data.data || []);
+    } catch (err) {
+      console.error("Failed to load departments");
+    }
+  };
 
-// Update useEffect hooks to include the functions in dependencies
-useEffect(() => {
-  fetchCollegeId();
-}, [fetchCollegeId]); // Add fetchCollegeId to deps
+  // Load all faculty with college and department info
+  const loadFaculty = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/faculty?includeCollege=true`);
+      const data = await res.json();
+      setFacultyList(data.data || []);
+    } catch (err) {
+      console.error("Failed to load faculty");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to load faculty members",
+        confirmButtonColor: "#059669",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-useEffect(() => {
-  if (collegeId) loadData();
-}, [collegeId, loadData]); // Add loadData to deps
+  useEffect(() => {
+    loadColleges();
+    loadFaculty();
+  }, []);
+
+  // When college changes in form, load its departments
+  useEffect(() => {
+    if (formData.collegeId) {
+      loadDepartments(formData.collegeId);
+    } else {
+      setDepartments([]);
+    }
+  }, [formData.collegeId]);
 
   // Open form in ADD mode
   const openAddForm = () => {
@@ -162,6 +192,7 @@ useEffect(() => {
       email: "",
       mobile: "",
       password: "",
+      collegeId: "",
       departmentId: "",
       facultyRole: "LECTURER",
       designation: "Lecturer",
@@ -189,6 +220,7 @@ useEffect(() => {
       email: faculty.user?.email || "",
       mobile: faculty.user?.mobile || "",
       password: "", // Password not shown in edit mode
+      collegeId: faculty.collegeId || "",
       departmentId: faculty.departmentId || "",
       facultyRole: faculty.facultyRole || "LECTURER",
       designation: faculty.designation || "Lecturer",
@@ -212,17 +244,37 @@ useEffect(() => {
     setOpenForm(false);
     setIsEditMode(false);
     setEditingFacultyId(null);
+    setFormData({
+      name: "",
+      email: "",
+      mobile: "",
+      password: "",
+      collegeId: "",
+      departmentId: "",
+      facultyRole: "LECTURER",
+      designation: "Lecturer",
+      permissions: {
+        canCreateCourses: false,
+        canApproveContent: false,
+        canManageStudents: false,
+        canScheduleSessions: true,
+      },
+    });
   };
 
   // Handle input changes with validation
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
+    if (field === 'collegeId') {
+      // Clear department when college changes
+      setFormData(prev => ({ ...prev, departmentId: "" }));
+    }
+    
     if (field === 'email' && !isEditMode) {
       setValidationErrors(prev => ({ ...prev, email: validateEmail(value) }));
     }
     if (field === 'mobile' && !isEditMode) {
-      // Limit to 10 digits
       const limitedValue = value.slice(0, 10);
       if (value.length <= 10) {
         setFormData(prev => ({ ...prev, mobile: limitedValue }));
@@ -251,7 +303,7 @@ useEffect(() => {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            collegeId,
+            collegeId: formData.collegeId || null,
             departmentId: formData.departmentId || null,
             facultyRole: formData.facultyRole,
             designation: formData.designation,
@@ -266,7 +318,7 @@ useEffect(() => {
         }
 
         closeForm();
-        loadData();
+        loadFaculty();
         Swal.fire({
           icon: "success",
           title: "Updated!",
@@ -331,6 +383,7 @@ useEffect(() => {
       
       setSubmitting(true);
       try {
+        // First create user
         const userRes = await fetch("/api/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -345,11 +398,12 @@ useEffect(() => {
         const userData = await userRes.json();
         if (!userRes.ok) throw new Error(userData.error || "Failed to create user");
 
+        // Then create faculty record - college can be null for admin faculty
         const facultyRes = await fetch("/api/faculty", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            collegeId,
+            collegeId: formData.collegeId || null, // Can be null for admin faculty
             userId: userData.jyotishi.id,
             departmentId: formData.departmentId || null,
             facultyRole: formData.facultyRole,
@@ -359,10 +413,16 @@ useEffect(() => {
           }),
         });
 
-        if (!facultyRes.ok) throw new Error("Failed to assign faculty role");
+        if (!facultyRes.ok) {
+          // If faculty creation fails, try to delete the user we just created
+          await fetch(`/api/users?id=${userData.jyotishi.id}`, {
+            method: "DELETE",
+          });
+          throw new Error("Failed to assign faculty role");
+        }
 
         closeForm();
-        loadData();
+        loadFaculty();
         Swal.fire({
           icon: "success",
           title: "Success!",
@@ -415,7 +475,7 @@ useEffect(() => {
           showConfirmButton: false,
           confirmButtonColor: "#059669",
         });
-        loadData();
+        loadFaculty();
       } else {
         Swal.fire({
           icon: "error",
@@ -435,14 +495,18 @@ useEffect(() => {
     }
   };
 
+  // Filter faculty by search term and college
   const filtered = facultyList.filter(
     (f) =>
-      f.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      f.user?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      (collegeFilter === "all" || f.collegeId === collegeFilter) &&
+      (f.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.college?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.department?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto relative">
+    <div className="w-full mx-auto relative">
       {/* Main Content */}
       <div className={`transition-all duration-300 ${openForm ? "mr-96" : ""}`}>
         <div className="space-y-6">
@@ -453,7 +517,7 @@ useEffect(() => {
                 Faculty Management
               </h1>
               <p className="text-gray-600 mt-2">
-                Manage your college faculty members
+                Manage faculty members across all colleges
               </p>
             </div>
 
@@ -461,7 +525,7 @@ useEffect(() => {
               <div className="relative max-w-md w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
-                  placeholder="Search faculty..."
+                  placeholder="Search faculty, college, or department..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 w-full"
@@ -478,6 +542,43 @@ useEffect(() => {
             </div>
           </div>
 
+          {/* College Filter */}
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filter by College:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={collegeFilter === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCollegeFilter("all")}
+                className={collegeFilter === "all" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+              >
+                All Colleges
+              </Button>
+              <Button
+                variant={collegeFilter === "unassigned" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCollegeFilter("unassigned")}
+                className={collegeFilter === "unassigned" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+              >
+                (Admin Faculty)
+              </Button>
+              {colleges.map((college) => (
+                <Button
+                  key={college.id}
+                  variant={collegeFilter === college.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCollegeFilter(college.id)}
+                  className={collegeFilter === college.id ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                >
+                  {college.name} ({college.code})
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {/* Faculty Table */}
           <Card className="bg-white border-gray-200 shadow-sm overflow-hidden">
             <CardContent className="p-0">
@@ -491,21 +592,28 @@ useEffect(() => {
                     <Users className="w-8 h-8 text-gray-400" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {searchTerm ? "No faculty found" : "No faculty added yet"}
+                    {searchTerm || collegeFilter !== "all"
+                      ? "No faculty found"
+                      : "No faculty members yet"}
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    {searchTerm
-                      ? "Try adjusting your search criteria"
+                    {searchTerm || collegeFilter !== "all"
+                      ? "Try adjusting your search or filter criteria"
                       : "Click 'Add Faculty' to get started"}
                   </p>
-                  {searchTerm ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => setSearchTerm("")}
-                      className="border-gray-300"
-                    >
-                      Clear Search
-                    </Button>
+                  {searchTerm || collegeFilter !== "all" ? (
+                    <div className="flex gap-2 justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearchTerm("");
+                          setCollegeFilter("all");
+                        }}
+                        className="border-gray-300"
+                      >
+                        Clear Filters
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       onClick={openAddForm}
@@ -521,6 +629,7 @@ useEffect(() => {
                   <Table>
                     <TableHeader className="bg-gray-100">
                       <TableRow>
+                        <TableHead className="font-semibold text-gray-700">College</TableHead>
                         <TableHead className="font-semibold text-gray-700">Name</TableHead>
                         <TableHead className="font-semibold text-gray-700">Email</TableHead>
                         <TableHead className="font-semibold text-gray-700">Mobile</TableHead>
@@ -538,6 +647,19 @@ useEffect(() => {
 
                         return (
                           <TableRow key={f.id} className="hover:bg-gray-50/50">
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Building2 className="w-4 h-4 text-gray-400" />
+                                <div>
+                                  <div className="font-medium text-gray-900">
+                                    {f.college?.name || "Admin (No College)"}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {f.college?.code || "N/A"}
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
                             <TableCell className="font-medium text-gray-900">
                               {f.user?.name}
                             </TableCell>
@@ -548,12 +670,14 @@ useEffect(() => {
                               {f.user?.mobile || "—"}
                             </TableCell>
                             <TableCell className="text-gray-600">
-                              {f.departmentName || "—"}
+                              <div className="flex items-center gap-2">
+                                {f.department?.name || "—"}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Badge
                                 className={
-                                  f.facultyRole === "HOD"
+                                  f.facultyRole === "HOD" || f.facultyRole === "ADMIN_FACULTY"
                                     ? "bg-emerald-100 text-emerald-800 border-emerald-200"
                                     : "bg-gray-100 text-gray-700 border-gray-200"
                                 }
@@ -669,8 +793,7 @@ useEffect(() => {
                   }`}
                 />
                 {isEditMode && (
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                    <Lock className="w-3 h-3" />
+                  <p className="text-xs text-gray-500 mt-1">
                     Name cannot be edited
                   </p>
                 )}
@@ -695,8 +818,7 @@ useEffect(() => {
                   <p className="text-xs text-red-500 mt-1">{validationErrors.email}</p>
                 )}
                 {isEditMode && (
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                    <Lock className="w-3 h-3" />
+                  <p className="text-xs text-gray-500 mt-1">
                     Email cannot be edited
                   </p>
                 )}
@@ -721,8 +843,7 @@ useEffect(() => {
                   <p className="text-xs text-red-500 mt-1">{validationErrors.mobile}</p>
                 )}
                 {isEditMode && (
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                    <Lock className="w-3 h-3" />
+                  <p className="text-xs text-gray-500 mt-1">
                     Mobile number cannot be edited
                   </p>
                 )}
@@ -790,28 +911,58 @@ useEffect(() => {
                 </div>
               )}
 
-              {/* Department Field */}
+              {/* College Field - Optional for admin faculty */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Department
+                  College (Optional)
                 </label>
                 <Select
-                  value={formData.departmentId}
-                  onValueChange={(v) => setFormData({ ...formData, departmentId: v })}
+                  value={formData.collegeId}
+                  onValueChange={(v) => handleInputChange('collegeId', v)}
                   disabled={submitting}
                 >
                   <SelectTrigger className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500">
-                    <SelectValue placeholder="Select Department" />
+                    <SelectValue placeholder="Select College (Optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name} ({d.code})
+                    <SelectItem value="gf">No College (Admin Faculty)</SelectItem>
+                    {colleges.map((college) => (
+                      <SelectItem key={college.id} value={college.id}>
+                        {college.name} ({college.code})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave empty to create admin faculty not assigned to any college
+                </p>
               </div>
+
+              {/* Department Field - Only shown if college is selected */}
+              {formData.collegeId && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Department (Optional)
+                  </label>
+                  <Select
+                    value={formData.departmentId}
+                    onValueChange={(v) => setFormData({ ...formData, departmentId: v })}
+                    disabled={submitting || !formData.collegeId}
+                  >
+                    <SelectTrigger className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500">
+                      <SelectValue placeholder="Select Department (Optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No Department</SelectItem>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name} ({d.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Faculty Role Field */}
               <div>
@@ -919,14 +1070,7 @@ useEffect(() => {
                 className="border-gray-300"
                 disabled={submitting}
               >
-                {isEditMode ? (
-                  <>
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Cancel
-                  </>
-                ) : (
-                  "Cancel"
-                )}
+                Cancel
               </Button>
             </div>
           </div>

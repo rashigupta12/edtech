@@ -2,7 +2,7 @@
 "use client";
 
 import { useCurrentUser } from "@/hooks/auth";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -58,16 +58,16 @@ const BatchPage = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
 
-const [formData, setFormData] = useState({
-  name: "",
-  code: "",
-  academicYear: "",
-  departmentId: "all", // Use "all" instead of empty string
-  startDate: undefined as Date | undefined,
-  endDate: undefined as Date | undefined,
-  description: "",
-  isActive: true,
-});
+  const [formData, setFormData] = useState({
+    name: "",
+    code: "",
+    academicYear: "",
+    departmentId: "all", // Use "all" instead of empty string
+    startDate: undefined as Date | undefined,
+    endDate: undefined as Date | undefined,
+    description: "",
+    isActive: true,
+  });
   const [validationErrors, setValidationErrors] = useState({
     name: "",
     code: "",
@@ -94,27 +94,31 @@ const [formData, setFormData] = useState({
     if (!code.trim()) return "Batch code is required";
     if (code.length > 20) return "Code must be less than 20 characters";
     const codeRegex = /^[A-Z0-9\-_]+$/;
-    if (!codeRegex.test(code)) return "Only uppercase letters, numbers, hyphens and underscores allowed";
+    if (!codeRegex.test(code))
+      return "Only uppercase letters, numbers, hyphens and underscores allowed";
     return "";
   };
 
   const validateAcademicYear = (year: string): string => {
     if (!year.trim()) return "Academic year is required";
     const yearRegex = /^\d{4}-\d{4}$/;
-    if (!yearRegex.test(year)) return "Format must be YYYY-YYYY (e.g., 2024-2025)";
+    if (!yearRegex.test(year))
+      return "Format must be YYYY-YYYY (e.g., 2024-2025)";
     return "";
   };
 
-  const fetchCollegeId = async () => {
+  // Wrap fetchCollegeId in useCallback
+  const fetchCollegeId = useCallback(async () => {
     if (!user?.id) return;
     const res = await fetch(`/api/colleges?userId=${user.id}`, {
       cache: "no-store",
     });
     const data = await res.json();
     if (data.success) setCollegeId(data.data.id);
-  };
+  }, [user]); // Add user as dependency
 
-  const loadData = async () => {
+  // Wrap loadData in useCallback
+  const loadData = useCallback(async () => {
     if (!collegeId) return;
     setLoading(true);
     try {
@@ -131,30 +135,30 @@ const [formData, setFormData] = useState({
     } finally {
       setLoading(false);
     }
-  };
+  }, [collegeId]); // Add collegeId as dependency
 
+  // Update useEffects with proper dependencies
   useEffect(() => {
     fetchCollegeId();
-  }, [user]);
-  
+  }, [user, fetchCollegeId]); // Add fetchCollegeId to dependencies
+
   useEffect(() => {
     if (collegeId) loadData();
-  }, [collegeId]);
-
+  }, [collegeId, loadData]); // Add loadData to dependencies
   // Open form in ADD mode
   const openAddForm = () => {
-     setIsEditMode(false);
-  setEditingBatchId(null);
-  setFormData({
-    name: "",
-    code: "",
-    academicYear: "",
-    departmentId: "all", // Use "all" here
-    startDate: undefined,
-    endDate: undefined,
-    description: "",
-    isActive: true,
-  });
+    setIsEditMode(false);
+    setEditingBatchId(null);
+    setFormData({
+      name: "",
+      code: "",
+      academicYear: "",
+      departmentId: "all", // Use "all" here
+      startDate: undefined,
+      endDate: undefined,
+      description: "",
+      isActive: true,
+    });
     setValidationErrors({
       name: "",
       code: "",
@@ -166,17 +170,17 @@ const [formData, setFormData] = useState({
   // Open form in EDIT mode
   const openEditForm = (batch: any) => {
     setIsEditMode(true);
-  setEditingBatchId(batch.id);
-  setFormData({
-    name: batch.name || "",
-    code: batch.code || "",
-    academicYear: batch.academicYear || "",
-    departmentId: batch.departmentId || "all", // Use "all" here
-    startDate: batch.startDate ? new Date(batch.startDate) : undefined,
-    endDate: batch.endDate ? new Date(batch.endDate) : undefined,
-    description: batch.description || "",
-    isActive: batch.isActive ?? true,
-  });
+    setEditingBatchId(batch.id);
+    setFormData({
+      name: batch.name || "",
+      code: batch.code || "",
+      academicYear: batch.academicYear || "",
+      departmentId: batch.departmentId || "all", // Use "all" here
+      startDate: batch.startDate ? new Date(batch.startDate) : undefined,
+      endDate: batch.endDate ? new Date(batch.endDate) : undefined,
+      description: batch.description || "",
+      isActive: batch.isActive ?? true,
+    });
     setValidationErrors({
       name: "",
       code: "",
@@ -194,24 +198,30 @@ const [formData, setFormData] = useState({
 
   // Handle input changes with validation
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    if (field === 'name') {
-      setValidationErrors(prev => ({ ...prev, name: validateName(value) }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
+    if (field === "name") {
+      setValidationErrors((prev) => ({ ...prev, name: validateName(value) }));
     }
-    if (field === 'code') {
+    if (field === "code") {
       const uppercaseValue = value.toUpperCase();
-      setFormData(prev => ({ ...prev, code: uppercaseValue }));
-      setValidationErrors(prev => ({ ...prev, code: validateCode(uppercaseValue) }));
+      setFormData((prev) => ({ ...prev, code: uppercaseValue }));
+      setValidationErrors((prev) => ({
+        ...prev,
+        code: validateCode(uppercaseValue),
+      }));
     }
-    if (field === 'academicYear') {
-      setValidationErrors(prev => ({ ...prev, academicYear: validateAcademicYear(value) }));
+    if (field === "academicYear") {
+      setValidationErrors((prev) => ({
+        ...prev,
+        academicYear: validateAcademicYear(value),
+      }));
     }
   };
 
   // Check if form has validation errors
   const hasValidationErrors = () => {
-    return Object.values(validationErrors).some(error => error !== "");
+    return Object.values(validationErrors).some((error) => error !== "");
   };
 
   // Handle form submission
@@ -237,7 +247,11 @@ const [formData, setFormData] = useState({
     }
 
     // Validate dates if both are provided
-    if (formData.startDate && formData.endDate && formData.startDate > formData.endDate) {
+    if (
+      formData.startDate &&
+      formData.endDate &&
+      formData.startDate > formData.endDate
+    ) {
       Swal.fire({
         icon: "warning",
         title: "Date Error",
@@ -249,22 +263,24 @@ const [formData, setFormData] = useState({
 
     setSubmitting(true);
     try {
-const batchData = {
-  collegeId,
-  name: formData.name.trim(),
-  code: formData.code.trim(),
-  academicYear: formData.academicYear.trim(),
-  departmentId: formData.departmentId === "all" ? null : formData.departmentId,
-  startDate: formData.startDate,
-  endDate: formData.endDate,
-  description: formData.description.trim(),
-  isActive: formData.isActive,
-};
+      const batchData = {
+        collegeId,
+        name: formData.name.trim(),
+        code: formData.code.trim(),
+        academicYear: formData.academicYear.trim(),
+        departmentId:
+          formData.departmentId === "all" ? null : formData.departmentId,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        description: formData.description.trim(),
+        isActive: formData.isActive,
+      };
 
-      const url = isEditMode && editingBatchId 
-        ? `/api/batches?id=${editingBatchId}`
-        : "/api/batches";
-      
+      const url =
+        isEditMode && editingBatchId
+          ? `/api/batches?id=${editingBatchId}`
+          : "/api/batches";
+
       const method = isEditMode ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -276,15 +292,18 @@ const batchData = {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error?.message || `Failed to ${isEditMode ? 'update' : 'create'} batch`);
+        throw new Error(
+          data.error?.message ||
+            `Failed to ${isEditMode ? "update" : "create"} batch`
+        );
       }
 
       closeForm();
       loadData();
       Swal.fire({
         icon: "success",
-        title: `${isEditMode ? 'Updated!' : 'Created!'}`,
-        text: `Batch ${isEditMode ? 'updated' : 'created'} successfully`,
+        title: `${isEditMode ? "Updated!" : "Created!"}`,
+        text: `Batch ${isEditMode ? "updated" : "created"} successfully`,
         timer: 2000,
         showConfirmButton: false,
         confirmButtonColor: "#059669",
@@ -293,7 +312,8 @@ const batchData = {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: err.message || `Failed to ${isEditMode ? 'update' : 'create'} batch`,
+        text:
+          err.message || `Failed to ${isEditMode ? "update" : "create"} batch`,
         confirmButtonColor: "#059669",
       });
     } finally {
@@ -353,7 +373,11 @@ const batchData = {
   };
 
   // Toggle batch active status
-  const toggleBatchStatus = async (batchId: string, currentStatus: boolean, batchName: string) => {
+  const toggleBatchStatus = async (
+    batchId: string,
+    currentStatus: boolean,
+    batchName: string
+  ) => {
     const action = currentStatus ? "deactivate" : "activate";
     const result = await Swal.fire({
       title: `${action.charAt(0).toUpperCase() + action.slice(1)} Batch?`,
@@ -493,18 +517,35 @@ const batchData = {
                   <Table>
                     <TableHeader className="bg-gray-100">
                       <TableRow>
-                        <TableHead className="font-semibold text-gray-700">Batch Name</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Code</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Academic Year</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Department</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Duration</TableHead>
-                        <TableHead className="font-semibold text-gray-700">Status</TableHead>
-                        <TableHead className="font-semibold text-gray-700 text-right">Actions</TableHead>
+                        <TableHead className="font-semibold text-gray-700">
+                          Batch Name
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700">
+                          Code
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700">
+                          Academic Year
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700">
+                          Department
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700">
+                          Duration
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700">
+                          Status
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700 text-right">
+                          Actions
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filtered.map((batch) => (
-                        <TableRow key={batch.id} className="hover:bg-gray-50/50">
+                        <TableRow
+                          key={batch.id}
+                          className="hover:bg-gray-50/50"
+                        >
                           <TableCell className="font-medium text-gray-900">
                             <div>
                               <div>{batch.name}</div>
@@ -528,11 +569,23 @@ const batchData = {
                             <div className="text-sm">
                               {batch.startDate ? (
                                 <div className="flex flex-col">
-                                  <span>{format(new Date(batch.startDate), "MMM dd, yyyy")}</span>
+                                  <span>
+                                    {format(
+                                      new Date(batch.startDate),
+                                      "MMM dd, yyyy"
+                                    )}
+                                  </span>
                                   {batch.endDate && (
                                     <>
-                                      <span className="text-xs text-gray-400">to</span>
-                                      <span>{format(new Date(batch.endDate), "MMM dd, yyyy")}</span>
+                                      <span className="text-xs text-gray-400">
+                                        to
+                                      </span>
+                                      <span>
+                                        {format(
+                                          new Date(batch.endDate),
+                                          "MMM dd, yyyy"
+                                        )}
+                                      </span>
                                     </>
                                   )}
                                 </div>
@@ -555,9 +608,17 @@ const batchData = {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => toggleBatchStatus(batch.id, batch.isActive, batch.name)}
+                                onClick={() =>
+                                  toggleBatchStatus(
+                                    batch.id,
+                                    batch.isActive,
+                                    batch.name
+                                  )
+                                }
                                 className="h-6 w-6 p-0"
-                                title={batch.isActive ? "Deactivate" : "Activate"}
+                                title={
+                                  batch.isActive ? "Deactivate" : "Activate"
+                                }
                               >
                                 {batch.isActive ? "🚫" : "✅"}
                               </Button>
@@ -638,14 +699,18 @@ const batchData = {
                 <Input
                   placeholder="e.g., Computer Science 2024 Batch"
                   value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
                   disabled={submitting}
                   className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
-                    validationErrors.name ? "border-red-300 focus:border-red-500" : ""
+                    validationErrors.name
+                      ? "border-red-300 focus:border-red-500"
+                      : ""
                   }`}
                 />
                 {validationErrors.name && (
-                  <p className="text-xs text-red-500 mt-1">{validationErrors.name}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {validationErrors.name}
+                  </p>
                 )}
               </div>
 
@@ -657,16 +722,22 @@ const batchData = {
                 <Input
                   placeholder="e.g., CS2024"
                   value={formData.code}
-                  onChange={(e) => handleInputChange('code', e.target.value)}
+                  onChange={(e) => handleInputChange("code", e.target.value)}
                   disabled={submitting}
                   className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
-                    validationErrors.code ? "border-red-300 focus:border-red-500" : ""
+                    validationErrors.code
+                      ? "border-red-300 focus:border-red-500"
+                      : ""
                   }`}
                 />
                 {validationErrors.code ? (
-                  <p className="text-xs text-red-500 mt-1">{validationErrors.code}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {validationErrors.code}
+                  </p>
                 ) : (
-                  <p className="text-xs text-gray-500 mt-1">Uppercase letters, numbers, hyphens and underscores only</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Uppercase letters, numbers, hyphens and underscores only
+                  </p>
                 )}
               </div>
 
@@ -677,12 +748,16 @@ const batchData = {
                 </label>
                 <Select
                   value={formData.academicYear}
-                  onValueChange={(v) => handleInputChange('academicYear', v)}
+                  onValueChange={(v) => handleInputChange("academicYear", v)}
                   disabled={submitting}
                 >
-                  <SelectTrigger className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
-                    validationErrors.academicYear ? "border-red-300 focus:border-red-500" : ""
-                  }`}>
+                  <SelectTrigger
+                    className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${
+                      validationErrors.academicYear
+                        ? "border-red-300 focus:border-red-500"
+                        : ""
+                    }`}
+                  >
                     <SelectValue placeholder="Select Academic Year" />
                   </SelectTrigger>
                   <SelectContent>
@@ -694,34 +769,38 @@ const batchData = {
                   </SelectContent>
                 </Select>
                 {validationErrors.academicYear && (
-                  <p className="text-xs text-red-500 mt-1">{validationErrors.academicYear}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {validationErrors.academicYear}
+                  </p>
                 )}
               </div>
 
               {/* Department Field */}
-           {/* Department Field */}
-<div>
-  <label className="text-sm font-medium text-gray-700 mb-2 block">
-    Department (Optional)
-  </label>
-<Select
-  value={formData.departmentId}
-  onValueChange={(v) => setFormData({ ...formData, departmentId: v })}
-  disabled={submitting}
->
-  <SelectTrigger className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500">
-    <SelectValue placeholder="Select Department (Optional)" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="all">All Departments</SelectItem>
-    {departments.map((d) => (
-      <SelectItem key={d.id} value={d.id}>
-        {d.name} ({d.code})
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
-</div>
+              {/* Department Field */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Department (Optional)
+                </label>
+                <Select
+                  value={formData.departmentId}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, departmentId: v })
+                  }
+                  disabled={submitting}
+                >
+                  <SelectTrigger className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500">
+                    <SelectValue placeholder="Select Department (Optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name} ({d.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {/* Start Date Field */}
               <div>
@@ -750,7 +829,9 @@ const batchData = {
                     <CalendarComponent
                       mode="single"
                       selected={formData.startDate}
-                      onSelect={(date) => setFormData({ ...formData, startDate: date })}
+                      onSelect={(date) =>
+                        setFormData({ ...formData, startDate: date })
+                      }
                       initialFocus
                       disabled={submitting}
                     />
@@ -785,7 +866,9 @@ const batchData = {
                     <CalendarComponent
                       mode="single"
                       selected={formData.endDate}
-                      onSelect={(date) => setFormData({ ...formData, endDate: date })}
+                      onSelect={(date) =>
+                        setFormData({ ...formData, endDate: date })
+                      }
                       initialFocus
                       disabled={submitting}
                     />
@@ -801,7 +884,9 @@ const batchData = {
                 <Textarea
                   placeholder="Enter batch description..."
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   disabled={submitting}
                   className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 min-h-[100px]"
                 />
@@ -813,7 +898,9 @@ const batchData = {
                   type="checkbox"
                   id="isActive"
                   checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, isActive: e.target.checked })
+                  }
                   disabled={submitting}
                   className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
                 />

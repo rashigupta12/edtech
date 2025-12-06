@@ -6,7 +6,6 @@ import {
   Briefcase,
   Building2,
   Calendar,
-  ChevronDown,
   ClipboardList,
   CreditCard,
   FileText,
@@ -23,7 +22,7 @@ import {
   TrendingUp,
   Users,
   Video,
-  Wallet,
+  Wallet
 } from "lucide-react";
 export const navConfigs = {
   // =====================
@@ -42,16 +41,16 @@ export const navConfigs = {
           href: "/dashboard/admin/faculty",
           icon: List,
         },
-        {
-          title: "Add Platform Faculty",
-          href: "/dashboard/admin/faculty/create",
-          icon: Plus,
-        },
-        {
-          title: "Faculty Performance",
-          href: "/dashboard/admin/faculty/performance",
-          icon: TrendingUp,
-        },
+        // {
+        //   title: "Add Platform Faculty",
+        //   href: "/dashboard/admin/faculty/create",
+        //   icon: Plus,
+        // },
+        // {
+        //   title: "Faculty Performance",
+        //   href: "/dashboard/admin/faculty/performance",
+        //   icon: TrendingUp,
+        // },
       ],
     },
 
@@ -167,57 +166,57 @@ export const navConfigs = {
     },
 
     // Discussion Forums
-    {
-      title: "Discussion Forums",
-      href: "/dashboard/admin/forums",
-      icon: MessageCircle,
-    },
+    // {
+    //   title: "Discussion Forums",
+    //   href: "/dashboard/admin/forums",
+    //   icon: MessageCircle,
+    // },
 
     // Announcements
-    {
-      title: "Announcements",
-      icon: MessageSquare,
-      children: [
-        {
-          title: "All Announcements",
-          href: "/dashboard/admin/announcements",
-          icon: List,
-        },
-        {
-          title: "Create Announcement",
-          href: "/dashboard/admin/announcements/create",
-          icon: Plus,
-        },
-      ],
-    },
+    // {
+    //   title: "Announcements",
+    //   icon: MessageSquare,
+    //   children: [
+    //     {
+    //       title: "All Announcements",
+    //       href: "/dashboard/admin/announcements",
+    //       icon: List,
+    //     },
+    //     {
+    //       title: "Create Announcement",
+    //       href: "/dashboard/admin/announcements/create",
+    //       icon: Plus,
+    //     },
+    //   ],
+    // },
 
     // Reports
-    {
-      title: "Reports",
-      icon: FileText,
-      children: [
-        {
-          title: "Enrollment Reports",
-          href: "/dashboard/admin/reports/enrollments",
-          icon: Users,
-        },
-        {
-          title: "Revenue Reports",
-          href: "/dashboard/admin/reports/revenue",
-          icon: CreditCard,
-        },
-        {
-          title: "Performance Reports",
-          href: "/dashboard/admin/reports/performance",
-          icon: TrendingUp,
-        },
-        {
-          title: "College Reports",
-          href: "/dashboard/admin/reports/colleges",
-          icon: Building2,
-        },
-      ],
-    },
+    // {
+    //   title: "Reports",
+    //   icon: FileText,
+    //   children: [
+    //     {
+    //       title: "Enrollment Reports",
+    //       href: "/dashboard/admin/reports/enrollments",
+    //       icon: Users,
+    //     },
+    //     {
+    //       title: "Revenue Reports",
+    //       href: "/dashboard/admin/reports/revenue",
+    //       icon: CreditCard,
+    //     },
+    //     {
+    //       title: "Performance Reports",
+    //       href: "/dashboard/admin/reports/performance",
+    //       icon: TrendingUp,
+    //     },
+    //     {
+    //       title: "College Reports",
+    //       href: "/dashboard/admin/reports/colleges",
+    //       icon: Building2,
+    //     },
+    //   ],
+    // },
 
     // CMS Pages
     {
@@ -234,11 +233,11 @@ export const navConfigs = {
     },
 
     // Settings
-    {
-      title: "Settings",
-      href: "/dashboard/admin/settings",
-      icon: Settings,
-    },
+    // {
+    //   title: "Settings",
+    //   href: "/dashboard/admin/settings",
+    //   icon: Settings,
+    // },
   ] as const,
 
   // =====================

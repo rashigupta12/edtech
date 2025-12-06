@@ -1,7 +1,7 @@
 /*eslint-disable  @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Swal from "sweetalert2";
@@ -98,16 +98,17 @@ const BatchEnrollmentPage = () => {
 
   const [selectedStudentsForAdd, setSelectedStudentsForAdd] = useState<string[]>([]);
 
-  const fetchCollegeId = async () => {
+const fetchCollegeId = useCallback(async () => {
     if (!user?.id) return;
     const res = await fetch(`/api/colleges?userId=${user.id}`, {
       cache: "no-store",
     });
     const data = await res.json();
     if (data.success) setCollegeId(data.data.id);
-  };
+  }, [user]);
 
-  const loadBatches = async () => {
+  // Wrap loadBatches in useCallback
+  const loadBatches = useCallback(async () => {
     if (!collegeId) return;
     try {
       const res = await fetch(`/api/batches?collegeId=${collegeId}`);
@@ -121,9 +122,10 @@ const BatchEnrollmentPage = () => {
     } catch (error) {
       console.error("Error loading batches:", error);
     }
-  };
+  }, [collegeId, selectedBatch]);
 
-  const loadStudents = async () => {
+  // Wrap loadStudents in useCallback
+  const loadStudents = useCallback(async () => {
     if (!collegeId) return;
     try {
       const res = await fetch(`/api/students?collegeId=${collegeId}`);
@@ -142,9 +144,10 @@ const BatchEnrollmentPage = () => {
     } catch (error) {
       console.error("Error loading students:", error);
     }
-  };
+  }, [collegeId]);
 
-  const loadEnrollments = async () => {
+  // Wrap loadEnrollments in useCallback
+  const loadEnrollments = useCallback(async () => {
     if (!selectedBatch) return;
     setLoading(true);
     try {
@@ -158,24 +161,25 @@ const BatchEnrollmentPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedBatch]);
 
+  // Update useEffect dependencies
   useEffect(() => {
     fetchCollegeId();
-  }, [user]);
+  }, [user, fetchCollegeId]);
 
   useEffect(() => {
     if (collegeId) {
       loadBatches();
       loadStudents();
     }
-  }, [collegeId]);
+  }, [collegeId, loadBatches, loadStudents]);
 
   useEffect(() => {
     if (selectedBatch) {
       loadEnrollments();
     }
-  }, [selectedBatch]);
+  }, [selectedBatch, loadEnrollments]);
 
   // Get batch name by ID
   const getBatchName = (batchId: string) => {

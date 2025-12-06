@@ -17,7 +17,7 @@ import { useCurrentUser } from "@/hooks/auth";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Swal from "sweetalert2";
 
 type College = {
@@ -71,6 +71,9 @@ export default function CreateBootcampPage() {
   const [colleges, setColleges] = useState<College[]>([]);
   const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
   const user = useCurrentUser();
+  
+  // Track if user has manually edited the slug
+  const slugManuallyEdited = useRef(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -121,18 +124,10 @@ export default function CreateBootcampPage() {
   useEffect(() => {
     // Only generate slug if:
     // 1. There's a title
-    // 2. Slug is empty OR user hasn't manually edited it
-    if (formData.title.trim()) {
+    // 2. User hasn't manually edited the slug
+    if (formData.title.trim() && !slugManuallyEdited.current) {
       const newSlug = generateSlug(formData.title);
-
-      // Check if the current slug appears to be manually edited
-      // If slug is empty or matches a previous auto-generation pattern, update it
-      if (
-        !formData.slug ||
-        formData.slug === generateSlug(formData.title.slice(0, -1))
-      ) {
-        setFormData((prev) => ({ ...prev, slug: newSlug }));
-      }
+      setFormData((prev) => ({ ...prev, slug: newSlug }));
     }
   }, [formData.title]); // Only depend on title
 
@@ -143,6 +138,11 @@ export default function CreateBootcampPage() {
     field: keyof typeof formData,
     value: string | boolean
   ) => {
+    // Track if user is manually editing the slug
+    if (field === "slug" && typeof value === "string") {
+      slugManuallyEdited.current = true;
+    }
+    
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -184,7 +184,7 @@ export default function CreateBootcampPage() {
       thumbnailUrl: formData.thumbnailUrl || null,
       price: formData.price ? Number(formData.price) : null,
       maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
-       status: formData.status || "DRAFT",
+      status: formData.status || "DRAFT",
     };
 
     try {
@@ -290,9 +290,12 @@ export default function CreateBootcampPage() {
                     onChange={(e) => handleFieldChange("slug", e.target.value)}
                     placeholder="fswd"
                     required
-                    disabled
                   />
-                  <p className="text-xs text-gray-500 mt-1">Auto-generated</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {slugManuallyEdited.current 
+                      ? "Manually edited" 
+                      : "Auto-generated (you can edit)"}
+                  </p>
                 </div>
 
                 <div className="md:col-span-2">
@@ -345,8 +348,6 @@ export default function CreateBootcampPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="DRAFT">Draft</SelectItem>
-                     
-                     
                       <SelectItem value="PUBLISHED">Published</SelectItem>
                     </SelectContent>
                   </Select>

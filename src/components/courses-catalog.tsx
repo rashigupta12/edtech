@@ -80,18 +80,18 @@ export function CoursesCatalog() {
 
   const isAdminOrJyotishi = userRole === "ADMIN" || userRole === "JYOTISHI";
 
-  // Determine which courses should be visible
-  const getVisibleCourses = (allCourses: Course[]): Course[] => {
+  // Determine which courses should be visible - memoized with dependencies
+  const getVisibleCourses = useCallback((allCourses: Course[]): Course[] => {
     if (isAdminOrJyotishi) {
       // Show everything except archived/rejected (useful during development)
       return allCourses.filter(c => !["ARCHIVED", "REJECTED"].includes(c.status));
     }
     // Public users: only fully published courses
     return allCourses.filter(c => c.status === "PUBLISHED");
-  };
+  }, [isAdminOrJyotishi]);
 
-  // Map status → section
-  const getCategoryFromStatus = (status: CourseStatus): keyof typeof scrollRefs | null => {
+  // Map status → section - memoized with dependencies
+  const getCategoryFromStatus = useCallback((status: CourseStatus): keyof typeof scrollRefs | null => {
     if (isAdminOrJyotishi) {
       switch (status) {
         case "PUBLISHED":
@@ -115,7 +115,7 @@ export function CoursesCatalog() {
       default:
         return null;
     }
-  };
+  }, [isAdminOrJyotishi]);
 
   useEffect(() => {
     let mounted = true;
@@ -163,7 +163,7 @@ export function CoursesCatalog() {
     if (status !== "loading") loadData();
 
     return () => { mounted = false; };
-  }, [userId, status, isAdminOrJyotishi]);
+  }, [userId, status, getVisibleCourses]);
 
   const courseCategories: CourseCategory[] = useMemo(() => {
     const grouped = {
@@ -203,7 +203,7 @@ export function CoursesCatalog() {
         courses: grouped.UPCOMING,
       },
     ];
-  }, [courses]);
+  }, [courses, getCategoryFromStatus]);
 
   const getPlainText = useCallback((html?: string) => {
     if (!html) return "No description available";
@@ -220,7 +220,8 @@ export function CoursesCatalog() {
       left: direction === "left" ? -scrollAmount : scrollAmount,
       behavior: "smooth",
     });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // scrollRefs is stable (refs don't need to be in deps)
 
   const getPriceDisplay = (course: Course) => {
     if (course.isFree) {

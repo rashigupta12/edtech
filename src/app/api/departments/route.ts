@@ -14,11 +14,15 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get("id");
     const collegeId = searchParams.get("collegeId");
     const active = searchParams.get("active");
+    const includeCollege = searchParams.get("includeCollege");
 
     // GET /api/departments?id=123
     if (id) {
       const department = await db.query.DepartmentsTable.findFirst({
         where: (dept, { eq }) => eq(dept.id, id),
+        with: includeCollege ? {
+          college: true
+        } : undefined,
       });
 
       if (!department) {
@@ -36,6 +40,9 @@ export async function GET(request: NextRequest) {
       const departments = await db.query.DepartmentsTable.findMany({
         where: (dept, { eq, and }) =>
           and(eq(dept.collegeId, collegeId), eq(dept.isActive, true)),
+        with: includeCollege ? {
+          college: true
+        } : undefined,
       });
 
       return NextResponse.json({ success: true, data: departments });
@@ -45,6 +52,9 @@ export async function GET(request: NextRequest) {
     if (collegeId) {
       const departments = await db.query.DepartmentsTable.findMany({
         where: (dept, { eq }) => eq(dept.collegeId, collegeId),
+        with: includeCollege ? {
+          college: true
+        } : undefined,
       });
 
       return NextResponse.json({ success: true, data: departments });
@@ -54,12 +64,25 @@ export async function GET(request: NextRequest) {
     if (parseBoolean(active)) {
       const departments = await db.query.DepartmentsTable.findMany({
         where: (dept, { eq }) => eq(dept.isActive, true),
+        with: includeCollege ? {
+          college: true
+        } : undefined,
       });
 
       return NextResponse.json({ success: true, data: departments });
     }
 
-    // GET all departments
+    // GET all departments with college info if requested
+    if (includeCollege) {
+      const departments = await db.query.DepartmentsTable.findMany({
+        with: {
+          college: true
+        }
+      });
+      return NextResponse.json({ success: true, data: departments });
+    }
+
+    // GET all departments without college info
     const departments = await db.query.DepartmentsTable.findMany();
     return NextResponse.json({ success: true, data: departments });
   } catch (error: any) {

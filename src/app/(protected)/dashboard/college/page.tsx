@@ -4,7 +4,7 @@
 
 import { ArrowRight, Clock, IndianRupee, Ticket, Filter } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 // Update your DashboardStats interface
 interface DashboardStats {
@@ -73,12 +73,7 @@ export default function AgentDashboard() {
   const [salesLoading, setSalesLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("mtd");
 
-  useEffect(() => {
-    fetchDashboardData();
-    fetchRecentSales();
-  }, [timeFilter]);
-
-  async function fetchDashboardData() {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(
@@ -95,9 +90,9 @@ export default function AgentDashboard() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [timeFilter]);
 
-  async function fetchRecentSales() {
+  const fetchRecentSales = useCallback(async () => {
     try {
       setSalesLoading(true);
       const response = await fetch("/api/jyotishi/recent-sales");
@@ -112,7 +107,12 @@ export default function AgentDashboard() {
     } finally {
       setSalesLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+    fetchRecentSales();
+  }, [fetchDashboardData, fetchRecentSales]);
 
   const formatCurrency = (amount?: number) => {
     const value = amount ?? 0;
@@ -135,7 +135,6 @@ export default function AgentDashboard() {
   const getFilterDisplayText = () => {
     return timeFilter === "mtd" ? "Month to Date" : "Year to Date";
   };
-
 
   const getCommissionAmount = () => {
     if (!stats) return 0;

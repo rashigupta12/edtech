@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
 type Assessment = {
@@ -129,125 +129,85 @@ export default function ViewCoursePage() {
     description: "",
   });
 
-  const fetchCourse = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/courses?id=${params.id}`);
-      const response = await res.json();
+  const fetchCourse = useCallback(async () => {
+  try {
+    setLoading(true);
+    const res = await fetch(`/api/courses?id=${params.id}`);
+    const response = await res.json();
 
-      if (response.success) {
-        setCourse(response.data);
-      } else {
-        throw new Error("Course not found");
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire({
-        icon: "error",
-        title: "Not Found",
-        text: "Course not found",
-      });
-      router.back();
-    } finally {
-      setLoading(false);
+    if (response.success) {
+      setCourse(response.data);
+    } else {
+      throw new Error("Course not found");
     }
-  };
+  } catch (err) {
+    console.error(err);
+    Swal.fire({
+      icon: "error",
+      title: "Not Found",
+      text: "Course not found",
+    });
+    router.back();
+  } finally {
+    setLoading(false);
+  }
+}, [params.id, router]);
 
-  const fetchModules = async () => {
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&modules=true`);
-      const response = await res.json();
+const fetchCurriculum = useCallback(async () => {
+  try {
+    const res = await fetch(`/api/courses?id=${params.id}&curriculum=true`);
+    const response = await res.json();
 
-      if (response.success) {
-        setModules(response.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch modules:", err);
+    if (response.success) {
+      setModules(response.data.modules || []);
+    } else {
+      console.error("Failed to fetch curriculum:", response.error);
     }
-  };
-  const fetchCurriculum = async () => {
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&curriculum=true`);
-      const response = await res.json();
+  } catch (err) {
+    console.error("Failed to fetch curriculum:", err);
+  }
+}, [params.id]);
 
-      if (response.success) {
-        setModules(response.data.modules || []);
-      } else {
-        console.error("Failed to fetch curriculum:", response.error);
-      }
-    } catch (err) {
-      console.error("Failed to fetch curriculum:", err);
-    }
-  };
+const fetchAssessments = useCallback(async () => {
+  try {
+    const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
+    const response = await res.json();
 
-  const fetchAssessments = async () => {
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
-      const response = await res.json();
+    if (response.success) {
+      const assessmentsData = response.data?.assessments || [];
 
-      if (response.success) {
-        const assessmentsData = response.data?.assessments || [];
+      // Fetch questions for each assessment
+      const assessmentsWithQuestions = await Promise.all(
+        assessmentsData.map(async (assessment: Assessment) => {
+          const questionsRes = await fetch(
+            `/api/assessments?id=${assessment.id}&questions=true`
+          );
+          const questionsData = await questionsRes.json();
 
-        // Fetch questions for each assessment
-        const assessmentsWithQuestions = await Promise.all(
-          assessmentsData.map(async (assessment: Assessment) => {
-            const questionsRes = await fetch(
-              `/api/assessments?id=${assessment.id}&questions=true`
-            );
-            const questionsData = await questionsRes.json();
-
-            return {
-              ...assessment,
-              questions: questionsData.success
-                ? questionsData.data?.questions || []
-                : [],
-            };
-          })
-        );
-
-        setAssessments(assessmentsWithQuestions);
-      }
-    } catch (err) {
-      console.error("Failed to fetch assessments:", err);
-    }
-  };
-  const fetchModulesWithLessons = async () => {
-    try {
-      // First get modules
-      const modulesRes = await fetch(
-        `/api/courses?id=${params.id}&modules=true`
+          return {
+            ...assessment,
+            questions: questionsData.success
+              ? questionsData.data?.questions || []
+              : [],
+          };
+        })
       );
-      const modulesData = await modulesRes.json();
 
-      if (modulesData.success) {
-        const modulesWithLessons = await Promise.all(
-          modulesData.data.map(async (module: Module) => {
-            // Then get lessons for each module
-            const lessonsRes = await fetch(
-              `/api/courses?id=${params.id}&moduleId=${module.id}&lessons=true`
-            );
-            const lessonsData = await lessonsRes.json();
-
-            return {
-              ...module,
-              lessons: lessonsData.success ? lessonsData.data : [],
-            };
-          })
-        );
-        setModules(modulesWithLessons);
-      }
-    } catch (err) {
-      console.error("Failed to fetch modules with lessons:", err);
+      setAssessments(assessmentsWithQuestions);
     }
-  };
+  } catch (err) {
+    console.error("Failed to fetch assessments:", err);
+  }
+}, [params.id]);
 
-  useEffect(() => {
-    if (params.id) {
-      fetchCourse();
-      fetchCurriculum();
-      fetchAssessments();
-    }
-  }, [params.id]);
+// Update useEffect
+useEffect(() => {
+  if (params.id) {
+    fetchCourse();
+    fetchCurriculum();
+    fetchAssessments();
+  }
+}, [params.id, fetchCourse, fetchCurriculum, fetchAssessments]);
 
   const handleDelete = async () => {
     const result = await Swal.fire({

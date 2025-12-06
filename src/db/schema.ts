@@ -329,7 +329,6 @@ export const FacultyTable = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey().notNull(),
     collegeId: uuid("college_id")
-      .notNull()
       .references(() => CollegesTable.id, { onDelete: "cascade" }),
     userId: uuid("user_id")
       .notNull()
