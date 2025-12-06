@@ -1,55 +1,54 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1764313198519,
-      "tag": "0000_tiresome_old_lace",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1764322041817,
-      "tag": "0001_naive_leopardon",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1764347749617,
-      "tag": "0002_clear_calypso",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1764582933611,
-      "tag": "0003_unknown_ultimates",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1764589872665,
-      "tag": "0004_smooth_james_howlett",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1764830441193,
-      "tag": "0005_large_nekra",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1764932808173,
-      "tag": "0006_moaning_purifiers",
-      "breakpoints": true
-    }
-  ]
+    "version": "7",
+    "dialect": "postgresql",
+    "entries": [{
+            "idx": 0,
+            "version": "7",
+            "when": 1764313198519,
+            "tag": "0000_tiresome_old_lace",
+            "breakpoints": true
+        },
+        {
+            "idx": 1,
+            "version": "7",
+            "when": 1764322041817,
+            "tag": "0001_naive_leopardon",
+            "breakpoints": true
+        },
+        {
+            "idx": 2,
+            "version": "7",
+            "when": 1764347749617,
+            "tag": "0002_clear_calypso",
+            "breakpoints": true
+        },
+        {
+            "idx": 3,
+            "version": "7",
+            "when": 1764582933611,
+            "tag": "0003_unknown_ultimates",
+            "breakpoints": true
+        },
+        {
+            "idx": 4,
+            "version": "7",
+            "when": 1764589872665,
+            "tag": "0004_smooth_james_howlett",
+            "breakpoints": true
+        },
+        {
+            "idx": 5,
+            "version": "7",
+            "when": 1764830441193,
+            "tag": "0005_large_nekra",
+            "breakpoints": true
+        },
+        {
+            "idx": 6,
+            "version": "7",
+            "when": 1764932609181,
+            "tag": "0006_rich_ben_urich",
+            "breakpoints": true
+        }
+    ]
 }

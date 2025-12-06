@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Swal from "sweetalert2";
 import { NumberInput } from "@/components/ui/number-input";
 
@@ -230,108 +230,10 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
     value: string;
   } | null>(null);
 
-  // Fetch course data
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
 
-        // Fetch course
-        const courseRes = await fetch(`/api/courses?id=${params.id}`, {
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache" },
-        });
-        const courseData = await courseRes.json();
-
-        if (!courseData.success) {
-          throw new Error("Course not found");
-        }
-
-        const course: Course = courseData.data;
-
-        setFormData({
-          title: course.title,
-          slug: course.slug,
-          shortDescription: course.shortDescription || "",
-          description: course.description,
-          categoryId: course.categoryId,
-          collegeId: course.collegeId || "",
-          thumbnailUrl: course.thumbnailUrl || "",
-          previewVideoUrl: course.previewVideoUrl || "",
-          duration: course.duration || "",
-          level: course.level,
-          language: course.language,
-          prerequisites: course.prerequisites || "",
-          isFree: course.isFree,
-          price: course.price ? String(course.price) : "",
-          discountPrice: course.discountPrice
-            ? String(course.discountPrice)
-            : "",
-          maxStudents: course.maxStudents ? String(course.maxStudents) : "",
-          status: course.status,
-        });
-
-        // Set outcomes and requirements from API
-        setOutcomes(courseData.data.outcomes || []);
-        setRequirements(courseData.data.requirements || []);
-
-        // Set course completion settings
-        setCourseHasFinalAssessment(course.hasFinalAssessment || false);
-        setFinalAssessmentRequired(course.finalAssessmentRequired || false);
-        setMinimumCoursePassingScore(course.minimumCoursePassingScore || 60);
-        setRequireAllModulesComplete(
-          course.requireAllModulesComplete !== false
-        );
-        setRequireAllAssessmentsPassed(
-          course.requireAllAssessmentsPassed !== false
-        );
-
-        // Fetch colleges
-        const collegesRes = await fetch("/api/colleges");
-        const collegesData = await collegesRes.json();
-        if (collegesData.success) {
-          setColleges(collegesData.data);
-        }
-
-        // Fetch curriculum with lessons
-        const curriculumRes = await fetch(
-          `/api/courses?id=${params.id}&curriculum=true`
-        );
-        const curriculumData = await curriculumRes.json();
-        if (curriculumData.success) {
-          const loadedModules = curriculumData.data.modules || [];
-          setModules(loadedModules);
-
-          // Fetch assessments after modules are loaded
-          fetchAssessments(loadedModules);
-        }
-
-        // Fetch categories
-        const categoriesRes = await fetch("/api/categories");
-        const categoriesData = await categoriesRes.json();
-        if (categoriesData.success) {
-          setCategories(categoriesData.data);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Failed to load course data",
-        });
-        router.push("/dashboard/college/courses");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (params.id) {
-      fetchData();
-    }
-  }, [params.id, router]);
 
   // Fetch assessments function
-  const fetchAssessments = async (modulesData: Module[] = modules) => {
+  const fetchAssessments = useCallback(async (modulesData: Module[] = modules) => {
     try {
       console.log("Fetching assessments for course:", params.id);
       const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
@@ -504,7 +406,108 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
     } catch (error) {
       console.error("Failed to fetch assessments:", error);
     }
-  };
+}, [params.id, modules]); // Add dependencies that fetchAssessments uses
+
+
+  // Fetch course data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch course
+        const courseRes = await fetch(`/api/courses?id=${params.id}`, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache" },
+        });
+        const courseData = await courseRes.json();
+
+        if (!courseData.success) {
+          throw new Error("Course not found");
+        }
+
+        const course: Course = courseData.data;
+
+        setFormData({
+          title: course.title,
+          slug: course.slug,
+          shortDescription: course.shortDescription || "",
+          description: course.description,
+          categoryId: course.categoryId,
+          collegeId: course.collegeId || "",
+          thumbnailUrl: course.thumbnailUrl || "",
+          previewVideoUrl: course.previewVideoUrl || "",
+          duration: course.duration || "",
+          level: course.level,
+          language: course.language,
+          prerequisites: course.prerequisites || "",
+          isFree: course.isFree,
+          price: course.price ? String(course.price) : "",
+          discountPrice: course.discountPrice
+            ? String(course.discountPrice)
+            : "",
+          maxStudents: course.maxStudents ? String(course.maxStudents) : "",
+          status: course.status,
+        });
+
+        // Set outcomes and requirements from API
+        setOutcomes(courseData.data.outcomes || []);
+        setRequirements(courseData.data.requirements || []);
+
+        // Set course completion settings
+        setCourseHasFinalAssessment(course.hasFinalAssessment || false);
+        setFinalAssessmentRequired(course.finalAssessmentRequired || false);
+        setMinimumCoursePassingScore(course.minimumCoursePassingScore || 60);
+        setRequireAllModulesComplete(
+          course.requireAllModulesComplete !== false
+        );
+        setRequireAllAssessmentsPassed(
+          course.requireAllAssessmentsPassed !== false
+        );
+
+        // Fetch colleges
+        const collegesRes = await fetch("/api/colleges");
+        const collegesData = await collegesRes.json();
+        if (collegesData.success) {
+          setColleges(collegesData.data);
+        }
+
+        // Fetch curriculum with lessons
+        const curriculumRes = await fetch(
+          `/api/courses?id=${params.id}&curriculum=true`
+        );
+        const curriculumData = await curriculumRes.json();
+        if (curriculumData.success) {
+          const loadedModules = curriculumData.data.modules || [];
+          setModules(loadedModules);
+
+          // Fetch assessments after modules are loaded
+          fetchAssessments(loadedModules);
+        }
+
+        // Fetch categories
+        const categoriesRes = await fetch("/api/categories");
+        const categoriesData = await categoriesRes.json();
+        if (categoriesData.success) {
+          setCategories(categoriesData.data);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Failed to load course data",
+        });
+        router.push("/dashboard/college/courses");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (params.id) {
+      fetchData();
+    }
+  }, [params.id, router, fetchAssessments]); // Add fetchAssessments to dependencies
 
   const handleFieldChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

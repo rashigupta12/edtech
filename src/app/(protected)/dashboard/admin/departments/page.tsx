@@ -23,9 +23,10 @@ import {
   Save,
   Search,
   Trash2,
-  X
+  X,
+  School
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 
 interface Department {
@@ -37,18 +38,32 @@ interface Department {
   collegeId: string;
   createdAt: string;
   updatedAt: string;
+  college?: {
+    id: string;
+    
+collegeName: string;
+    
+collegeCode: string;
+  };
+}
+
+interface College {
+  id: string;
+collegeName:string;
+collegeCode:string;
 }
 
 const Departments = () => {
   const user = useCurrentUser();
   const userid = user?.id;
 
-  const [collegeId, setCollegeId] = useState<string>("");
+  const [colleges, setColleges] = useState<College[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [collegeFilter, setCollegeFilter] = useState<string>("all");
 
   const [editMode, setEditMode] = useState(false);
   const [selectedDepartment, setSelectedDepartment] =
@@ -59,102 +74,85 @@ const Departments = () => {
     code: "",
     description: "",
     isActive: true,
+    collegeId: "",
   });
 
-const fetchCollegeId = useCallback(async () => {
-  if (!userid) return;
-
-  try {
-    const res = await fetch(`/api/colleges?userId=${userid}`, {
-      cache: "no-store",
-    });
-    const data = await res.json();
-
-    if (data.success && data.data?.id) {
-      setCollegeId(data.data.id);
+  // Load colleges
+  const loadColleges = async () => {
+    try {
+      const res = await fetch(`/api/colleges`);
+      const data = await res.json();
+      setColleges(data.data || []);
+    } catch (err) {
+      console.error("Failed to load colleges");
     }
-  } catch (err) {
-    console.error("Failed to fetch college ID");
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "Failed to load college information",
-      confirmButtonColor: "#059669",
-    });
-  }
-}, [userid]);
+  };
 
-// Wrap loadDepartments in useCallback (place before second useEffect)
-const loadDepartments = useCallback(async () => {
-  if (!collegeId) return;
+  // Load all departments with college info
+  const loadDepartments = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/departments?includeCollege=true`);
+      const data = await res.json();
+      setDepartments(data.data || []);
+    } catch (err) {
+      console.error("Failed to load departments");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to load departments",
+        confirmButtonColor: "#059669",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  setLoading(true);
-  try {
-    const res = await fetch(`/api/departments?collegeId=${collegeId}`);
-    const data = await res.json();
-    setDepartments(data.data || []);
-  } catch (err) {
-    console.error("Failed to load departments");
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "Failed to load departments",
-      confirmButtonColor: "#059669",
-    });
-  } finally {
-    setLoading(false);
-  }
-}, [collegeId]);
-
-// Update useEffect hooks
-useEffect(() => {
-  fetchCollegeId();
-}, [fetchCollegeId]); // Add to deps
-
-useEffect(() => {
-  if (collegeId) {
+  useEffect(() => {
+    loadColleges();
     loadDepartments();
-  }
-}, [collegeId, loadDepartments]); // Add to deps
+  }, []);
+
   const generateDepartmentCode = (name: string): string => {
-  const trimmedName = name.trim().toUpperCase();
-  
-  if (!trimmedName) return '';
-  
-  const words = trimmedName.split(/\s+/);
-  
-  if (words.length === 1) {
-    const word = words[0];
-    if (word.length <= 3) {
-      return word;
-    } else if (word.length <= 5) {
-      return word.slice(0, 3); 
+    const trimmedName = name.trim().toUpperCase();
+    
+    if (!trimmedName) return '';
+    
+    const words = trimmedName.split(/\s+/);
+    
+    if (words.length === 1) {
+      const word = words[0];
+      if (word.length <= 3) {
+        return word;
+      } else if (word.length <= 5) {
+        return word.slice(0, 3); 
+      } else {
+        return word.slice(0, 4);
+      }
+    } else if (words.length === 2) {
+      return words[0].slice(0, 1) + words[1].slice(0, 1);
     } else {
-      return word.slice(0, 4);
+      return words
+        .map(word => word.charAt(0))
+        .join('')
+        .slice(0, 6); 
     }
-  } else if (words.length === 2) {
-    return words[0].slice(0, 1) + words[1].slice(0, 1);
-  } else {
-    return words
-      .map(word => word.charAt(0))
-      .join('')
-      .slice(0, 6); 
-  }
-};
+  };
 
- const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-  const { name, value } = e.target;
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
 
-  if (name === "isActive") {
-    setForm((prev) => ({ ...prev, [name]: value === "true" }));
-  } else if (name === "name") {
-    // Auto-generate code from name
-    const generatedCode = generateDepartmentCode(value);
-    setForm((prev) => ({ ...prev, name: value, code: generatedCode }));
-  } else {
-    setForm((prev) => ({ ...prev, [name]: value }));
-  }
-};
+    if (name === "isActive") {
+      setForm((prev) => ({ ...prev, [name]: value === "true" }));
+    } else if (name === "name") {
+      // Auto-generate code from name
+      const generatedCode = generateDepartmentCode(value);
+      setForm((prev) => ({ ...prev, name: value, code: generatedCode }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
   const checkDuplicateCode = async (
     code: string,
     excludeId?: string
@@ -175,6 +173,7 @@ useEffect(() => {
       code: "",
       description: "",
       isActive: true,
+      collegeId: colleges.length > 0 ? colleges[0].id : "",
     });
   };
 
@@ -187,6 +186,7 @@ useEffect(() => {
       code: dept.code,
       description: dept.description || "",
       isActive: dept.isActive,
+      collegeId: dept.collegeId,
     });
   };
 
@@ -199,6 +199,7 @@ useEffect(() => {
       code: "",
       description: "",
       isActive: true,
+      collegeId: "",
     });
   };
 
@@ -223,15 +224,16 @@ useEffect(() => {
       return;
     }
 
-    if (!collegeId) {
+    if (!form.collegeId) {
       Swal.fire({
         icon: "error",
-        title: "Error",
-        text: "College information not found",
+        title: "Required",
+        text: "Please select a college",
         confirmButtonColor: "#059669",
       });
       return;
     }
+
     const isDuplicate = await checkDuplicateCode(
       form.code,
       editMode ? selectedDepartment?.id : undefined
@@ -255,8 +257,11 @@ useEffect(() => {
       : "/api/departments";
 
     const payload = {
-      ...form,
-      collegeId: collegeId,
+      name: form.name,
+      code: form.code,
+      description: form.description,
+      isActive: form.isActive,
+      collegeId: form.collegeId,
     };
 
     try {
@@ -353,15 +358,18 @@ useEffect(() => {
     }
   };
 
-  // Filter departments by search term
+  // Filter departments by search term and college
   const filteredDepartments = departments.filter(
     (dept) =>
-      dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dept.code.toLowerCase().includes(searchTerm.toLowerCase())
+      (collegeFilter === "all" || dept.collegeId === collegeFilter) &&
+      (dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        dept.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        dept.college?.collegeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        dept.college?.collegeCode.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto relative">
+    <div className="w-full mx-auto relative">
       {/* Main Content */}
       <div className={`transition-all duration-300 ${showForm ? "mr-80" : ""}`}>
         <div className="space-y-6">
@@ -370,7 +378,7 @@ useEffect(() => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Departments</h1>
               <p className="text-gray-600 mt-2">
-                Manage your college departments
+                Manage all departments across all colleges
               </p>
             </div>
 
@@ -378,7 +386,7 @@ useEffect(() => {
               <div className="relative max-w-md w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
-                  placeholder="Search departments..."
+                  placeholder="Search departments or colleges..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 w-full"
@@ -395,6 +403,35 @@ useEffect(() => {
             </div>
           </div>
 
+          {/* Filters */}
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <School className="w-5 h-5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filter by College:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={collegeFilter === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCollegeFilter("all")}
+                className={collegeFilter === "all" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+              >
+                All Colleges
+              </Button>
+              {colleges.map((college) => (
+                <Button
+                  key={college.id}
+                  variant={collegeFilter === college.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCollegeFilter(college.id)}
+                  className={collegeFilter === college.id ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                >
+                  {college.collegeName} ({college.collegeCode})
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {/* Departments Table */}
           <Card className="bg-white border-gray-200 shadow-sm overflow-hidden">
             <CardContent className="p-0">
@@ -408,23 +445,28 @@ useEffect(() => {
                     <Building2 className="w-8 h-8 text-gray-400" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {searchTerm
+                    {searchTerm || collegeFilter !== "all"
                       ? "No departments found"
                       : "No departments added yet"}
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    {searchTerm
-                      ? "Try adjusting your search criteria"
+                    {searchTerm || collegeFilter !== "all"
+                      ? "Try adjusting your search or filter criteria"
                       : "Click 'Add Department' to get started"}
                   </p>
-                  {searchTerm ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => setSearchTerm("")}
-                      className="border-gray-300"
-                    >
-                      Clear Search
-                    </Button>
+                  {searchTerm || collegeFilter !== "all" ? (
+                    <div className="flex gap-2 justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearchTerm("");
+                          setCollegeFilter("all");
+                        }}
+                        className="border-gray-300"
+                      >
+                        Clear Filters
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       onClick={openAddForm}
@@ -441,7 +483,10 @@ useEffect(() => {
                     <TableHeader className="bg-gray-100">
                       <TableRow>
                         <TableHead className="font-semibold text-gray-700">
-                          Name
+                          College
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-700">
+                          Department Name
                         </TableHead>
                         <TableHead className="font-semibold text-gray-700">
                           Code
@@ -460,6 +505,19 @@ useEffect(() => {
                     <TableBody>
                       {filteredDepartments.map((dept) => (
                         <TableRow key={dept.id} className="hover:bg-gray-50/50">
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <School className="w-4 h-4 text-gray-400" />
+                              <div>
+                                <div className="font-medium text-gray-900">
+                                  {dept.college?.collegeName || "Unknown College"}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {dept.college?.collegeCode || "N/A"}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
                           <TableCell className="font-medium text-gray-900">
                             {dept.name}
                           </TableCell>
@@ -471,7 +529,7 @@ useEffect(() => {
                               {dept.code}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-gray-600">
+                          <TableCell className="text-gray-600 max-w-xs truncate">
                             {dept.description || "-"}
                           </TableCell>
                           <TableCell>
@@ -534,6 +592,7 @@ useEffect(() => {
                   </>
                 ) : (
                   <>
+                    <Plus className="w-5 h-5 text-emerald-600" />
                     Create New Department
                   </>
                 )}
@@ -552,6 +611,25 @@ useEffect(() => {
           {/* Form Content */}
           <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  College *
+                </label>
+                <select
+                  name="collegeId"
+                  value={form.collegeId}
+                  onChange={handleFormChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="">Select a college</option>
+                  {colleges.map((college) => (
+                    <option key={college.id} value={college.id}>
+                      {college.collegeName} ({college.collegeCode})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
                   Department Name *
@@ -574,10 +652,9 @@ useEffect(() => {
                   value={form.code}
                   onChange={handleFormChange}
                   className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 uppercase"
-                  readOnly
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Auto-generated from department name. You can &apos;t edit it.
+                  Auto-generated from department name. You can edit it if needed.
                 </p>
               </div>
 
@@ -627,8 +704,6 @@ useEffect(() => {
                   </label>
                 </div>
               </div>
-
-          
             </div>
           </div>
 
@@ -637,7 +712,7 @@ useEffect(() => {
             <div className="flex gap-3">
               <Button
                 onClick={saveDepartment}
-                disabled={saving}
+                disabled={saving || !form.collegeId}
                 className="flex bg-emerald-600 hover:bg-emerald-700 text-white w-32"
               >
                 {saving ? (

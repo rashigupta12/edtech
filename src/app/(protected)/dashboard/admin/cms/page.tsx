@@ -46,6 +46,8 @@ export default function CMSListPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit] = useState(10);
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
     limit: 10,
@@ -61,8 +63,8 @@ export default function CMSListPage() {
         setLoading(true);
 
         const params = new URLSearchParams({
-          page: pagination.page.toString(),
-          limit: pagination.limit.toString(),
+          page: currentPage.toString(),
+          limit: limit.toString(),
         });
 
         if (searchTerm) params.append("search", searchTerm);
@@ -75,22 +77,29 @@ export default function CMSListPage() {
 
         if (result.success) {
           setPages(result.data || []);
-          setPagination(result.pagination || pagination);
+          setPagination(result.pagination || {
+            page: currentPage,
+            limit: limit,
+            total: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false,
+          });
         }
       } catch (error) {
         console.error("Error fetching CMS pages:", error);
       } finally {
-        setLoading(pages.length === 0); // Warning fixed here
+        setLoading(false);
       }
     };
 
     loadPages();
-  }, [pagination.page, pagination.limit, searchTerm, statusFilter]);
+  }, [currentPage, limit, searchTerm, statusFilter]);
 
   // Debounced search: reset to page 1 when user types
   useEffect(() => {
     const timer = setTimeout(() => {
-      setPagination((prev) => ({ ...prev, page: 1 }));
+      setCurrentPage(1);
     }, 500);
 
     return () => clearTimeout(timer);
@@ -331,7 +340,7 @@ export default function CMSListPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
+                  onClick={() => setCurrentPage((p) => p - 1)}
                   disabled={!pagination.hasPrev}
                   className="p-2 rounded border border-gray-300 disabled:opacity-50 hover:bg-gray-50"
                 >
@@ -341,7 +350,7 @@ export default function CMSListPage() {
                   Page {pagination.page} of {pagination.totalPages}
                 </span>
                 <button
-                  onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
+                  onClick={() => setCurrentPage((p) => p + 1)}
                   disabled={!pagination.hasNext}
                   className="p-2 rounded border border-gray-300 disabled:opacity-50 hover:bg-gray-50"
                 >

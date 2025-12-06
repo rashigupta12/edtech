@@ -6,9 +6,10 @@ import {
   FacultyTable, 
   UsersTable, 
   DepartmentsTable,
-  FacultyProfilesTable 
+  FacultyProfilesTable, 
+  CollegesTable
 } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull, SQL } from "drizzle-orm";
 
 // GET /api/faculty - Get all faculty members or filtered by college/department
 export async function GET(request: NextRequest) {
@@ -18,18 +19,21 @@ export async function GET(request: NextRequest) {
     const departmentId = searchParams.get("departmentId");
     const status = searchParams.get("status");
     const facultyId = searchParams.get("id");
+    const includeCollege = searchParams.get("includeCollege");
 
     // Get single faculty profile
     if (facultyId) {
       const faculty = await db
         .select({
           id: FacultyTable.id,
+          collegeId: FacultyTable.collegeId,
           employeeId: FacultyTable.employeeId,
           facultyRole: FacultyTable.facultyRole,
           designation: FacultyTable.designation,
           employmentType: FacultyTable.employmentType,
           status: FacultyTable.status,
           joiningDate: FacultyTable.joiningDate,
+          departmentId: FacultyTable.departmentId,
           permissions: {
             canCreateCourses: FacultyTable.canCreateCourses,
             canApproveContent: FacultyTable.canApproveContent,
@@ -40,7 +44,7 @@ export async function GET(request: NextRequest) {
             name: UsersTable.name,
             email: UsersTable.email,
             profileImage: UsersTable.profileImage,
-            mobile:UsersTable.mobile,
+            mobile: UsersTable.mobile,
           },
           profile: FacultyProfilesTable,
           department: {
@@ -71,39 +75,77 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: faculty[0] });
     }
 
-    // Get faculty list with filters
-    const conditions = [];
-    if (collegeId) conditions.push(eq(FacultyTable.collegeId, collegeId));
-    if (departmentId) conditions.push(eq(FacultyTable.departmentId, departmentId));
-    if (status) conditions.push(eq(FacultyTable.status, status as any));
+    // Build conditions array
+    const conditions: SQL[] = [];
+    
+    if (collegeId) {
+      if (collegeId === "unassigned") {
+        conditions.push(isNull(FacultyTable.collegeId));
+      } else {
+        conditions.push(eq(FacultyTable.collegeId, collegeId));
+      }
+    }
+    
+    if (departmentId) {
+      conditions.push(eq(FacultyTable.departmentId, departmentId));
+    }
+    
+    if (status) {
+      conditions.push(eq(FacultyTable.status, status as any));
+    }
 
-    const facultyList = await db
+    // Get faculty list with filters - build complete query in one go
+    const baseQuery = db
       .select({
         id: FacultyTable.id,
+        collegeId: FacultyTable.collegeId,
         userId: FacultyTable.userId,
         employeeId: FacultyTable.employeeId,
         facultyRole: FacultyTable.facultyRole,
         designation: FacultyTable.designation,
         employmentType: FacultyTable.employmentType,
         status: FacultyTable.status,
-        departmentName: DepartmentsTable.name,
+        departmentId: FacultyTable.departmentId,
         user: {
           name: UsersTable.name,
           email: UsersTable.email,
           profileImage: UsersTable.profileImage,
-          mobile:UsersTable.mobile,
+          mobile: UsersTable.mobile,
         },
         permissions: {
           canCreateCourses: FacultyTable.canCreateCourses,
           canApproveContent: FacultyTable.canApproveContent,
           canManageStudents: FacultyTable.canManageStudents,
-            canScheduleSessions: FacultyTable.canScheduleSessions,
+          canScheduleSessions: FacultyTable.canScheduleSessions,
+        },
+        department: {
+          name: DepartmentsTable.name,
+          code: DepartmentsTable.code,
         },
       })
       .from(FacultyTable)
       .leftJoin(UsersTable, eq(FacultyTable.userId, UsersTable.id))
-      .leftJoin(DepartmentsTable, eq(FacultyTable.departmentId, DepartmentsTable.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
+      .leftJoin(DepartmentsTable, eq(FacultyTable.departmentId, DepartmentsTable.id));
+
+    // Execute query with or without conditions
+    const facultyList = conditions.length > 0 
+      ? await baseQuery.where(and(...conditions))
+      : await baseQuery;
+
+    // If includeCollege is requested, add college info
+    if (includeCollege) {
+      // Get all colleges
+      const colleges = await db.select().from(CollegesTable);
+      const collegeMap = new Map(colleges.map(c => [c.id, c]));
+      
+      // Map college data to faculty
+      const facultyWithColleges = facultyList.map(faculty => ({
+        ...faculty,
+        college: faculty.collegeId ? collegeMap.get(faculty.collegeId) : null
+      }));
+      
+      return NextResponse.json({ success: true, data: facultyWithColleges });
+    }
 
     return NextResponse.json({ success: true, data: facultyList });
   } catch (error) {
@@ -136,7 +178,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validation
-    if (!collegeId || !userId || !designation) {
+    if (!userId || !designation) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: "Missing required fields" } },
         { status: 400 }
@@ -146,9 +188,9 @@ export async function POST(request: NextRequest) {
     const [newFaculty] = await db
       .insert(FacultyTable)
       .values({
-        collegeId,
+        collegeId: collegeId || null,
         userId,
-        departmentId,
+        departmentId: departmentId || null,
         employeeId,
         facultyRole: facultyRole || "LECTURER",
         designation,
@@ -166,15 +208,31 @@ export async function POST(request: NextRequest) {
       { success: true, data: newFaculty, message: "Faculty member added successfully" },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Faculty POST error:", error);
+    
+    // Handle duplicate entry errors
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: { 
+            code: "DUPLICATE_ENTRY", 
+            message: "A faculty member with this email or employee ID already exists" 
+          } 
+        },
+        { status: 409 }
+      );
+    }
+    
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
       { status: 500 }
     );
   }
 }
-// In your PUT function in app/api/faculty/route.ts
+
+// PUT /api/faculty - Update faculty member
 export async function PUT(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -224,7 +282,8 @@ export async function PUT(request: NextRequest) {
     if (body.canScheduleSessions !== undefined) updateData.canScheduleSessions = body.canScheduleSessions;
 
     // Map other fields
-    if (body.departmentId !== undefined) updateData.departmentId = body.departmentId;
+    if (body.collegeId !== undefined) updateData.collegeId = body.collegeId || null;
+    if (body.departmentId !== undefined) updateData.departmentId = body.departmentId || null;
     if (body.facultyRole !== undefined) updateData.facultyRole = body.facultyRole;
     if (body.designation !== undefined) updateData.designation = body.designation;
     if (body.employmentType !== undefined) updateData.employmentType = body.employmentType;
@@ -241,10 +300,10 @@ export async function PUT(request: NextRequest) {
       data: updated,
       message: "Faculty updated successfully",
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Faculty PUT error:", error);
     return NextResponse.json(
-      { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: error.message || "Internal server error" } },
       { status: 500 }
     );
   }
@@ -269,10 +328,10 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: "Faculty deleted successfully",
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Faculty DELETE error:", error);
     return NextResponse.json(
-      { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
+      { success: false, error: { code: "INTERNAL_ERROR", message: error.message || "Internal server error" } },
       { status: 500 }
     );
   }
