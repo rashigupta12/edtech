@@ -14,7 +14,6 @@ import {
   BookOpen,
   Edit,
   Eye,
-  Filter,
   Plus,
   Search,
   Trash2,
@@ -53,7 +52,7 @@ export default function CoursesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [collegeFilter, setCollegeFilter] = useState("ALL");
-  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [categoryFilter] = useState("ALL");
   const [levelFilter, setLevelFilter] = useState("ALL");
 
   // Extract unique values for filters

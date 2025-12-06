@@ -17,7 +17,7 @@ import {
   List,
   MessageCircle,
   MessageSquare,
-  Package,
+  
   Plus,
   Settings,
   Tag,

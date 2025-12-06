@@ -7,40 +7,33 @@ import Link from "next/link";
 import { format } from "date-fns";
 import {
   ArrowLeft,
-  Edit2,
+
   Trash2,
   FileText,
   BookOpen,
-  Award,
-  Calendar,
+ 
   Clock,
   CheckCircle,
   XCircle,
   Users,
-  BarChart3,
+ 
   Eye,
-  EyeOff,
+ 
   RotateCcw,
   Hash,
   TrendingUp,
-  TrendingDown,
-  Shield,
+ 
   Download,
-  Copy,
-  MoreVertical,
+ 
   AlertCircle,
-  ChevronRight,
-  ChevronLeft,
+  
   Plus,
   User,
   Layers,
   Target,
-  Settings,
   BarChart,
   FileQuestion,
-  Timer,
-  CheckSquare,
-  XSquare,
+  
   Percent,
   Award as AwardIcon,
 } from "lucide-react";
@@ -75,7 +68,7 @@ interface Question {
   questionText: string;
   questionType: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER";
   difficulty: "EASY" | "MEDIUM" | "HARD";
-  options: any[] | null;
+  options: string[] | null;
   correctAnswer: string;
   explanation: string | null;
   points: number;
@@ -84,6 +77,14 @@ interface Question {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+
+interface Answer {
+  questionId: string;
+  answer: string;
+  isCorrect: boolean;
+  pointsEarned: number;
 }
 
 interface Attempt {
@@ -99,7 +100,7 @@ interface Attempt {
   startedAt: string;
   completedAt: string | null;
   timeSpent: number | null;
-  answers: any;
+  answers: Answer[]; // Changed from any
 }
 
 interface AssessmentDetails {
@@ -128,9 +129,7 @@ const AssessmentDetailPage = () => {
     null
   );
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [questionsView, setQuestionsView] = useState<"list" | "preview">(
-    "list"
-  );
+ 
   const [showPreview, setShowPreview] = useState(false);
 
   // Fetch assessment details
@@ -157,7 +156,7 @@ const AssessmentDetailPage = () => {
         `/api/assessments?id=${assessmentId}&attempts=true`
       );
       let attempts: Attempt[] = [];
-      let stats = {
+      const stats = {
         questionCount: assessmentData.data.questions?.length || 0,
         totalAttempts: 0,
         averageScore: 0,
@@ -374,7 +373,7 @@ if (loading) {
               Assessment Not Found
             </h2>
             <p className="text-gray-500 mb-4">
-              The assessment you're looking for doesn't exist.
+              The assessment you&apos;re looking for doesn&apos;t exist.
             </p>
             <Link
               href="/dashboard/faculty/assessments"
@@ -864,7 +863,7 @@ if (loading) {
                     No attempts yet
                   </h3>
                   <p className="text-gray-500">
-                    Students haven't taken this assessment yet.
+                    Students haven&apos;t taken this assessment yet.
                   </p>
                 </div>
               ) : (

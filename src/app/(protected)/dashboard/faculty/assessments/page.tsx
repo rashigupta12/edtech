@@ -4,21 +4,19 @@
 import React, { useState, useEffect } from "react";
 import {
   Search,
-  Filter,
+
   Plus,
-  Edit2,
+
   Trash2,
   Eye,
-  MoreVertical,
+
   FileText,
   BookOpen,
   Award,
-  RefreshCw,
-  CheckCircle,
+ 
   XCircle,
-  Calendar,
-  Users,
-  BarChart3,
+  
+ 
   ChevronDown,
   AlertCircle,
   Edit,
@@ -70,11 +68,11 @@ const AssessmentsPage = () => {
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter] = useState<string>("all");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
 
   // Delete modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -82,7 +80,7 @@ const AssessmentsPage = () => {
     useState<Assessment | null>(null);
 
   // Action menu
-  const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
+  const [, setActionMenuOpen] = useState<string | null>(null);
 
   // Check if user can edit assessment
   const canEditAssessment = (assessment: Assessment) => {
@@ -149,7 +147,6 @@ const AssessmentsPage = () => {
   }, []);
 
   // Pagination
-  const totalPages = Math.ceil(filteredAssessments.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentAssessments = filteredAssessments.slice(startIndex, endIndex);
@@ -212,9 +209,7 @@ const AssessmentsPage = () => {
     }
   };
 
-  const toggleActionMenu = (id: string) => {
-    setActionMenuOpen(actionMenuOpen === id ? null : id);
-  };
+ 
 
   const getAssessmentLevelIcon = (level: string) => {
     switch (level) {

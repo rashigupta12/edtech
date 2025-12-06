@@ -622,7 +622,7 @@ export default function AssessmentForm({
 
  const prepareFormDataForApi = () => {
   // Ensure all questions have required fields with proper defaults
-  const processedQuestions = questions.map((question, index) => {
+  const processedQuestions = questions.map((question) => {
     const baseQuestion = {
       questionText: question.questionText || '',
       questionType: question.questionType || 'MULTIPLE_CHOICE',
