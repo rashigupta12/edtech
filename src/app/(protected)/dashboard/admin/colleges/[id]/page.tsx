@@ -28,13 +28,7 @@ export default function CollegeDetailsPage() {
   const [college, setCollege] = useState<CollegeDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (collegeId) {
-      fetchCollegeDetails();
-    }
-  }, [collegeId]);
-
+useEffect(() => {
   const fetchCollegeDetails = async () => {
     try {
       setLoading(true);
@@ -58,6 +52,11 @@ export default function CollegeDetailsPage() {
       setLoading(false);
     }
   };
+
+  if (collegeId) {
+    fetchCollegeDetails();
+  }
+}, [collegeId]); // Now only depends on collegeId
 
   const getStatusBadge = (status: string) => {
     const statusClasses = {
