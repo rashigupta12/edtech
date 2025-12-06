@@ -1,12 +1,21 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
-/*eslint-disable @typescript-eslint/no-unused-vars */
-// src/app/(protected)/dashboard/college/courses/[id]/edit/page.tsx
 "use client";
 
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -15,45 +24,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
-  Save,
   Plus,
-  X,
-  Edit,
   Trash2,
-  ChevronDown,
-  FileText,
+  Upload,
+  Globe,
+  DollarSign,
+  Award,
+  CheckSquare,
+  Save,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import React, { useState, useEffect, useCallback } from "react";
-import Swal from "sweetalert2";
-import { NumberInput } from "@/components/ui/number-input";
+import { useToast } from "@/hooks/use-toast";
+import { LoadingState } from "@/components/college/shared/LoadingState";
 
-type Question = {
-  id?: string;
-  questionText: string;
-  questionType: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER";
-  options?: string[];
-  correctAnswer: string;
-  points?: number;
-  difficulty?: "EASY" | "MEDIUM" | "HARD";
-  explanation?: string;
-  negativePoints?: number;
-};
+const courseFormSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  slug: z.string().min(3, "Slug must be at least 3 characters"),
+  shortDescription: z
+    .string()
+    .min(10, "Short description must be at least 10 characters")
+    .max(200, "Short description must be at most 200 characters"),
+  description: z.string().min(50, "Description must be at least 50 characters"),
+  categoryId: z.string().min(1, "Category is required"),
+  level: z.enum(["Beginner", "Intermediate", "Advanced"]),
+  language: z.string().default("English"),
+  duration: z.string().optional(),
+  prerequisites: z.string().optional(),
+  thumbnailUrl: z.string().optional(),
+  previewVideoUrl: z.string().url().optional().or(z.literal("")),
+  isFree: z.boolean().default(true),
+  price: z.number().min(0).optional(),
+  discountPrice: z.number().min(0).optional(),
+  maxStudents: z.number().min(1).optional(),
+  hasFinalAssessment: z.boolean().default(false),
+  finalAssessmentRequired: z.boolean().default(true),
+  minimumCoursePassingScore: z.number().min(0).max(100).default(60),
+  requireAllModulesComplete: z.boolean().default(true),
+  requireAllAssessmentsPassed: z.boolean().default(true),
+  status: z.enum(["DRAFT", "PENDING_APPROVAL", "PUBLISHED"]).default("DRAFT"),
+});
 
-type College = {
-  id: string;
-  collegeName: string;
-};
+type CourseFormValues = z.infer<typeof courseFormSchema>;
 
-type Category = {
-  id: string;
-  name: string;
-};
-
-type Outcome = {
+type LearningOutcome = {
   id: string;
   outcome: string;
   sortOrder: number;
@@ -65,3050 +83,836 @@ type Requirement = {
   sortOrder: number;
 };
 
-type Assessment = {
-  id?: string;
-  title: string;
-  description?: string;
-  assessmentLevel: "LESSON_QUIZ" | "MODULE_ASSESSMENT" | "COURSE_FINAL";
-  passingScore: number;
-  maxAttempts?: number;
-  timeLimit?: number;
-  isRequired: boolean;
-  showCorrectAnswers: boolean;
-  allowRetake: boolean;
-  randomizeQuestions: boolean;
-  availableFrom?: string;
-  availableUntil?: string;
-  questions: Question[];
-  moduleId?: string;
-  lessonId?: string;
-};
-
-type Lesson = {
-  id: string;
-  title: string;
-  description: string | null;
-  contentType: string;
-  videoUrl: string | null;
-  videoDuration: number | null;
-  articleContent: string | null;
-  isFree: boolean;
-  sortOrder: number;
-  quizUrl: string | null;
-  createdAt: string;
-  updatedAt: string;
-  hasQuiz?: boolean;
-  quiz?: Assessment;
-  quizRequired?: boolean;
-};
-
-type Module = {
-  id: string;
-  title: string;
-  description: string | null;
-  sortOrder: number;
-  lessons: Lesson[];
-  isNew?: true;
-  hasAssessment?: boolean;
-  assessmentRequired?: boolean;
-  minimumPassingScore?: number;
-  moduleAssessment?: Assessment;
-};
-
-type Course = {
-  id: string;
-  title: string;
-  slug: string;
-  shortDescription: string;
-  description: string;
-  categoryId: string;
-  collegeId: string | null;
-  thumbnailUrl: string | null;
-  previewVideoUrl: string | null;
-  duration: string | null;
-  level: string;
-  language: string;
-  prerequisites: string | null;
-  isFree: boolean;
-  price: number | null;
-  discountPrice: number | null;
-  maxStudents: number | null;
-  status: string;
-  outcomes: Outcome[];
-  requirements: Requirement[];
-  hasFinalAssessment?: boolean;
-  finalAssessmentRequired?: boolean;
-  minimumCoursePassingScore?: number;
-  requireAllModulesComplete?: boolean;
-  requireAllAssessmentsPassed?: boolean;
-};
-
 export default function EditCoursePage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
+  const [course, setCourse] = useState<any>(null);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    []
+  );
+  const [learningOutcomes, setLearningOutcomes] = useState<LearningOutcome[]>([]);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [colleges, setColleges] = useState<College[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [editingAssessment, setEditingAssessment] = useState<{
-    type: "lesson" | "module" | "course";
-    moduleIndex?: number;
-    lessonIndex?: number;
-    assessmentId?: string;
-  } | null>(null);
 
-  const [courseFinalAssessment, setCourseFinalAssessment] =
-    useState<Assessment | null>(null);
-  const [courseHasFinalAssessment, setCourseHasFinalAssessment] =
-    useState(false);
-  const [finalAssessmentRequired, setFinalAssessmentRequired] = useState(false);
-  const [minimumCoursePassingScore, setMinimumCoursePassingScore] =
-    useState(60);
-  const [requireAllModulesComplete, setRequireAllModulesComplete] =
-    useState(true);
-  const [requireAllAssessmentsPassed, setRequireAllAssessmentsPassed] =
-    useState(true);
-
-  // Add this constant at the top of the component
-  const UUID_REGEX =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  // Form state
-  const [formData, setFormData] = useState({
-    title: "",
-    slug: "",
-    shortDescription: "",
-    description: "",
-    categoryId: "",
-    collegeId: "",
-    thumbnailUrl: "",
-    previewVideoUrl: "",
-    duration: "",
-    level: "Beginner",
-    language: "English",
-    prerequisites: "",
-    isFree: true,
-    price: "",
-    discountPrice: "",
-    maxStudents: "",
-    status: "DRAFT",
+  const form = useForm<CourseFormValues>({
+    resolver: zodResolver(courseFormSchema),
+    defaultValues: {
+      title: "",
+      slug: "",
+      shortDescription: "",
+      description: "",
+      level: "Beginner",
+      language: "English",
+      isFree: true,
+      hasFinalAssessment: false,
+      finalAssessmentRequired: true,
+      minimumCoursePassingScore: 60,
+      requireAllModulesComplete: true,
+      requireAllAssessmentsPassed: true,
+      status: "DRAFT",
+    },
   });
 
-  // Outcomes and requirements (both existing and new)
-  const [outcomes, setOutcomes] = useState<
-    (Outcome | { id: string; outcome: string; isNew: true })[]
-  >([]);
-  const [requirements, setRequirements] = useState<
-    (Requirement | { id: string; requirement: string; isNew: true })[]
-  >([]);
-
-  const [modules, setModules] = useState<(Module & { isNew?: true })[]>([]);
-  const [editingModule, setEditingModule] = useState<{
-    id: string;
-    title: string;
-    description: string;
-  } | null>(null);
-  const [editingLesson, setEditingLesson] = useState<{
-    id: string;
-    moduleId: string;
-    title: string;
-    description: string;
-    contentType: string;
-    quizUrl: string;
-    videoUrl: string;
-    articleContent: string;
-    isFree: boolean;
-    sortOrder: number;
-  } | null>(null);
-  const [expandedModules, setExpandedModules] = useState<string[]>([]);
-
-  // Editing states
-  const [editingOutcome, setEditingOutcome] = useState<{
-    id: string;
-    value: string;
-  } | null>(null);
-  const [editingRequirement, setEditingRequirement] = useState<{
-    id: string;
-    value: string;
-  } | null>(null);
-
- const fetchAssessments = useCallback(async (modulesData: Module[] = modules) => {
-    try {
-      console.log("Fetching assessments for course:", params.id);
-      const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
-      const response = await res.json();
-
-      console.log("Assessments API response:", response);
-
-      // The assessments are nested inside response.data.assessments
-      const assessmentsData =
-        response.success && response.data?.assessments
-          ? response.data.assessments
-          : [];
-
-      console.log("Assessments data (array):", assessmentsData);
-
-      if (!Array.isArray(assessmentsData)) {
-        console.error("Assessments data is not an array:", assessmentsData);
-        return;
-      }
-
-      // Separate assessments by type
-      const courseFinal = assessmentsData.find(
-        (a: any) => a.assessmentLevel === "COURSE_FINAL"
-      );
-      if (courseFinal) {
-        console.log("Found course final assessment:", courseFinal);
-
-        // Fetch questions for the assessment using correct API endpoint
-        try {
-          const questionsRes = await fetch(
-            `/api/assessments?id=${courseFinal.id}&questions=true`
-          );
-          const questionsData = await questionsRes.json();
-          console.log("Questions API response for final:", questionsData);
-
-          if (questionsData.success) {
-            // The questions are in questionsData.data.questions
-            const questionsArray = questionsData.data?.questions || [];
-            if (Array.isArray(questionsArray)) {
-              courseFinal.questions = questionsArray;
-            } else {
-              courseFinal.questions = [];
-            }
-          } else {
-            courseFinal.questions = [];
-          }
-        } catch (error) {
-          console.error(
-            "Error fetching questions for final assessment:",
-            error
-          );
-          courseFinal.questions = [];
-        }
-
-        setCourseFinalAssessment(courseFinal);
-      }
-
-      // Update modules with their assessments
-      const updatedModules = [...modulesData];
-
-      // Process each assessment
-      for (const assessment of assessmentsData) {
-        console.log("Processing assessment:", assessment);
-
-        if (
-          assessment.assessmentLevel === "MODULE_ASSESSMENT" &&
-          assessment.moduleId
-        ) {
-          const moduleIndex = updatedModules.findIndex(
-            (m) => m.id === assessment.moduleId
-          );
-          if (moduleIndex !== -1) {
-            console.log(`Attaching module assessment to module ${moduleIndex}`);
-
-            // Fetch questions for module assessment using correct API endpoint
-            try {
-              const questionsRes = await fetch(
-                `/api/assessments?id=${assessment.id}&questions=true`
-              );
-              const questionsData = await questionsRes.json();
-              console.log("Questions API response for module:", questionsData);
-
-              if (questionsData.success) {
-                const questionsArray = questionsData.data?.questions || [];
-                if (Array.isArray(questionsArray)) {
-                  assessment.questions = questionsArray;
-                } else {
-                  assessment.questions = [];
-                }
-              } else {
-                assessment.questions = [];
-              }
-            } catch (error) {
-              console.error(
-                "Error fetching questions for module assessment:",
-                error
-              );
-              assessment.questions = [];
-            }
-
-            updatedModules[moduleIndex].moduleAssessment = assessment;
-            updatedModules[moduleIndex].hasAssessment = true;
-          } else {
-            console.log(
-              `Module ${assessment.moduleId} not found for assessment`
-            );
-          }
-        }
-
-        if (
-          assessment.assessmentLevel === "LESSON_QUIZ" &&
-          assessment.lessonId
-        ) {
-          console.log(`Looking for lesson ${assessment.lessonId} for quiz`);
-          let found = false;
-
-          for (const currentModule of updatedModules) {
-            const lessonIndex = currentModule.lessons.findIndex(
-              (l) => l.id === assessment.lessonId
-            );
-            if (lessonIndex !== -1) {
-              console.log(
-                `Attaching quiz to lesson ${lessonIndex} in module ${currentModule.title}`
-              );
-
-              // Fetch questions for lesson quiz using correct API endpoint
-              try {
-                const questionsRes = await fetch(
-                  `/api/assessments?id=${assessment.id}&questions=true`
-                );
-                const questionsData = await questionsRes.json();
-                console.log(
-                  "Questions API response for lesson:",
-                  questionsData
-                );
-
-                if (questionsData.success) {
-                  const questionsArray = questionsData.data?.questions || [];
-                  if (Array.isArray(questionsArray)) {
-                    assessment.questions = questionsArray;
-                  } else {
-                    assessment.questions = [];
-                  }
-                } else {
-                  assessment.questions = [];
-                }
-              } catch (error) {
-                console.error(
-                  "Error fetching questions for lesson quiz:",
-                  error
-                );
-                assessment.questions = [];
-              }
-
-              currentModule.lessons[lessonIndex].quiz = assessment;
-              currentModule.lessons[lessonIndex].hasQuiz = true;
-              found = true;
-              break;
-            }
-          }
-
-          if (!found) {
-            console.log(`Lesson ${assessment.lessonId} not found for quiz`);
-          }
-        }
-      }
-
-      setModules(updatedModules);
-      console.log("Updated modules with assessments:", updatedModules);
-    } catch (error) {
-      console.error("Failed to fetch assessments:", error);
-    }
-  }, [params.id, modules]); // Add dependencies
-
-  // Update useEffect to include fetchAssessments in dependencies
+  // Fetch course data
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        // Fetch course
-        const courseRes = await fetch(`/api/courses?id=${params.id}`, {
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache" },
-        });
-        const courseData = await courseRes.json();
-
-        if (!courseData.success) {
-          throw new Error("Course not found");
-        }
-
-        const course: Course = courseData.data;
-
-        setFormData({
-          title: course.title,
-          slug: course.slug,
-          shortDescription: course.shortDescription || "",
-          description: course.description,
-          categoryId: course.categoryId,
-          collegeId: course.collegeId || "",
-          thumbnailUrl: course.thumbnailUrl || "",
-          previewVideoUrl: course.previewVideoUrl || "",
-          duration: course.duration || "",
-          level: course.level,
-          language: course.language,
-          prerequisites: course.prerequisites || "",
-          isFree: course.isFree,
-          price: course.price ? String(course.price) : "",
-          discountPrice: course.discountPrice
-            ? String(course.discountPrice)
-            : "",
-          maxStudents: course.maxStudents ? String(course.maxStudents) : "",
-          status: course.status,
-        });
-
-        // Set outcomes and requirements from API
-        setOutcomes(courseData.data.outcomes || []);
-        setRequirements(courseData.data.requirements || []);
-
-        // Set course completion settings
-        setCourseHasFinalAssessment(course.hasFinalAssessment || false);
-        setFinalAssessmentRequired(course.finalAssessmentRequired || false);
-        setMinimumCoursePassingScore(course.minimumCoursePassingScore || 60);
-        setRequireAllModulesComplete(
-          course.requireAllModulesComplete !== false
-        );
-        setRequireAllAssessmentsPassed(
-          course.requireAllAssessmentsPassed !== false
-        );
-
-        // Fetch colleges
-        const collegesRes = await fetch("/api/colleges");
-        const collegesData = await collegesRes.json();
-        if (collegesData.success) {
-          setColleges(collegesData.data);
-        }
-
-        // Fetch curriculum with lessons
-        const curriculumRes = await fetch(
-          `/api/courses?id=${params.id}&curriculum=true`
-        );
-        const curriculumData = await curriculumRes.json();
-        if (curriculumData.success) {
-          const loadedModules = curriculumData.data.modules || [];
-          setModules(loadedModules);
-
-          // Fetch assessments after modules are loaded
-          fetchAssessments(loadedModules);
-        }
-
-        // Fetch categories
-        const categoriesRes = await fetch("/api/categories");
-        const categoriesData = await categoriesRes.json();
-        if (categoriesData.success) {
-          setCategories(categoriesData.data);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "Failed to load course data",
-        });
-        router.push("/dashboard/college/courses");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (params.id) {
-      fetchData();
+      fetchCourseData();
+      fetchCategories();
     }
-  }, [params.id, router, fetchAssessments]); // Add fetchAssessments to dependencies
+  }, [params.id]);
 
-  const handleFieldChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const fetchCourseData = async () => {
+    try {
+      const response = await fetch(`/api/courses?id=${params.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setCourse(data.data);
+        setLearningOutcomes(data.data.learningOutcomes || []);
+        setRequirements(data.data.requirements || []);
+        
+        // Set form values
+        form.reset({
+          title: data.data.title,
+          slug: data.data.slug,
+          shortDescription: data.data.shortDescription || "",
+          description: data.data.description || "",
+          categoryId: data.data.categoryId,
+          level: data.data.level,
+          language: data.data.language,
+          duration: data.data.duration || "",
+          prerequisites: data.data.prerequisites || "",
+          thumbnailUrl: data.data.thumbnailUrl || "",
+          previewVideoUrl: data.data.previewVideoUrl || "",
+          isFree: data.data.isFree,
+          price: data.data.price || 0,
+          discountPrice: data.data.discountPrice || 0,
+          maxStudents: data.data.maxStudents || 0,
+          hasFinalAssessment: data.data.hasFinalAssessment || false,
+          finalAssessmentRequired: data.data.finalAssessmentRequired || true,
+          minimumCoursePassingScore: data.data.minimumCoursePassingScore || 60,
+          requireAllModulesComplete: data.data.requireAllModulesComplete !== false,
+          requireAllAssessmentsPassed: data.data.requireAllAssessmentsPassed !== false,
+          status: data.data.status,
+        });
+      } else {
+        throw new Error("Course not found");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch course data",
+        variant: "destructive",
+      });
+      router.push("/dashboard/college/courses");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Outcome functions
-  const addNewOutcome = () => {
-    const newId = `new-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-    setOutcomes((prev) => [...prev, { id: newId, outcome: "", isNew: true }]);
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("/api/categories");
+      const data = await response.json();
+      if (data.success) {
+        setCategories(data.data);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch categories",
+        variant: "destructive",
+      });
+    }
   };
 
-  const removeOutcome = (id: string) => {
-    setOutcomes((prev) => prev.filter((item) => item.id !== id));
+  // Learning outcomes handlers
+  const addLearningOutcome = () => {
+    const newOutcome: LearningOutcome = {
+      id: `new-${Date.now()}`,
+      outcome: "",
+      sortOrder: learningOutcomes.length,
+    };
+    setLearningOutcomes([...learningOutcomes, newOutcome]);
   };
 
-  const updateOutcome = (id: string, value: string) => {
-    setOutcomes((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, outcome: value } : item))
+  const updateLearningOutcome = (id: string, value: string) => {
+    setLearningOutcomes(
+      learningOutcomes.map((outcome) =>
+        outcome.id === id ? { ...outcome, outcome: value } : outcome
+      )
     );
   };
 
-  const startEditOutcome = (id: string, currentValue: string) => {
-    setEditingOutcome({ id, value: currentValue });
+  const removeLearningOutcome = (id: string) => {
+    if (learningOutcomes.length > 1) {
+      setLearningOutcomes(learningOutcomes.filter((outcome) => outcome.id !== id));
+    }
   };
 
-  const cancelEditOutcome = () => {
-    setEditingOutcome(null);
-  };
-
-  const saveEditOutcome = () => {
-    if (!editingOutcome || !editingOutcome.value.trim()) return;
-
-    updateOutcome(editingOutcome.id, editingOutcome.value);
-    setEditingOutcome(null);
-  };
-
-  // Requirement functions
-  const addNewRequirement = () => {
-    const newId = `new-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-    setRequirements((prev) => [
-      ...prev,
-      { id: newId, requirement: "", isNew: true },
-    ]);
-  };
-
-  const removeRequirement = (id: string) => {
-    setRequirements((prev) => prev.filter((item) => item.id !== id));
+  // Requirements handlers
+  const addRequirement = () => {
+    const newRequirement: Requirement = {
+      id: `new-${Date.now()}`,
+      requirement: "",
+      sortOrder: requirements.length,
+    };
+    setRequirements([...requirements, newRequirement]);
   };
 
   const updateRequirement = (id: string, value: string) => {
-    setRequirements((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, requirement: value } : item
+    setRequirements(
+      requirements.map((req) =>
+        req.id === id ? { ...req, requirement: value } : req
       )
     );
   };
 
-  const startEditRequirement = (id: string, currentValue: string) => {
-    setEditingRequirement({ id, value: currentValue });
-  };
-
-  const cancelEditRequirement = () => {
-    setEditingRequirement(null);
-  };
-
-  const saveEditRequirement = () => {
-    if (!editingRequirement || !editingRequirement.value.trim()) return;
-
-    updateRequirement(editingRequirement.id, editingRequirement.value);
-    setEditingRequirement(null);
-  };
-
-  // Module functions
-  const addNewModule = () => {
-    const newId = `new-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-    setModules((prev) => [
-      ...prev,
-      {
-        id: newId,
-        title: "",
-        description: "",
-        sortOrder: prev.length,
-        lessons: [],
-        isNew: true,
-      },
-    ]);
-  };
-
-  const removeModule = (id: string) => {
-    setModules((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const updateModule = (
-    id: string,
-    field: "title" | "description",
-    value: string
-  ) => {
-    setModules((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
-    );
-  };
-
-  const startEditModule = (
-    id: string,
-    currentTitle: string,
-    currentDescription: string
-  ) => {
-    setEditingModule({
-      id,
-      title: currentTitle,
-      description: currentDescription,
-    });
-  };
-
-  const cancelEditModule = () => {
-    setEditingModule(null);
-  };
-
-  const saveEditModule = () => {
-    if (!editingModule || !editingModule.title.trim()) return;
-
-    updateModule(editingModule.id, "title", editingModule.title);
-    updateModule(editingModule.id, "description", editingModule.description);
-    setEditingModule(null);
-  };
-
-  // Module assessment functions
-  const toggleModuleAssessment = (moduleIndex: number) => {
-    const updatedModules = [...modules];
-    const currentModule = updatedModules[moduleIndex]; // Changed from 'module' to 'currentModule'
-
-    if (!currentModule.hasAssessment) {
-      // Add module assessment
-      currentModule.hasAssessment = true;
-      currentModule.moduleAssessment = {
-        title: `${currentModule.title} Assessment`,
-        description: "Module assessment to test your understanding",
-        assessmentLevel: "MODULE_ASSESSMENT",
-        passingScore: currentModule.minimumPassingScore || 60,
-        isRequired: currentModule.assessmentRequired || true,
-        showCorrectAnswers: false,
-        allowRetake: true,
-        randomizeQuestions: true,
-        questions: [],
-      };
-    } else {
-      // Remove module assessment
-      currentModule.hasAssessment = false;
-      currentModule.moduleAssessment = undefined;
-    }
-
-    setModules(updatedModules);
-  };
-  // Lesson functions
-  const addNewLesson = (moduleId: string) => {
-    const newId = `new-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-    setModules((prev) =>
-      prev.map((module) =>
-        module.id === moduleId
-          ? {
-              ...module,
-              lessons: [
-                ...module.lessons,
-                {
-                  id: newId,
-                  title: "",
-                  description: "",
-                  contentType: "VIDEO",
-                  videoUrl: "",
-                  videoDuration: null,
-                  quizUrl: "",
-                  articleContent: "",
-                  isFree: false,
-                  sortOrder: module.lessons.length,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              ],
-            }
-          : module
-      )
-    );
-  };
-
-  const removeLesson = (moduleId: string, lessonId: string) => {
-    setModules((prev) =>
-      prev.map((module) =>
-        module.id === moduleId
-          ? {
-              ...module,
-              lessons: module.lessons.filter(
-                (lesson) => lesson.id !== lessonId
-              ),
-            }
-          : module
-      )
-    );
-  };
-
-  const updateLesson = (
-    moduleId: string,
-    lessonId: string,
-    field: keyof Lesson,
-    value: any
-  ) => {
-    setModules((prev) =>
-      prev.map((module) =>
-        module.id === moduleId
-          ? {
-              ...module,
-              lessons: module.lessons.map((lesson) =>
-                lesson.id === lessonId ? { ...lesson, [field]: value } : lesson
-              ),
-            }
-          : module
-      )
-    );
-  };
-
-  const toggleQuizForLesson = (moduleIndex: number, lessonIndex: number) => {
-    const updatedModules = [...modules];
-    const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
-
-    if (!lesson.hasQuiz) {
-      // Add quiz
-      lesson.hasQuiz = true;
-      lesson.quiz = {
-        title: `${lesson.title} Quiz`,
-        description: "Test your knowledge from this lesson",
-        assessmentLevel: "LESSON_QUIZ",
-        passingScore: 60,
-        isRequired: false,
-        showCorrectAnswers: true,
-        allowRetake: true,
-        randomizeQuestions: false,
-        questions: [],
-      };
-    } else {
-      // Remove quiz
-      lesson.hasQuiz = false;
-      lesson.quizRequired = false;
-      lesson.quiz = undefined;
-    }
-
-    setModules(updatedModules);
-  };
-
-  const startEditLesson = (moduleId: string, lesson: Lesson) => {
-    setEditingLesson({
-      id: lesson.id,
-      moduleId,
-      title: lesson.title,
-      description: lesson.description || "",
-      contentType: lesson.contentType,
-      videoUrl: lesson.videoUrl || "",
-      quizUrl: lesson.quizUrl || "",
-      articleContent: lesson.articleContent || "",
-      isFree: lesson.isFree,
-      sortOrder: lesson.sortOrder,
-    });
-  };
-
-  const cancelEditLesson = () => {
-    setEditingLesson(null);
-  };
-
-  const saveEditLesson = () => {
-    if (!editingLesson || !editingLesson.title.trim()) return;
-
-    const { moduleId, id, ...lessonData } = editingLesson;
-
-    setModules((prev) =>
-      prev.map((module) =>
-        module.id === moduleId
-          ? {
-              ...module,
-              lessons: module.lessons.map((lesson) =>
-                lesson.id === id ? { ...lesson, ...lessonData } : lesson
-              ),
-            }
-          : module
-      )
-    );
-
-    setEditingLesson(null);
-  };
-
-  const toggleModule = (moduleId: string) => {
-    setExpandedModules((prev) =>
-      prev.includes(moduleId)
-        ? prev.filter((id) => id !== moduleId)
-        : [...prev, moduleId]
-    );
-  };
-
-  // Assessment update function
-  const updateAssessmentField = (
-    type: "lesson" | "module" | "course",
-    field: keyof Assessment | "questions",
-    value: any,
-    moduleIndex?: number,
-    lessonIndex?: number
-  ) => {
-    if (
-      type === "lesson" &&
-      moduleIndex !== undefined &&
-      lessonIndex !== undefined
-    ) {
-      const updatedModules = [...modules];
-      const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
-      if (lesson.quiz) {
-        (lesson.quiz as any)[field] = value;
-        setModules(updatedModules);
-      }
-    } else if (type === "module" && moduleIndex !== undefined) {
-      const updatedModules = [...modules];
-      const currentModule = updatedModules[moduleIndex]; // Changed from 'module' to 'currentModule'
-      if (currentModule.moduleAssessment) {
-        (currentModule.moduleAssessment as any)[field] = value;
-        setModules(updatedModules);
-      }
-    } else if (type === "course") {
-      setCourseFinalAssessment((prev) => ({ ...prev!, [field]: value }));
+  const removeRequirement = (id: string) => {
+    if (requirements.length > 1) {
+      setRequirements(requirements.filter((req) => req.id !== id));
     }
   };
 
-  const addQuestion = (
-    type: "lesson" | "module" | "course",
-    moduleIndex?: number,
-    lessonIndex?: number
-  ) => {
-    const newQuestion: Question = {
-      questionText: "",
-      questionType: "MULTIPLE_CHOICE",
-      options: ["", "", "", ""],
-      correctAnswer: "",
-      points: 1,
-      difficulty: "MEDIUM",
-    };
-
-    updateAssessmentField(
-      type,
-      "questions",
-      type === "lesson" &&
-        moduleIndex !== undefined &&
-        lessonIndex !== undefined
-        ? [
-            ...(modules[moduleIndex].lessons[lessonIndex].quiz?.questions ||
-              []),
-            newQuestion,
-          ]
-        : type === "module" && moduleIndex !== undefined
-        ? [
-            ...(modules[moduleIndex].moduleAssessment?.questions || []),
-            newQuestion,
-          ]
-        : [...(courseFinalAssessment?.questions || []), newQuestion],
-      moduleIndex,
-      lessonIndex
-    );
-  };
-
-  const updateQuestion = (
-    type: "lesson" | "module" | "course",
-    questionIndex: number,
-    field: keyof Question,
-    value: any,
-    moduleIndex?: number,
-    lessonIndex?: number
-  ) => {
-    let questions: Question[] = [];
-
-    if (
-      type === "lesson" &&
-      moduleIndex !== undefined &&
-      lessonIndex !== undefined
-    ) {
-      questions = [
-        ...(modules[moduleIndex].lessons[lessonIndex].quiz?.questions || []),
-      ];
-    } else if (type === "module" && moduleIndex !== undefined) {
-      questions = [...(modules[moduleIndex].moduleAssessment?.questions || [])];
-    } else if (type === "course") {
-      questions = [...(courseFinalAssessment?.questions || [])];
-    }
-
-    if (questionIndex < questions.length) {
-      (questions[questionIndex] as any)[field] = value;
-      updateAssessmentField(
-        type,
-        "questions",
-        questions,
-        moduleIndex,
-        lessonIndex
-      );
-    }
-  };
-
-  const removeQuestion = (
-    type: "lesson" | "module" | "course",
-    questionIndex: number,
-    moduleIndex?: number,
-    lessonIndex?: number
-  ) => {
-    let questions: Question[] = [];
-
-    if (
-      type === "lesson" &&
-      moduleIndex !== undefined &&
-      lessonIndex !== undefined
-    ) {
-      questions =
-        modules[moduleIndex].lessons[lessonIndex].quiz?.questions || [];
-    } else if (type === "module" && moduleIndex !== undefined) {
-      questions = modules[moduleIndex].moduleAssessment?.questions || [];
-    } else if (type === "course") {
-      questions = courseFinalAssessment?.questions || [];
-    }
-
-    const updatedQuestions = questions.filter((_, i) => i !== questionIndex);
-    updateAssessmentField(
-      type,
-      "questions",
-      updatedQuestions,
-      moduleIndex,
-      lessonIndex
-    );
-  };
-
-  // Assessment Editor Modal
-  const renderAssessmentEditor = () => {
-    if (!editingAssessment) return null;
-
-    const { type, moduleIndex, lessonIndex } = editingAssessment;
-
-    let assessment: Assessment | undefined | null;
-    let title = "";
-
-    if (
-      type === "lesson" &&
-      moduleIndex !== undefined &&
-      lessonIndex !== undefined
-    ) {
-      assessment = modules[moduleIndex]?.lessons[lessonIndex]?.quiz;
-      title = `${modules[moduleIndex]?.lessons[lessonIndex]?.title} Quiz`;
-    } else if (type === "module" && moduleIndex !== undefined) {
-      assessment = modules[moduleIndex]?.moduleAssessment;
-      title = `${modules[moduleIndex]?.title} Assessment`;
-    } else if (type === "course") {
-      assessment = courseFinalAssessment;
-      title = "Final Course Assessment";
-    }
-
-    if (!assessment) {
-      // Create new assessment if none exists
-      assessment = {
-        title:
-          type === "lesson"
-            ? "Lesson Quiz"
-            : type === "module"
-            ? "Module Assessment"
-            : "Final Course Assessment",
-        description: "",
-        assessmentLevel:
-          type === "lesson"
-            ? "LESSON_QUIZ"
-            : type === "module"
-            ? "MODULE_ASSESSMENT"
-            : "COURSE_FINAL",
-        passingScore: 60,
-        isRequired: true,
-        showCorrectAnswers: type === "lesson",
-        allowRetake: true,
-        randomizeQuestions: type === "module" || type === "course",
-        questions: [],
-      };
-    }
-
-    const updateCurrentAssessment = (
-      field: keyof Assessment | "questions",
-      value: any
-    ) => {
-      updateAssessmentField(type, field, value, moduleIndex, lessonIndex);
-    };
-
-    const updateCurrentQuestion = (
-      questionIndex: number,
-      field: keyof Question,
-      value: any
-    ) => {
-      updateQuestion(
-        type,
-        questionIndex,
-        field,
-        value,
-        moduleIndex,
-        lessonIndex
-      );
-    };
-
-    const addNewQuestion = () => {
-      addQuestion(type, moduleIndex, lessonIndex);
-    };
-
-    const removeCurrentQuestion = (questionIndex: number) => {
-      removeQuestion(type, questionIndex, moduleIndex, lessonIndex);
-    };
-
-    // Update the saveAssessment function inside renderAssessmentEditor:
-    const saveAssessment = async () => {
-      try {
-        const assessmentToSave = assessment!;
-        let endpoint = "";
-        let method = "POST";
-
-        if (assessmentToSave.id) {
-          method = "PUT";
-          // Use the new update endpoint
-          endpoint = `/api/assessments?id=${assessmentToSave.id}`;
-        } else {
-          // Create new assessment
-          if (
-            type === "lesson" &&
-            moduleIndex !== undefined &&
-            lessonIndex !== undefined
-          ) {
-            const lessonId = modules[moduleIndex].lessons[lessonIndex].id;
-            endpoint = `/api/assessments?courseId=${params.id}&assessmentLevel=LESSON_QUIZ&lessonId=${lessonId}`;
-          } else if (type === "module" && moduleIndex !== undefined) {
-            const moduleId = modules[moduleIndex].id;
-            endpoint = `/api/assessments?courseId=${params.id}&assessmentLevel=MODULE_ASSESSMENT&moduleId=${moduleId}`;
-          } else if (type === "course") {
-            endpoint = `/api/assessments?courseId=${params.id}&assessmentLevel=COURSE_FINAL`;
-          }
-        }
-
-        // First save the assessment (without questions)
-        const assessmentData = {
-          title: assessmentToSave.title,
-          description: assessmentToSave.description || "",
-          passingScore: assessmentToSave.passingScore,
-          timeLimit: assessmentToSave.timeLimit,
-          maxAttempts: assessmentToSave.maxAttempts,
-          isRequired: assessmentToSave.isRequired,
-          showCorrectAnswers: assessmentToSave.showCorrectAnswers,
-          allowRetake: assessmentToSave.allowRetake,
-          randomizeQuestions: assessmentToSave.randomizeQuestions,
-          availableFrom: assessmentToSave.availableFrom,
-          availableUntil: assessmentToSave.availableUntil,
-        };
-
-        const res = await fetch(endpoint, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(assessmentData),
-        });
-
-        const response = await res.json();
-        console.log("Save assessment response:", response);
-
-        if (response.success) {
-          const savedAssessment = response.data || response;
-          const assessmentId = savedAssessment.id || assessmentToSave.id;
-
-          // Save/Update questions
-          if (
-            assessmentToSave.questions &&
-            assessmentToSave.questions.length > 0
-          ) {
-            try {
-              // First, get existing questions to know which ones to update vs create
-              const existingQuestionsRes = await fetch(
-                `/api/assessments?id=${assessmentId}&questions=true`
-              );
-              const existingQuestionsData = await existingQuestionsRes.json();
-
-              let existingQuestions = [];
-              if (
-                existingQuestionsData.success &&
-                existingQuestionsData.data?.questions
-              ) {
-                existingQuestions = existingQuestionsData.data.questions;
-              }
-
-              for (let i = 0; i < assessmentToSave.questions.length; i++) {
-                const question = assessmentToSave.questions[i];
-
-                const isExistingQuestion =
-                  question.id && UUID_REGEX.test(question.id);
-
-                if (isExistingQuestion) {
-                  // This is an existing question - update it
-                  const questionEndpoint = `/api/assessments?questionId=${question.id}`;
-                  await fetch(questionEndpoint, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      questionText: question.questionText,
-                      questionType: question.questionType,
-                      difficulty: question.difficulty || "MEDIUM",
-                      options: question.options || [],
-                      correctAnswer: question.correctAnswer,
-                      explanation: question.explanation || "",
-                      points: question.points || 1,
-                      negativePoints: question.negativePoints || 0,
-                    }),
-                  });
-                } else {
-                  // This is a new question - create it
-                  const questionEndpoint = `/api/assessments?id=${assessmentId}&questions=true`;
-                  await fetch(questionEndpoint, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      questionText: question.questionText,
-                      questionType: question.questionType,
-                      difficulty: question.difficulty || "MEDIUM",
-                      options: question.options || [],
-                      correctAnswer: question.correctAnswer,
-                      explanation: question.explanation || "",
-                      points: question.points || 1,
-                      negativePoints: question.negativePoints || 0,
-                    }),
-                  });
-                }
-              }
-
-              // Delete questions that were removed
-              const currentQuestionIds = assessmentToSave.questions
-                .map((q) => q.id)
-                .filter((id) => id && UUID_REGEX.test(id));
-
-              const questionsToDelete = existingQuestions.filter(
-                (eq: any) => !currentQuestionIds.includes(eq.id)
-              );
-
-              for (const questionToDelete of questionsToDelete) {
-                await fetch(
-                  `/api/assessments?questionId=${questionToDelete.id}`,
-                  {
-                    method: "DELETE",
-                  }
-                );
-              }
-            } catch (questionsError) {
-              console.error("Error saving questions:", questionsError);
-            }
-          }
-
-          Swal.fire({
-            icon: "success",
-            title: "Saved!",
-            text: "Assessment saved successfully",
-            timer: 1500,
-            showConfirmButton: false,
-          });
-          setEditingAssessment(null);
-
-          // Refresh assessments data
-          setTimeout(() => {
-            fetchAssessments();
-          }, 500);
-        } else {
-          Swal.fire(
-            "Error",
-            response.error?.message || "Failed to save assessment",
-            "error"
-          );
-        }
-      } catch (error) {
-        console.error("Failed to save assessment:", error);
-        Swal.fire(
-          "Error",
-          "Failed to save assessment. Please try again.",
-          "error"
-        );
-      }
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">Edit {title}</h3>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setEditingAssessment(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <Label>Assessment Title</Label>
-                <Input
-                  value={assessment.title}
-                  onChange={(e) =>
-                    updateCurrentAssessment("title", e.target.value)
-                  }
-                  placeholder="Assessment title"
-                />
-              </div>
-
-              <div>
-                <Label>Description</Label>
-                <Textarea
-                  value={assessment.description || ""}
-                  onChange={(e) =>
-                    updateCurrentAssessment("description", e.target.value)
-                  }
-                  placeholder="Assessment description"
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Passing Score (%)</Label>
-                  <NumberInput
-                  
-                    value={assessment.passingScore}
-                    onChange={(e) =>
-                      updateCurrentAssessment(
-                        "passingScore",
-                        Number(e.target.value)
-                      )
-                    }
-                    min={0}
-                    max={100}
-                  />
-                </div>
-
-                <div>
-                  <Label>Time Limit (minutes, optional)</Label>
-                  <NumberInput
-                    
-                    value={assessment.timeLimit || ""}
-                    onChange={(e) =>
-                      updateCurrentAssessment(
-                        "timeLimit",
-                        e.target.value ? Number(e.target.value) : undefined
-                      )
-                    }
-                    placeholder="No limit"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Questions ({assessment.questions.length})</Label>
-                  <Button
-                    type="button"
-                    onClick={addNewQuestion}
-                    size="sm"
-                    variant="outline"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Question
-                  </Button>
-                </div>
-
-                {assessment.questions.map((question, qIndex) => (
-                  <div key={qIndex} className="border rounded p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <Label>Question {qIndex + 1}</Label>
-                        <Textarea
-                          value={question.questionText}
-                          onChange={(e) =>
-                            updateCurrentQuestion(
-                              qIndex,
-                              "questionText",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Enter question text..."
-                          rows={2}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeCurrentQuestion(qIndex)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Question Type</Label>
-                        <Select
-                          value={question.questionType}
-                          onValueChange={(value) =>
-                            updateCurrentQuestion(qIndex, "questionType", value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="MULTIPLE_CHOICE">
-                              Multiple Choice
-                            </SelectItem>
-                            <SelectItem value="TRUE_FALSE">
-                              True/False
-                            </SelectItem>
-                            <SelectItem value="SHORT_ANSWER">
-                              Short Answer
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label>Points</Label>
-                        <NumberInput
-                          
-                          value={question.points || 1}
-                          onChange={(e) =>
-                            updateCurrentQuestion(
-                              qIndex,
-                              "points",
-                              Number(e.target.value)
-                            )
-                          }
-                          min={0}
-                        />
-                      </div>
-                    </div>
-
-                    {question.questionType === "MULTIPLE_CHOICE" && (
-                      <div className="space-y-2">
-                        <Label>Options</Label>
-                        {(question.options || []).map((option, optionIndex) => (
-                          <div
-                            key={optionIndex}
-                            className="flex items-center gap-2"
-                          >
-                            <Input
-                              value={option}
-                              onChange={(e) => {
-                                const newOptions = [
-                                  ...(question.options || []),
-                                ];
-                                newOptions[optionIndex] = e.target.value;
-                                updateCurrentQuestion(
-                                  qIndex,
-                                  "options",
-                                  newOptions
-                                );
-                              }}
-                              placeholder={`Option ${optionIndex + 1}`}
-                            />
-                            <input
-                              type="radio"
-                              name={`correct-${qIndex}`}
-                              checked={question.correctAnswer === option}
-                              onChange={() =>
-                                updateCurrentQuestion(
-                                  qIndex,
-                                  "correctAnswer",
-                                  option
-                                )
-                              }
-                              className="h-4 w-4"
-                            />
-                            <Label>Correct</Label>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {question.questionType === "TRUE_FALSE" && (
-                      <div className="space-y-2">
-                        <Label>Correct Answer</Label>
-                        <Select
-                          value={question.correctAnswer}
-                          onValueChange={(value) =>
-                            updateCurrentQuestion(
-                              qIndex,
-                              "correctAnswer",
-                              value
-                            )
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="true">True</SelectItem>
-                            <SelectItem value="false">False</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-
-                    {question.questionType === "SHORT_ANSWER" && (
-                      <div>
-                        <Label>Correct Answer</Label>
-                        <Input
-                          value={question.correctAnswer}
-                          onChange={(e) =>
-                            updateCurrentQuestion(
-                              qIndex,
-                              "correctAnswer",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Expected answer"
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <Label>Explanation (optional)</Label>
-                      <Textarea
-                        value={question.explanation || ""}
-                        onChange={(e) =>
-                          updateCurrentQuestion(
-                            qIndex,
-                            "explanation",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Explanation for the answer"
-                        rows={2}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditingAssessment(null)}
-                >
-                  Cancel
-                </Button>
-                <Button type="button" onClick={saveAssessment}>
-                  Save Assessment
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validation
-    if (!formData.title || !formData.categoryId) {
-      Swal.fire({
-        icon: "warning",
-        title: "Missing Required Fields",
-        text: "Please fill in title and category",
-      });
-      return;
-    }
-
-    setSaving(true);
-
-    const payload = {
-      ...formData,
-      collegeId: formData.collegeId || null,
-      thumbnailUrl: formData.thumbnailUrl || null,
-      previewVideoUrl: formData.previewVideoUrl || null,
-      prerequisites: formData.prerequisites || null,
-      duration: formData.duration || null,
-      price: formData.price ? Number(formData.price) : null,
-      discountPrice: formData.discountPrice
-        ? Number(formData.discountPrice)
-        : null,
-      maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
-      hasFinalAssessment: courseHasFinalAssessment,
-      finalAssessmentRequired: finalAssessmentRequired,
-      minimumCoursePassingScore: minimumCoursePassingScore,
-      requireAllModulesComplete: requireAllModulesComplete,
-      requireAllAssessmentsPassed: requireAllAssessmentsPassed,
-    };
-
+  const onSubmit = async (values: CourseFormValues) => {
+    setIsSubmitting(true);
     try {
-      // Update course basic info
-      const res = await fetch(`/api/courses?id=${params.id}`, {
+      // Prepare payload
+      const payload = {
+        ...values,
+        learningOutcomes: learningOutcomes
+          .filter((lo) => lo.outcome.trim())
+          .map((lo) => ({
+            id: lo.id.startsWith("new-") ? undefined : lo.id,
+            outcome: lo.outcome,
+            sortOrder: lo.sortOrder,
+          })),
+        requirements: requirements
+          .filter((req) => req.requirement.trim())
+          .map((req) => ({
+            id: req.id.startsWith("new-") ? undefined : req.id,
+            requirement: req.requirement,
+            sortOrder: req.sortOrder,
+          })),
+      };
+
+      const response = await fetch(`/api/courses?id=${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      const response = await res.json();
+      const data = await response.json();
 
-      if (response.success) {
-        // Process outcomes - update existing and create new ones
-        for (const outcome of outcomes) {
-          if ("isNew" in outcome) {
-            // Create new outcome
-            if (outcome.outcome.trim()) {
-              await fetch(`/api/courses?id=${params.id}&outcomes=true`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ outcome: outcome.outcome }),
-              });
-            }
-          } else {
-            // Update existing outcome
-            await fetch(`/api/courses?id=${outcome.id}&updateOutcome=true`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ outcome: outcome.outcome }),
-            });
-          }
-        }
-
-        // Process requirements - update existing and create new ones
-        for (const requirement of requirements) {
-          if ("isNew" in requirement) {
-            // Create new requirement
-            if (requirement.requirement.trim()) {
-              await fetch(`/api/courses?id=${params.id}&requirements=true`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ requirement: requirement.requirement }),
-              });
-            }
-          } else {
-            // Update existing requirement
-            await fetch(
-              `/api/courses?id=${requirement.id}&updateRequirement=true`,
-              {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ requirement: requirement.requirement }),
-              }
-            );
-          }
-        }
-        // Process modules and lessons
-        for (let i = 0; i < modules.length; i++) {
-          const currentModule = modules[i]; // Changed from 'module' to 'currentModule'
-
-          if (currentModule.isNew) {
-            // Create new module
-            if (currentModule.title.trim()) {
-              const moduleRes = await fetch(
-                `/api/courses?id=${params.id}&modules=true`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    title: currentModule.title,
-                    description: currentModule.description,
-                    hasAssessment: currentModule.hasAssessment || false,
-                    assessmentRequired:
-                      currentModule.assessmentRequired || true,
-                    minimumPassingScore:
-                      currentModule.minimumPassingScore || 60,
-                    sortOrder: i,
-                  }),
-                }
-              );
-
-              const moduleData = await moduleRes.json();
-
-              if (moduleData.success) {
-                // Add module assessment if exists
-                if (
-                  currentModule.hasAssessment &&
-                  currentModule.moduleAssessment
-                ) {
-                  await fetch(
-                    `/api/courses?id=${params.id}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${moduleData.data.id}`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        ...currentModule.moduleAssessment,
-                        questions:
-                          currentModule.moduleAssessment?.questions || [],
-                      }),
-                    }
-                  );
-                }
-
-                // Create lessons for new module
-                for (let j = 0; j < currentModule.lessons.length; j++) {
-                  const lesson = currentModule.lessons[j];
-                  if (lesson.title.trim()) {
-                    const lessonRes = await fetch(
-                      `/api/courses?id=${params.id}&lessons=true&moduleId=${moduleData.data.id}`,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          title: lesson.title,
-                          description: lesson.description,
-                          contentType: lesson.contentType,
-                          videoUrl: lesson.videoUrl,
-                          quizUrl: lesson.quizUrl,
-                          articleContent: lesson.articleContent,
-                          isFree: lesson.isFree,
-                          hasQuiz: lesson.hasQuiz || false,
-                          quizRequired: lesson.quizRequired || false,
-                          sortOrder: j,
-                        }),
-                      }
-                    );
-
-                    const lessonData = await lessonRes.json();
-
-                    if (lessonData.success && lesson.hasQuiz && lesson.quiz) {
-                      // Add lesson quiz
-                      await fetch(
-                        `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lessonData.data.id}`,
-                        {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            ...lesson.quiz,
-                            questions: lesson.quiz?.questions || [],
-                          }),
-                        }
-                      );
-                    }
-                  }
-                }
-              }
-            }
-          } else {
-            // Update existing module
-            await fetch(
-              `/api/courses?id=${currentModule.id}&updateModule=true`,
-              {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: currentModule.title,
-                  description: currentModule.description,
-                  hasAssessment: currentModule.hasAssessment || false,
-                  assessmentRequired: currentModule.assessmentRequired || true,
-                  minimumPassingScore: currentModule.minimumPassingScore || 60,
-                  sortOrder: i,
-                }),
-              }
-            );
-
-            // Update module assessment if exists
-            if (currentModule.hasAssessment && currentModule.moduleAssessment) {
-              if (currentModule.moduleAssessment.id) {
-                // Update existing assessment
-                await fetch(
-                  `/api/assessments?id=${currentModule.moduleAssessment.id}`,
-                  {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(currentModule.moduleAssessment),
-                  }
-                );
-              } else {
-                // Create new assessment
-                await fetch(
-                  `/api/courses?id=${params.id}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${currentModule.id}`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      ...currentModule.moduleAssessment,
-                      questions:
-                        currentModule.moduleAssessment?.questions || [],
-                    }),
-                  }
-                );
-              }
-            }
-
-            // Process lessons for existing module
-            for (let j = 0; j < currentModule.lessons.length; j++) {
-              const lesson = currentModule.lessons[j];
-
-              const isNewLesson =
-                !lesson.id ||
-                lesson.id.startsWith("new-") ||
-                !UUID_REGEX.test(lesson.id);
-
-              if (isNewLesson) {
-                // Create new lesson
-                if (lesson.title.trim()) {
-                  const lessonRes = await fetch(
-                    `/api/courses?id=${params.id}&lessons=true&moduleId=${currentModule.id}`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        title: lesson.title,
-                        description: lesson.description,
-                        contentType: lesson.contentType,
-                        videoUrl: lesson.videoUrl,
-                        quizUrl: lesson.quizUrl,
-                        articleContent: lesson.articleContent,
-                        isFree: lesson.isFree,
-                        hasQuiz: lesson.hasQuiz || false,
-                        quizRequired: lesson.quizRequired || false,
-                        sortOrder: j,
-                      }),
-                    }
-                  );
-
-                  const lessonData = await lessonRes.json();
-
-                  if (lessonData.success && lesson.hasQuiz && lesson.quiz) {
-                    // Add lesson quiz
-                    await fetch(
-                      `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lessonData.data.id}`,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          ...lesson.quiz,
-                          questions: lesson.quiz?.questions || [],
-                        }),
-                      }
-                    );
-                  }
-                }
-              } else {
-                // Update existing lesson
-                await fetch(`/api/courses?id=${lesson.id}&updateLesson=true`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    title: lesson.title,
-                    description: lesson.description,
-                    contentType: lesson.contentType,
-                    videoUrl: lesson.videoUrl,
-                    articleContent: lesson.articleContent,
-                    isFree: lesson.isFree,
-                    hasQuiz: lesson.hasQuiz || false,
-                    quizRequired: lesson.quizRequired || false,
-                    sortOrder: j,
-                  }),
-                });
-
-                // Update lesson quiz if exists
-                if (lesson.hasQuiz && lesson.quiz) {
-                  if (lesson.quiz.id) {
-                    // Update existing quiz
-                    await fetch(`/api/assessments?id=${lesson.quiz.id}`, {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(lesson.quiz),
-                    });
-                  } else {
-                    // Create new quiz
-                    await fetch(
-                      `/api/courses?id=${params.id}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lesson.id}`,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          ...lesson.quiz,
-                          questions: lesson.quiz?.questions || [],
-                        }),
-                      }
-                    );
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        // Update course final assessment
-        if (courseHasFinalAssessment && courseFinalAssessment) {
-          if (courseFinalAssessment.id) {
-            // Update existing final assessment
-            await fetch(`/api/assessments?id=${courseFinalAssessment.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(courseFinalAssessment),
-            });
-          } else {
-            // Create new final assessment
-            await fetch(
-              `/api/courses?id=${params.id}&assessments=true&assessmentLevel=COURSE_FINAL`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  ...courseFinalAssessment,
-                  questions: courseFinalAssessment.questions,
-                }),
-              }
-            );
-          }
-        }
-
-        Swal.fire({
-          icon: "success",
-          title: "Course Updated!",
-          text: "Course has been updated successfully",
-          timer: 2000,
-          showConfirmButton: false,
-        }).then(() => {
-          router.push("/dashboard/college/courses");
-          router.refresh();
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Course updated successfully",
         });
+        router.push(`/dashboard/college/courses/${params.id}`);
       } else {
-        Swal.fire({
-          icon: "error",
+        toast({
           title: "Error",
-          text: response.error?.message || "Failed to update course",
+          description: data.error?.message || "Failed to update course",
+          variant: "destructive",
         });
       }
-    } catch (err) {
-      console.error(err);
-      Swal.fire({
-        icon: "error",
+    } catch (error) {
+      toast({
         title: "Error",
-        text: "An unexpected error occurred",
+        description: "Failed to update course",
+        variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-gray-600 mt-4">Loading course...</p>
-        </div>
-      </div>
-    );
+  if (loading || !course) {
+    return <LoadingState message="Loading course..." />;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="container mx-auto py-8 space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
           <Link
-            href="/dashboard/college/courses"
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
+            href={`/dashboard/college/courses/${params.id}`}
+            className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-2"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Courses
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Course
           </Link>
-
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Edit Course
-              </h1>
-              <p className="text-gray-600">
-                Update course details and content.
-              </p>
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold">Edit Course</h1>
+          <p className="text-muted-foreground">
+            Update course information and settings
+          </p>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           {/* Basic Information */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50 border-b">
-              <CardTitle className="text-xl text-gray-900">
-                Basic Information
-              </CardTitle>
+          <Card>
+            <CardHeader>
+              <CardTitle>Basic Information</CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
+            <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <Label htmlFor="title">Course Title *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => handleFieldChange("title", e.target.value)}
-                    placeholder="Web Development Bootcamp"
-                    required
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Course Title *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Web Development Bootcamp" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <div className="md:col-span-2">
-                  <Label htmlFor="slug">Slug *</Label>
-                  <Input
-                    id="slug"
-                    value={formData.slug}
-                    onChange={(e) => handleFieldChange("slug", e.target.value)}
-                    placeholder="web-development-bootcamp"
-                    required
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="slug"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Slug *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="web-development-bootcamp" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        URL-friendly version of the title
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-                <div className="md:col-span-2">
-                  <Label htmlFor="shortDescription">Short Description</Label>
-                  <Textarea
-                    id="shortDescription"
-                    value={formData.shortDescription}
-                    onChange={(e) =>
-                      handleFieldChange("shortDescription", e.target.value)
-                    }
-                    placeholder="A brief summary of the course..."
-                    rows={2}
-                  />
-                </div>
+              <FormField
+                control={form.control}
+                name="shortDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Short Description *</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Brief summary of the course..."
+                        className="resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Max 200 characters. Displayed in course cards.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <div className="md:col-span-2">
-                  <Label htmlFor="description">Full Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) =>
-                      handleFieldChange("description", e.target.value)
-                    }
-                    placeholder="Detailed course description..."
-                    rows={6}
-                  />
-                </div>
+              {/* <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Description *</FormLabel>
+                    <FormControl>
+                      <RichTextEditor
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Detailed course description..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              /> */}
 
-                <div>
-                  <Label htmlFor="categoryId">Category *</Label>
-                  <Select
-                    value={formData.categoryId}
-                    onValueChange={(value) =>
-                      handleFieldChange("categoryId", value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <div>
-                  <Label htmlFor="collegeId">College (Optional)</Label>
-                  <Select
-                    value={formData.collegeId || "NONE"}
-                    onValueChange={(value) =>
-                      handleFieldChange(
-                        "collegeId",
-                        value === "NONE" ? "" : value
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select college" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NONE">No college (Admin)</SelectItem>
-                      {colleges.map((college) => (
-                        <SelectItem key={college.id} value={college.id}>
-                          {college.collegeName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="level"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Level *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select level" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Beginner">Beginner</SelectItem>
+                          <SelectItem value="Intermediate">Intermediate</SelectItem>
+                          <SelectItem value="Advanced">Advanced</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-                <div>
-                  <Label htmlFor="level">Level</Label>
-                  <Select
-                    value={formData.level}
-                    onValueChange={(value) => handleFieldChange("level", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Beginner">Beginner</SelectItem>
-                      <SelectItem value="Intermediate">Intermediate</SelectItem>
-                      <SelectItem value="Advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="language"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Language</FormLabel>
+                      <FormControl>
+                        <Input placeholder="English" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <div>
-                  <Label htmlFor="language">Language</Label>
-                  <Input
-                    id="language"
-                    value={formData.language}
-                    onChange={(e) =>
-                      handleFieldChange("language", e.target.value)
-                    }
-                    placeholder="English"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      handleFieldChange("status", value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DRAFT">Draft</SelectItem>
-                      <SelectItem value="PENDING_APPROVAL">
-                        Pending Approval
-                      </SelectItem>
-                      <SelectItem value="APPROVED">Approved</SelectItem>
-                      <SelectItem value="REJECTED">Rejected</SelectItem>
-                      <SelectItem value="PUBLISHED">Published</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="duration">Duration</Label>
-                  <NumberInput
-                    id="duration"
-                    value={formData.duration}
-                    onChange={(e) =>
-                      handleFieldChange("duration", e.target.value)
-                    }
-                    placeholder="40"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="maxStudents">Max Students</Label>
-                  <NumberInput
-                    id="maxStudents"
-                    value={formData.maxStudents}
-                    onChange={(e) =>
-                      handleFieldChange("maxStudents", e.target.value)
-                    }
-                    placeholder="50"
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Duration</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 40 hours" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
 
-          {/* Course Completion Settings */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-green-50 border-b">
-              <CardTitle className="text-xl text-gray-900">
-                Course Completion Settings
+          {/* Thumbnails & Media */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Thumbnails & Media
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="font-medium">Final Assessment</Label>
-                    <p className="text-sm text-gray-500">
-                      Add a final assessment for the course
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={courseHasFinalAssessment}
+            <CardContent className="space-y-6">
+              {/* <FormField
+                control={form.control}
+                name="thumbnailUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Thumbnail Image</FormLabel>
+                    <FormControl>
+                      <ImageUpload
+                        value={field.value}
+                        onChange={field.onChange}
+                        folder="course-thumbnails"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Recommended size: 1280x720px
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              /> */}
+
+              <FormField
+                control={form.control}
+                name="previewVideoUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preview Video URL</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://youtube.com/watch?v=..." {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Optional. YouTube or Vimeo URL for course preview
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Learning Outcomes */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Learning Outcomes
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                What students will learn in this course
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {learningOutcomes.map((outcome) => (
+                <div key={outcome.id} className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Learning outcome"
+                      value={outcome.outcome}
                       onChange={(e) =>
-                        setCourseHasFinalAssessment(e.target.checked)
+                        updateLearningOutcome(outcome.id, e.target.value)
                       }
-                      className="rounded"
                     />
                   </div>
+                  {learningOutcomes.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeLearningOutcome(outcome.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addLearningOutcome}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Learning Outcome
+              </Button>
+            </CardContent>
+          </Card>
 
-                {courseHasFinalAssessment && (
-                  <div className="border rounded p-4 space-y-4 bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="font-medium">
-                          Final Assessment Required
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Students must pass final assessment to complete course
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={finalAssessmentRequired}
-                          onChange={(e) =>
-                            setFinalAssessmentRequired(e.target.checked)
-                          }
-                          className="rounded"
-                        />
-                      </div>
-                    </div>
+          {/* Requirements */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckSquare className="h-5 w-5" />
+                Requirements
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Prerequisites for this course
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="prerequisites"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>General Prerequisites</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Any general requirements for taking this course..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                    <div>
-                      <Label>Minimum Passing Score for Course</Label>
-                      <NumberInput
-                        
-                        value={minimumCoursePassingScore}
+              <Separator />
+
+              <div className="space-y-4">
+                <h4 className="font-medium">Specific Requirements</h4>
+                {requirements.map((requirement) => (
+                  <div key={requirement.id} className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Requirement"
+                        value={requirement.requirement}
                         onChange={(e) =>
-                          setMinimumCoursePassingScore(Number(e.target.value))
+                          updateRequirement(requirement.id, e.target.value)
                         }
-                        min={0}
-                        max={100}
-                        placeholder="60"
                       />
                     </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="font-medium">
-                          {courseFinalAssessment?.title ||
-                            "Final Course Assessment"}
-                        </Label>
-                        {courseFinalAssessment && (
-                          <p className="text-sm text-gray-500">
-                            {courseFinalAssessment.questions.length} questions •
-                            Passing: {courseFinalAssessment.passingScore}%
-                          </p>
-                        )}
-                      </div>
+                    {requirements.length > 1 && (
                       <Button
                         type="button"
-                        onClick={() => setEditingAssessment({ type: "course" })}
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeRequirement(requirement.id)}
                       >
-                        <FileText className="h-4 w-4 mr-2" />
-                        {courseFinalAssessment
-                          ? "Edit Assessment"
-                          : "Configure Assessment"}
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    </div>
+                    )}
                   </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="font-medium">
-                      Require All Modules Complete
-                    </Label>
-                    <p className="text-sm text-gray-500">
-                      Students must complete all modules to finish course
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={requireAllModulesComplete}
-                      onChange={(e) =>
-                        setRequireAllModulesComplete(e.target.checked)
-                      }
-                      className="rounded"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="font-medium">
-                      Require All Assessments Passed
-                    </Label>
-                    <p className="text-sm text-gray-500">
-                      Students must pass all required assessments
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={requireAllAssessmentsPassed}
-                      onChange={(e) =>
-                        setRequireAllAssessmentsPassed(e.target.checked)
-                      }
-                      className="rounded"
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Media */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-50 border-b">
-              <CardTitle className="text-xl text-gray-900">Media</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div>
-                <Label htmlFor="thumbnailUrl">Thumbnail URL</Label>
-                <Input
-                  id="thumbnailUrl"
-                  type="url"
-                  value={formData.thumbnailUrl}
-                  onChange={(e) =>
-                    handleFieldChange("thumbnailUrl", e.target.value)
-                  }
-                  placeholder="https://example.com/thumbnail.jpg"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="previewVideoUrl">Preview Video URL</Label>
-                <Input
-                  id="previewVideoUrl"
-                  type="url"
-                  value={formData.previewVideoUrl}
-                  onChange={(e) =>
-                    handleFieldChange("previewVideoUrl", e.target.value)
-                  }
-                  placeholder="https://youtube.com/..."
-                />
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addRequirement}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Requirement
+                </Button>
               </div>
             </CardContent>
           </Card>
 
           {/* Pricing */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-green-50 border-b">
-              <CardTitle className="text-xl text-gray-900">Pricing</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isFree"
-                  checked={formData.isFree}
-                  onChange={(e) =>
-                    handleFieldChange("isFree", e.target.checked)
-                  }
-                  className="rounded"
-                />
-                <Label htmlFor="isFree">This course is free</Label>
-              </div>
-
-              {!formData.isFree && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="price">Price ($)</Label>
-                    <NumberInput
-                      id="price"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) =>
-                        handleFieldChange("price", e.target.value)
-                      }
-                      placeholder="99.00"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="discountPrice">Discount Price ($)</Label>
-                    <NumberInput
-                      id="discountPrice"
-                    
-                      step="0.01"
-                      value={formData.discountPrice}
-                      onChange={(e) =>
-                        handleFieldChange("discountPrice", e.target.value)
-                      }
-                      placeholder="79.00"
-                    />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Learning Outcomes */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl text-gray-900">
-                    Learning Outcomes
-                  </CardTitle>
-                  <p className="text-sm text-gray-500 mt-1">
-                    What students will learn in this course
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  onClick={addNewOutcome}
-                  size="sm"
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Outcome
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              {outcomes.map((item) => (
-                <div key={item.id} className="flex gap-2 items-center">
-                  {editingOutcome?.id === item.id ? (
-                    <>
-                      <Input
-                        value={editingOutcome.value}
-                        onChange={(e) =>
-                          setEditingOutcome({
-                            ...editingOutcome,
-                            value: e.target.value,
-                          })
-                        }
-                        placeholder="What students will learn..."
-                        className="flex-1"
-                      />
-                      <Button type="button" size="sm" onClick={saveEditOutcome}>
-                        Save
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={cancelEditOutcome}
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Input
-                        value={item.outcome}
-                        onChange={(e) => updateOutcome(item.id, e.target.value)}
-                        placeholder="What students will learn..."
-                        className="flex-1"
-                        readOnly={"isNew" in item ? false : true}
-                      />
-                      {"isNew" in item ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeOutcome(item.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              startEditOutcome(item.id, item.outcome)
-                            }
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeOutcome(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
-
-              {outcomes.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  No learning outcomes added yet. Click &quot;Add Outcome&quot;
-                  to add one.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Requirements */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl text-gray-900">
-                    Requirements
-                  </CardTitle>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Prerequisites for this course
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  onClick={addNewRequirement}
-                  size="sm"
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Requirement
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              {requirements.map((item) => (
-                <div key={item.id} className="flex gap-2 items-center">
-                  {editingRequirement?.id === item.id ? (
-                    <>
-                      <Input
-                        value={editingRequirement.value}
-                        onChange={(e) =>
-                          setEditingRequirement({
-                            ...editingRequirement,
-                            value: e.target.value,
-                          })
-                        }
-                        placeholder="Prerequisites for the course..."
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={saveEditRequirement}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={cancelEditRequirement}
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Input
-                        value={item.requirement}
-                        onChange={(e) =>
-                          updateRequirement(item.id, e.target.value)
-                        }
-                        placeholder="Prerequisites for the course..."
-                        className="flex-1"
-                        readOnly={"isNew" in item ? false : true}
-                      />
-                      {"isNew" in item ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeRequirement(item.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              startEditRequirement(item.id, item.requirement)
-                            }
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeRequirement(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
-
-              {requirements.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  No requirements added yet. Click &quot;Add Requirement&quot;
-                  to add one.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Course Modules with Lessons */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-50 border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl text-gray-900">
-                    Course Modules & Lessons
-                  </CardTitle>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Structure your course content into modules and lessons
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  onClick={addNewModule}
-                  size="sm"
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Module
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              {modules.map((module, moduleIndex) => (
-                <div
-                  key={module.id}
-                  className="border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  {/* Module Header */}
-                  <div
-                    className="flex items-start gap-3 p-4 cursor-pointer"
-                    onClick={() => toggleModule(module.id)}
-                  >
-                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold text-sm mt-1">
-                      {moduleIndex + 1}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          {editingModule?.id === module.id ? (
-                            // Editing existing module
-                            <div className="space-y-2">
-                              <Input
-                                value={editingModule.title}
-                                onChange={(e) =>
-                                  setEditingModule({
-                                    ...editingModule,
-                                    title: e.target.value,
-                                  })
-                                }
-                                placeholder="Module title..."
-                              />
-                              <Textarea
-                                value={editingModule.description}
-                                onChange={(e) =>
-                                  setEditingModule({
-                                    ...editingModule,
-                                    description: e.target.value,
-                                  })
-                                }
-                                placeholder="Module description..."
-                                rows={2}
-                              />
-                              <div className="flex gap-2">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  onClick={saveEditModule}
-                                >
-                                  Save
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={cancelEditModule}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          ) : module.isNew ? (
-                            // NEW MODULE - directly editable
-                            <div className="space-y-2">
-                              <Input
-                                value={module.title}
-                                onChange={(e) =>
-                                  updateModule(
-                                    module.id,
-                                    "title",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="Module title..."
-                              />
-                              <Textarea
-                                value={module.description || ""}
-                                onChange={(e) =>
-                                  updateModule(
-                                    module.id,
-                                    "description",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="Module description..."
-                                rows={2}
-                              />
-                            </div>
-                          ) : (
-                            // Existing module - show as text
-                            <div>
-                              <h4 className="font-semibold text-gray-900">
-                                {module.title}
-                              </h4>
-                              {module.description && (
-                                <p className="text-sm text-gray-600 mt-1">
-                                  {module.description}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <ChevronDown
-                            className={`h-5 w-5 text-gray-400 transition-transform ${
-                              expandedModules.includes(module.id)
-                                ? "rotate-180"
-                                : ""
-                            }`}
-                          />
-                          {editingModule?.id === module.id ? null : (
-                            <>
-                              {module.isNew ? (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeModule(module.id);
-                                  }}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              ) : (
-                                <>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      startEditModule(
-                                        module.id,
-                                        module.title,
-                                        module.description || ""
-                                      );
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removeModule(module.id);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                        <span>{module.lessons?.length || 0} lessons</span>
-                        {module.hasAssessment && (
-                          <span className="flex items-center gap-1 text-blue-600">
-                            <FileText className="h-3 w-3" />
-                            Assessment
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Module Assessment Button */}
-                  {!editingModule?.id && (
-                    <div className="px-4 pb-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            onClick={() => toggleModuleAssessment(moduleIndex)}
-                            variant={
-                              module.hasAssessment ? "default" : "outline"
-                            }
-                            size="sm"
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            {module.hasAssessment
-                              ? "Assessment Added"
-                              : "Add Assessment"}
-                          </Button>
-                          {module.hasAssessment && module.moduleAssessment && (
-                            <Button
-                              type="button"
-                              onClick={() =>
-                                setEditingAssessment({
-                                  type: "module",
-                                  moduleIndex,
-                                })
-                              }
-                              variant="outline"
-                              size="sm"
-                            >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit Assessment
-                            </Button>
-                          )}
-                        </div>
-                        {module.hasAssessment && (
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <span>
-                              Passing:{" "}
-                              {module.moduleAssessment?.passingScore || 60}%
-                            </span>
-                            <span>•</span>
-                            <span>
-                              {module.moduleAssessment?.questions?.length || 0}{" "}
-                              questions
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Lessons Section */}
-                  {expandedModules.includes(module.id) && (
-                    <div className="border-t bg-gray-50">
-                      <div className="flex items-center justify-between p-4">
-                        <Label className="text-sm font-medium text-gray-700">
-                          Lessons ({module.lessons?.length || 0})
-                        </Label>
-                        <Button
-                          type="button"
-                          onClick={() => addNewLesson(module.id)}
-                          size="sm"
-                          variant="outline"
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Lesson
-                        </Button>
-                      </div>
-
-                      {!module.lessons || module.lessons.length === 0 ? (
-                        <div className="p-4 text-center text-gray-500 text-sm">
-                          No lessons in this module yet.
-                        </div>
-                      ) : (
-                        <div className="space-y-2 p-4">
-                          {module.lessons.map((lesson, lessonIndex) => (
-                            <div
-                              key={lesson.id}
-                              className="flex items-start gap-3 p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow"
-                            >
-                              <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-semibold mt-1">
-                                {lessonIndex + 1}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                {editingLesson?.id === lesson.id &&
-                                editingLesson.moduleId === module.id ? (
-                                  <div className="space-y-3">
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex-1 space-y-3">
-                                        <Input
-                                          value={editingLesson.title}
-                                          onChange={(e) =>
-                                            setEditingLesson({
-                                              ...editingLesson,
-                                              title: e.target.value,
-                                            })
-                                          }
-                                          placeholder="Lesson title..."
-                                          className="text-sm"
-                                        />
-                                        <Textarea
-                                          value={editingLesson.description}
-                                          onChange={(e) =>
-                                            setEditingLesson({
-                                              ...editingLesson,
-                                              description: e.target.value,
-                                            })
-                                          }
-                                          placeholder="Lesson description..."
-                                          rows={2}
-                                          className="text-sm"
-                                        />
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                          <div>
-                                            <Label className="text-xs">
-                                              Content Type
-                                            </Label>
-                                            <Select
-                                              value={editingLesson.contentType}
-                                              onValueChange={(value) =>
-                                                setEditingLesson({
-                                                  ...editingLesson,
-                                                  contentType: value,
-                                                })
-                                              }
-                                            >
-                                              <SelectTrigger className="h-8 text-sm">
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                <SelectItem value="VIDEO">
-                                                  Video
-                                                </SelectItem>
-                                                <SelectItem value="ARTICLE">
-                                                  Article
-                                                </SelectItem>
-                                                <SelectItem value="QUIZ">
-                                                  Quiz
-                                                </SelectItem>
-                                              </SelectContent>
-                                            </Select>
-                                          </div>
-                                          <div className="flex items-center gap-2 pt-6">
-                                            <input
-                                              type="checkbox"
-                                              checked={editingLesson.isFree}
-                                              onChange={(e) =>
-                                                setEditingLesson({
-                                                  ...editingLesson,
-                                                  isFree: e.target.checked,
-                                                })
-                                              }
-                                              className="rounded"
-                                            />
-                                            <Label className="text-xs">
-                                              Free Lesson
-                                            </Label>
-                                          </div>
-                                          <div className="flex items-center gap-2 pt-6">
-                                            <input
-                                              type="checkbox"
-                                              checked={lesson.hasQuiz || false}
-                                              onChange={() =>
-                                                toggleQuizForLesson(
-                                                  moduleIndex,
-                                                  lessonIndex
-                                                )
-                                              }
-                                              className="rounded"
-                                            />
-                                            <Label className="text-xs">
-                                              Add Quiz
-                                            </Label>
-                                          </div>
-                                        </div>
-                                        {editingLesson.contentType ===
-                                          "VIDEO" && (
-                                          <Input
-                                            value={editingLesson.videoUrl}
-                                            onChange={(e) =>
-                                              setEditingLesson({
-                                                ...editingLesson,
-                                                videoUrl: e.target.value,
-                                              })
-                                            }
-                                            placeholder="Video URL..."
-                                            className="text-sm"
-                                          />
-                                        )}
-                                        {editingLesson.contentType ===
-                                          "ARTICLE" && (
-                                          <Textarea
-                                            value={editingLesson.articleContent}
-                                            onChange={(e) =>
-                                              setEditingLesson({
-                                                ...editingLesson,
-                                                articleContent: e.target.value,
-                                              })
-                                            }
-                                            placeholder="Article content..."
-                                            rows={4}
-                                            className="text-sm"
-                                          />
-                                        )}
-                                        {editingLesson.contentType ===
-                                          "QUIZ" && (
-                                          <Input
-                                            value={editingLesson.quizUrl}
-                                            onChange={(e) =>
-                                              setEditingLesson({
-                                                ...editingLesson,
-                                                quizUrl: e.target.value,
-                                              })
-                                            }
-                                            placeholder="Quiz URL..."
-                                            className="text-sm"
-                                          />
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        onClick={saveEditLesson}
-                                      >
-                                        Save
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={cancelEditLesson}
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div className="flex items-start justify-between">
-                                      <div>
-                                        <h5 className="font-medium text-gray-900 text-sm">
-                                          {lesson.title}
-                                        </h5>
-                                        {lesson.description && (
-                                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                                            {lesson.description}
-                                          </p>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        {lesson.isFree && (
-                                          <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded">
-                                            Free
-                                          </span>
-                                        )}
-                                        {lesson.hasQuiz && (
-                                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded flex items-center gap-1">
-                                            <FileText className="h-3 w-3" />
-                                            Quiz
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                      <span className="bg-gray-100 px-2 py-1 rounded">
-                                        {lesson.contentType}
-                                      </span>
-                                      {lesson.videoDuration && (
-                                        <>
-                                          <span>•</span>
-                                          <span>
-                                            {Math.floor(
-                                              lesson.videoDuration / 60
-                                            )}
-                                            m {lesson.videoDuration % 60}s
-                                          </span>
-                                        </>
-                                      )}
-                                      <span>•</span>
-                                      <span>Sort: {lesson.sortOrder}</span>
-                                    </div>
-                                    {lesson.contentType === "VIDEO" &&
-                                      lesson.videoUrl && (
-                                        <div className="mt-2">
-                                          <a
-                                            href={lesson.videoUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                                          >
-                                            📹 Video Link
-                                          </a>
-                                        </div>
-                                      )}
-                                    {lesson.contentType === "QUIZ" &&
-                                      lesson.quizUrl && (
-                                        <div className="mt-2">
-                                          <a
-                                            href={lesson.quizUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                                          >
-                                            📝 Quiz Link
-                                          </a>
-                                        </div>
-                                      )}
-                                    <div className="flex gap-2 mt-2">
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                          startEditLesson(module.id, lesson)
-                                        }
-                                      >
-                                        <Edit className="h-3 w-3 mr-1" />
-                                        Edit
-                                      </Button>
-                                      {lesson.hasQuiz && lesson.quiz && (
-                                        <Button
-                                          type="button"
-                                          onClick={() =>
-                                            setEditingAssessment({
-                                              type: "lesson",
-                                              moduleIndex,
-                                              lessonIndex,
-                                            })
-                                          }
-                                          variant="outline"
-                                          size="sm"
-                                        >
-                                          <FileText className="h-3 w-3 mr-1" />
-                                          Edit Quiz
-                                        </Button>
-                                      )}
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                          removeLesson(module.id, lesson.id)
-                                        }
-                                      >
-                                        <Trash2 className="h-3 w-3 mr-1" />
-                                        Remove
-                                      </Button>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {modules.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  No modules added yet. Click &quot;Add Module&quot; to add one.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Additional Info */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-50 border-b">
-              <CardTitle className="text-xl text-gray-900">
-                Additional Information
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Pricing
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div>
-                <Label htmlFor="prerequisites">Prerequisites</Label>
-                <Textarea
-                  id="prerequisites"
-                  value={formData.prerequisites}
-                  onChange={(e) =>
-                    handleFieldChange("prerequisites", e.target.value)
-                  }
-                  placeholder="List any prerequisites for this course..."
-                  rows={4}
+            <CardContent className="space-y-6">
+              <FormField
+                control={form.control}
+                name="isFree"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Free Course</FormLabel>
+                      <FormDescription>
+                        Make this course available for free
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {!form.watch("isFree") && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Price ($)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="discountPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Discount Price ($)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormDescription>Optional</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              <FormField
+                control={form.control}
+                name="maxStudents"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Maximum Students</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Optional. Leave empty for unlimited enrollment
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Course Completion Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Course Completion Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="hasFinalAssessment"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Final Assessment
+                        </FormLabel>
+                        <FormDescription>
+                          Add a final assessment for the course
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch("hasFinalAssessment") && (
+                  <div className="space-y-4 pl-4 border-l-2">
+                    <FormField
+                      control={form.control}
+                      name="finalAssessmentRequired"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between">
+                          <div className="space-y-0.5">
+                            <FormLabel>Assessment Required</FormLabel>
+                            <FormDescription>
+                              Students must pass to complete course
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="minimumCoursePassingScore"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Minimum Passing Score</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={field.value}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 60)}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Score required to pass (0-100)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                <Separator />
+
+                <FormField
+                  control={form.control}
+                  name="requireAllModulesComplete"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel>Require All Modules Complete</FormLabel>
+                        <FormDescription>
+                          Students must complete all modules
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="requireAllAssessmentsPassed"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel>Require All Assessments Passed</FormLabel>
+                        <FormDescription>
+                          Students must pass all required assessments
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
                 />
               </div>
             </CardContent>
           </Card>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-6 pb-8">
-            <Button type="button" variant="outline" asChild>
-              <Link href="/dashboard/college/courses">Cancel</Link>
-            </Button>
-            <Button
-              type="submit"
-              disabled={saving}
-              className="bg-green-600 text-white px-8"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? "Saving…" : "Update Course"}
-            </Button>
-          </div>
+          {/* Status & Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Status & Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="DRAFT">Draft</SelectItem>
+                        <SelectItem value="PENDING_APPROVAL">
+                          Pending Approval
+                        </SelectItem>
+                        <SelectItem value="PUBLISHED">Published</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Save as draft or submit for approval
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push(`/dashboard/college/courses/${params.id}`)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting} className="gap-2">
+                  <Save className="h-4 w-4" />
+                  {isSubmitting ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </form>
-      </div>
-      {/* Assessment Editor Modal */}
-      {renderAssessmentEditor()}
+      </Form>
     </div>
   );
 }

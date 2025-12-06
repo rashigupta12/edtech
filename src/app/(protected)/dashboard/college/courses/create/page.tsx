@@ -1,12 +1,21 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// src/app/(protected)/dashboard/college/courses/create/page.tsx
 "use client";
 
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -16,292 +25,117 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Save, Plus, X, ChevronDown, FileText } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Upload,
+  Globe,
+  DollarSign,
+  Award,
+  CheckSquare,
+} from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import React, { useState, useEffect, useCallback } from "react";
-import Swal from "sweetalert2";
-import { useCurrentUser } from "@/hooks/auth";
-import { FileUpload } from "@/components/Videoupload";
-import { NumberInput } from "@/components/ui/number-input";
+import { useToast } from "@/hooks/use-toast";
+// import { ImageUpload } from "@/components/ImageUpload";
 
-type College = {
-  id: string;
-  collegeName: string;
-};
 
-type Category = {
-  id: string;
-  name: string;
-};
+const courseFormSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  slug: z.string().min(3, "Slug must be at least 3 characters"),
+  shortDescription: z
+    .string()
+    .min(10, "Short description must be at least 10 characters")
+    .max(200, "Short description must be at most 200 characters"),
+  description: z.string().min(50, "Description must be at least 50 characters"),
+  categoryId: z.string().min(1, "Category is required"),
+  level: z.enum(["Beginner", "Intermediate", "Advanced"]),
+  language: z.string().default("English"),
+  duration: z.string().optional(),
+  prerequisites: z.string().optional(),
+  thumbnailUrl: z.string().optional(),
+  previewVideoUrl: z.string().url().optional().or(z.literal("")),
+  isFree: z.boolean().default(true),
+  price: z.number().min(0).optional(),
+  discountPrice: z.number().min(0).optional(),
+  maxStudents: z.number().min(1).optional(),
+  hasFinalAssessment: z.boolean().default(false),
+  finalAssessmentRequired: z.boolean().default(true),
+  minimumCoursePassingScore: z.number().min(0).max(100).default(60),
+  requireAllModulesComplete: z.boolean().default(true),
+  requireAllAssessmentsPassed: z.boolean().default(true),
+  status: z.enum(["DRAFT", "PENDING_APPROVAL", "PUBLISHED"]).default("DRAFT"),
+});
 
-type Question = {
-  id?: string;
-  questionText: string;
-  questionType: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER";
-  options?: string[];
-  correctAnswer: string;
-  points?: number;
-  difficulty?: "EASY" | "MEDIUM" | "HARD";
-  explanation?: string;
-};
-
-type Assessment = {
-  id?: string;
-  title: string;
-  description?: string;
-  assessmentLevel: "LESSON_QUIZ" | "MODULE_ASSESSMENT" | "COURSE_FINAL";
-  passingScore: number;
-  maxAttempts?: number;
-  timeLimit?: number;
-  isRequired: boolean;
-  showCorrectAnswers: boolean;
-  allowRetake: boolean;
-  randomizeQuestions: boolean;
-  availableFrom?: string;
-  availableUntil?: string;
-  questions: Question[];
-};
-
-type Lesson = {
-  id?: string;
-  title: string;
-  description: string;
-  contentType: "VIDEO" | "ARTICLE" | "QUIZ";
-  videoUrl?: string;
-  articleContent?: string;
-  videoDuration?: number;
-  isFree: boolean;
-  sortOrder: number;
-  hasQuiz: boolean;
-  quizRequired: boolean;
-  quiz?: Assessment;
-};
-
-type Module = {
-  id?: string;
-  title: string;
-  description: string;
-  sortOrder: number;
-  lessons: Lesson[];
-  hasAssessment: boolean;
-  assessmentRequired: boolean;
-  minimumPassingScore: number;
-  requireAllLessonsComplete: boolean;
-  moduleAssessment?: Assessment;
-};
+type CourseFormValues = z.infer<typeof courseFormSchema>;
 
 export default function CreateCoursePage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [colleges, setColleges] = useState<College[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const user = useCurrentUser();
-  const [showNewCategory, setShowNewCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [newCategoryLoading, setNewCategoryLoading] = useState(false);
-  const [uploadedVideoUrls, setUploadedVideoUrls] = useState<
-    Record<string, string>
-  >({});
-  const [modules, setModules] = useState<Module[]>([
-    {
-      title: "",
-      description: "",
-      sortOrder: 0,
-      lessons: [],
-      hasAssessment: false,
-      assessmentRequired: true,
-      minimumPassingScore: 60,
-      requireAllLessonsComplete: true,
-    },
-  ]);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    title: "",
-    slug: "",
-    shortDescription: "",
-    description: "",
-    categoryId: "",
-    collegeId: "",
-    thumbnailUrl: "",
-    previewVideoUrl: "",
-    duration: "",
-    level: "Beginner",
-    language: "English",
-    prerequisites: "",
-    isFree: true,
-    price: "",
-    discountPrice: "",
-    maxStudents: "",
-    status: "DRAFT",
-    hasFinalAssessment: true,
-    finalAssessmentRequired: true,
-    minimumCoursePassingScore: 60,
-    requireAllModulesComplete: true,
-    requireAllAssessmentsPassed: true,
-  });
-
-  // Dynamic arrays
+  const { toast } = useToast();
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    []
+  );
   const [learningOutcomes, setLearningOutcomes] = useState<string[]>([""]);
   const [requirements, setRequirements] = useState<string[]>([""]);
-  const [expandedModules, setExpandedModules] = useState<number[]>([]);
-  const [showAddQuiz, setShowAddQuiz] = useState<string | null>(null);
-  const [showAddModuleAssessment, setShowAddModuleAssessment] = useState<
-    string | null
-  >(null);
-  const [editingAssessment, setEditingAssessment] = useState<{
-    type: "lesson" | "module" | "course";
-    moduleIndex?: number;
-    lessonIndex?: number;
-  } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Course final assessment
-  const [courseFinalAssessment, setCourseFinalAssessment] =
-    useState<Assessment>({
-      title: "Final Course Assessment",
-      description: "Complete this final assessment to finish the course",
-      assessmentLevel: "COURSE_FINAL",
-      passingScore: 60,
-      isRequired: true,
-      showCorrectAnswers: false,
-      allowRetake: true,
-      randomizeQuestions: false,
-      questions: [],
-    });
+  const form = useForm<CourseFormValues>({
+    resolver: zodResolver(courseFormSchema),
+    defaultValues: {
+      title: "",
+      slug: "",
+      shortDescription: "",
+      description: "",
+      level: "Beginner",
+      language: "English",
+      isFree: true,
+      hasFinalAssessment: false,
+      finalAssessmentRequired: true,
+      minimumCoursePassingScore: 60,
+      requireAllModulesComplete: true,
+      requireAllAssessmentsPassed: true,
+      status: "DRAFT",
+    },
+  });
 
-  // Fetch colleges and categories
+  // Watch for title changes to auto-generate slug
+  const title = form.watch("title");
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch colleges
-        const collegesRes = await fetch("/api/colleges");
-        const collegesData = await collegesRes.json();
-        if (collegesData.success) {
-          setColleges(collegesData.data);
-        }
+    if (title && !form.getValues("slug")) {
+      const slug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      form.setValue("slug", slug);
+    }
+  }, [title, form]);
 
-        // Fetch categories
-        const categoriesRes = await fetch("/api/categories");
-        const categoriesData = await categoriesRes.json();
-        if (categoriesData.success) {
-          setCategories(categoriesData.data);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
-    fetchData();
+  // Fetch categories
+  useEffect(() => {
+    fetchCategories();
   }, []);
 
-  // Wrap the slug generation logic in useCallback
-  const generateSlug = useCallback((text: string) => {
-    const cleaned = text
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/[\s_-]+/g, " ")
-      .replace(/^-+|-+$/g, "");
-    
-    // Split into words
-    const words = cleaned.split(/\s+/).filter(word => word.length > 0);
-    
-    let slug = "";
-    
-    if (words.length === 0) {
-      return "";
-    } else if (words.length === 1) {
-      slug = words[0].substring(0, 3);
-    } else {
-      slug = words.map(word => word[0]).join("");
-    }
-    
-    if (!slug) {
-      return words[0] || "";
-    }
-    
-    return slug;
-  }, []);
-
-  // Update useEffect to include formData.slug in dependencies
-  useEffect(() => {
-    if (formData.title.trim()) {
-      const newSlug = generateSlug(formData.title);
-      
-      if (!formData.slug || formData.slug === generateSlug(formData.title.slice(0, -1))) {
-        setFormData((prev) => ({ ...prev, slug: newSlug }));
-      }
-    }
-  }, [formData.title, formData.slug, generateSlug]);
-
-  const handleVideoUploadComplete = (
-    moduleIndex: number,
-    lessonIndex: number,
-    url: string
-  ) => {
-    updateLesson(moduleIndex, lessonIndex, "videoUrl", url);
-    const key = `${moduleIndex}-${lessonIndex}`;
-    setUploadedVideoUrls((prev) => ({
-      ...prev,
-      [key]: url,
-    }));
-  };
-  const createNewCategory = async () => {
-    if (!newCategoryName.trim()) return;
-
-    setNewCategoryLoading(true);
+  const fetchCategories = async () => {
     try {
-      const res = await fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newCategoryName.trim(),
-          isActive: true,
-          sortOrder: categories.length,
-        }),
-      });
-
-      const data = await res.json();
+      const response = await fetch("/api/categories");
+      const data = await response.json();
       if (data.success) {
-        setCategories([...categories, data.data]);
-        setFormData((prev) => ({ ...prev, categoryId: data.data.id }));
-        setShowNewCategory(false);
-        setNewCategoryName("");
-        Swal.fire({
-          icon: "success",
-          title: "Category Created!",
-          text: "New category has been added successfully",
-          timer: 1500,
-        });
+        setCategories(data.data);
       }
     } catch (error) {
-      console.error("Error creating category:", error);
-      Swal.fire({
-        icon: "error",
+      toast({
         title: "Error",
-        text: "Failed to create category",
+        description: "Failed to fetch categories",
+        variant: "destructive",
       });
-    } finally {
-      setNewCategoryLoading(false);
     }
   };
 
-  const handleFieldChange = (
-    field: string,
-    value: string | boolean | number
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-
-  
-  };
-
+  // Learning outcomes handlers
   const addLearningOutcome = () => {
     setLearningOutcomes([...learningOutcomes, ""]);
-  };
-
-  const removeLearningOutcome = (index: number) => {
-    setLearningOutcomes(learningOutcomes.filter((_, i) => i !== index));
   };
 
   const updateLearningOutcome = (index: number, value: string) => {
@@ -310,12 +144,16 @@ export default function CreateCoursePage() {
     setLearningOutcomes(updated);
   };
 
-  const addRequirement = () => {
-    setRequirements([...requirements, ""]);
+  const removeLearningOutcome = (index: number) => {
+    if (learningOutcomes.length > 1) {
+      const updated = learningOutcomes.filter((_, i) => i !== index);
+      setLearningOutcomes(updated);
+    }
   };
 
-  const removeRequirement = (index: number) => {
-    setRequirements(requirements.filter((_, i) => i !== index));
+  // Requirements handlers
+  const addRequirement = () => {
+    setRequirements([...requirements, ""]);
   };
 
   const updateRequirement = (index: number, value: string) => {
@@ -324,1298 +162,305 @@ export default function CreateCoursePage() {
     setRequirements(updated);
   };
 
-  const addModule = () => {
-    setModules([
-      ...modules,
-      {
-        title: "",
-        description: "",
-        sortOrder: modules.length,
-        lessons: [],
-        hasAssessment: false,
-        assessmentRequired: true,
-        minimumPassingScore: 60,
-        requireAllLessonsComplete: true,
-      },
-    ]);
-  };
-
-  const removeModule = (index: number) => {
-    setModules(modules.filter((_, i) => i !== index));
-  };
-
-  const updateModule = (index: number, field: keyof Module, value: any) => {
-    const updated = [...modules];
-    (updated[index] as any)[field] = value;
-    setModules(updated);
-  };
-
-  const addLesson = (moduleIndex: number) => {
-    const updatedModules = [...modules];
-    updatedModules[moduleIndex].lessons.push({
-      title: "",
-      description: "",
-      contentType: "VIDEO",
-      isFree: false,
-      sortOrder: updatedModules[moduleIndex].lessons.length,
-      hasQuiz: false,
-      quizRequired: false,
-    });
-    setModules(updatedModules);
-  };
-
-  const removeLesson = (moduleIndex: number, lessonIndex: number) => {
-    const updatedModules = [...modules];
-    updatedModules[moduleIndex].lessons = updatedModules[
-      moduleIndex
-    ].lessons.filter((_, i) => i !== lessonIndex);
-    setModules(updatedModules);
-  };
-
-  const updateLesson = (
-    moduleIndex: number,
-    lessonIndex: number,
-    field: keyof Lesson,
-    value: any
-  ) => {
-    const updatedModules = [...modules];
-    (updatedModules[moduleIndex].lessons[lessonIndex] as any)[field] = value;
-    setModules(updatedModules);
-  };
-
-  const toggleQuizForLesson = (moduleIndex: number, lessonIndex: number) => {
-    const updatedModules = [...modules];
-    const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
-
-    if (!lesson.hasQuiz) {
-      // Add quiz
-      lesson.hasQuiz = true;
-      lesson.quiz = {
-        title: `${lesson.title} Quiz`,
-        description: "Test your knowledge from this lesson",
-        assessmentLevel: "LESSON_QUIZ",
-        passingScore: 60,
-        isRequired: false,
-        showCorrectAnswers: true,
-        allowRetake: true,
-        randomizeQuestions: false,
-        questions: [],
-      };
-    } else {
-      // Remove quiz
-      lesson.hasQuiz = false;
-      lesson.quizRequired = false;
-      lesson.quiz = undefined;
-    }
-
-    setModules(updatedModules);
-  };
-
-const toggleModuleAssessment = (moduleIndex: number) => {
-  const updatedModules = [...modules];
-  const currentModule = updatedModules[moduleIndex]; // Changed from 'module'
-
-  if (!currentModule.hasAssessment) {
-    // Add module assessment
-    currentModule.hasAssessment = true;
-    currentModule.moduleAssessment = {
-      title: `${currentModule.title} Assessment`,
-      description: "Module assessment to test your understanding",
-      assessmentLevel: "MODULE_ASSESSMENT",
-      passingScore: currentModule.minimumPassingScore || 60,
-      isRequired: currentModule.assessmentRequired,
-      showCorrectAnswers: false,
-      allowRetake: true,
-      randomizeQuestions: true,
-      questions: [],
-    };
-  } else {
-    // Remove module assessment
-    currentModule.hasAssessment = false;
-    currentModule.moduleAssessment = undefined;
-  }
-
-  setModules(updatedModules);
-};
-
-const updateAssessment = (
-  type: "lesson" | "module" | "course",
-  field: keyof Assessment | "questions",
-  value: any,
-  moduleIndex?: number,
-  lessonIndex?: number
-) => {
-  if (
-    type === "lesson" &&
-    moduleIndex !== undefined &&
-    lessonIndex !== undefined
-  ) {
-    const updatedModules = [...modules];
-    const lesson = updatedModules[moduleIndex].lessons[lessonIndex];
-    if (lesson.quiz) {
-      (lesson.quiz as any)[field] = value;
-      setModules(updatedModules);
-    }
-  } else if (type === "module" && moduleIndex !== undefined) {
-    const updatedModules = [...modules];
-    const currentModule = updatedModules[moduleIndex]; // Changed from 'module'
-    if (currentModule.moduleAssessment) {
-      (currentModule.moduleAssessment as any)[field] = value;
-      setModules(updatedModules);
-    }
-  } else if (type === "course") {
-    setCourseFinalAssessment((prev) => ({ ...prev, [field]: value }));
-  }
-};
-  const addQuestion = (
-    type: "lesson" | "module" | "course",
-    moduleIndex?: number,
-    lessonIndex?: number
-  ) => {
-    const newQuestion: Question = {
-      questionText: "",
-      questionType: "MULTIPLE_CHOICE",
-      options: ["", "", "", ""],
-      correctAnswer: "",
-      points: 1,
-      difficulty: "MEDIUM",
-    };
-
-    updateAssessment(
-      type,
-      "questions",
-      type === "lesson" &&
-        moduleIndex !== undefined &&
-        lessonIndex !== undefined
-        ? [
-            ...(modules[moduleIndex].lessons[lessonIndex].quiz?.questions ||
-              []),
-            newQuestion,
-          ]
-        : type === "module" && moduleIndex !== undefined
-        ? [
-            ...(modules[moduleIndex].moduleAssessment?.questions || []),
-            newQuestion,
-          ]
-        : [...courseFinalAssessment.questions, newQuestion],
-      moduleIndex,
-      lessonIndex
-    );
-  };
-
-  const updateQuestion = (
-    type: "lesson" | "module" | "course",
-    questionIndex: number,
-    field: keyof Question,
-    value: any,
-    moduleIndex?: number,
-    lessonIndex?: number
-  ) => {
-    let questions: Question[] = [];
-
-    if (
-      type === "lesson" &&
-      moduleIndex !== undefined &&
-      lessonIndex !== undefined
-    ) {
-      questions = [
-        ...(modules[moduleIndex].lessons[lessonIndex].quiz?.questions || []),
-      ];
-    } else if (type === "module" && moduleIndex !== undefined) {
-      questions = [...(modules[moduleIndex].moduleAssessment?.questions || [])];
-    } else if (type === "course") {
-      questions = [...courseFinalAssessment.questions];
-    }
-
-    if (questionIndex < questions.length) {
-      (questions[questionIndex] as any)[field] = value;
-      updateAssessment(type, "questions", questions, moduleIndex, lessonIndex);
+  const removeRequirement = (index: number) => {
+    if (requirements.length > 1) {
+      const updated = requirements.filter((_, i) => i !== index);
+      setRequirements(updated);
     }
   };
 
-  const removeQuestion = (
-    type: "lesson" | "module" | "course",
-    questionIndex: number, // Move required parameter up
-    moduleIndex?: number,
-    lessonIndex?: number
-  ) => {
-    let questions: Question[] = [];
-
-    if (
-      type === "lesson" &&
-      moduleIndex !== undefined &&
-      lessonIndex !== undefined
-    ) {
-      questions =
-        modules[moduleIndex].lessons[lessonIndex].quiz?.questions || [];
-    } else if (type === "module" && moduleIndex !== undefined) {
-      questions = modules[moduleIndex].moduleAssessment?.questions || [];
-    } else if (type === "course") {
-      questions = courseFinalAssessment.questions;
-    }
-
-    const updatedQuestions = questions.filter((_, i) => i !== questionIndex);
-    updateAssessment(
-      type,
-      "questions",
-      updatedQuestions,
-      moduleIndex,
-      lessonIndex
-    );
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validation
-    if (!formData.title || !formData.categoryId) {
-      Swal.fire({
-        icon: "warning",
-        title: "Missing Required Fields",
-        text: "Please fill in title and category",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    const createdBy = user?.id;
-
-    const payload = {
-      ...formData,
-      createdBy,
-      status: formData.status,
-      collegeId: formData.collegeId || null,
-      thumbnailUrl: formData.thumbnailUrl || null,
-      previewVideoUrl: formData.previewVideoUrl || null,
-      prerequisites: formData.prerequisites || null,
-      price: formData.price ? Number(formData.price) : null,
-      discountPrice: formData.discountPrice
-        ? Number(formData.discountPrice)
-        : null,
-      maxStudents: formData.maxStudents ? Number(formData.maxStudents) : null,
-      hasFinalAssessment: formData.hasFinalAssessment,
-      finalAssessmentRequired: formData.finalAssessmentRequired,
-      minimumCoursePassingScore: Number(formData.minimumCoursePassingScore),
-      requireAllModulesComplete: formData.requireAllModulesComplete,
-      requireAllAssessmentsPassed: formData.requireAllAssessmentsPassed,
-    };
-
+  const onSubmit = async (values: CourseFormValues) => {
+    setIsSubmitting(true);
     try {
-      const res = await fetch("/api/courses", {
+      // Prepare payload
+      const payload = {
+        ...values,
+        learningOutcomes: learningOutcomes.filter((lo) => lo.trim()),
+        requirements: requirements.filter((req) => req.trim()),
+      };
+
+      const response = await fetch("/api/courses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      const response = await res.json();
+      const data = await response.json();
 
-      if (response.success) {
-        const courseId = response.data.id;
-
-        // Add learning outcomes
-        for (const outcome of learningOutcomes.filter((o) => o.trim())) {
-          await fetch(`/api/courses?id=${courseId}&outcomes=true`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ outcome }),
-          });
-        }
-
-        // Add requirements
-        for (const requirement of requirements.filter((r) => r.trim())) {
-          await fetch(`/api/courses?id=${courseId}&requirements=true`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ requirement }),
-          });
-        }
-
-        // Add modules and lessons
-for (let i = 0; i < modules.length; i++) {
-  const currentModule = modules[i]; // Changed from 'module'
-  if (currentModule.title.trim()) {
-    // Create module
-    const moduleRes = await fetch(
-      `/api/courses?id=${courseId}&modules=true`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: currentModule.title,
-          description: currentModule.description,
-          hasAssessment: currentModule.hasAssessment,
-          assessmentRequired: currentModule.assessmentRequired,
-          minimumPassingScore: currentModule.minimumPassingScore,
-          requireAllLessonsComplete: currentModule.requireAllLessonsComplete,
-          sortOrder: i,
-        }),
-      }
-    );
-
-    const moduleData = await moduleRes.json();
-
-    if (moduleData.success) {
-      // Add module assessment if exists
-      if (currentModule.hasAssessment && currentModule.moduleAssessment) {
-        await fetch(
-          `/api/courses?id=${courseId}&assessments=true&assessmentLevel=MODULE_ASSESSMENT&moduleId=${moduleData.data.id}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...currentModule.moduleAssessment,
-              createdBy,
-              questions: currentModule.moduleAssessment?.questions || [],
-            }),
-          }
-        );
-      }
-
-      // Add lessons for this module
-      for (let j = 0; j < currentModule.lessons.length; j++) {
-        const lesson = currentModule.lessons[j];
-                if (lesson.title.trim()) {
-                  const lessonRes = await fetch(
-                    `/api/courses?id=${courseId}&lessons=true&moduleId=${moduleData.data.id}`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        title: lesson.title,
-                        description: lesson.description,
-                        contentType: lesson.contentType,
-                        videoUrl: lesson.videoUrl || null,
-                        articleContent: lesson.articleContent || null,
-                        videoDuration: lesson.videoDuration || null,
-                        isFree: lesson.isFree,
-                        hasQuiz: lesson.hasQuiz,
-                        quizRequired: lesson.quizRequired,
-                        sortOrder: j,
-                      }),
-                    }
-                  );
-
-                  const lessonData = await lessonRes.json();
-
-                  if (lessonData.success && lesson.hasQuiz && lesson.quiz) {
-                    // Add lesson quiz
-                    await fetch(
-                      `/api/courses?id=${courseId}&assessments=true&assessmentLevel=LESSON_QUIZ&lessonId=${lessonData.data.id}`,
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          ...lesson.quiz,
-                          createdBy,
-                          questions: lesson.quiz?.questions || [],
-                        }),
-                      }
-                    );
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        // Add course final assessment
-        if (formData.hasFinalAssessment) {
-          // For course final assessment
-          await fetch(
-            `/api/courses?id=${courseId}&assessments=true&assessmentLevel=COURSE_FINAL`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                ...courseFinalAssessment,
-                createdBy,
-                questions: courseFinalAssessment.questions,
-              }),
-            }
-          );
-        }
-
-        Swal.fire({
-          icon: "success",
-          title: "Course Created!",
-          text: "Course has been created successfully",
-          timer: 2000,
-          showConfirmButton: false,
-        }).then(() => {
-          router.push("/dashboard/college/courses");
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Course created successfully",
         });
+        router.push(`/dashboard/college/courses/${data.data.id}`);
       } else {
-        Swal.fire({
-          icon: "error",
+        toast({
           title: "Error",
-          text: response.error?.message || "Failed to create course",
+          description: data.error?.message || "Failed to create course",
+          variant: "destructive",
         });
       }
-    } catch (err) {
-      console.error(err);
-      Swal.fire({
-        icon: "error",
+    } catch (error) {
+      toast({
         title: "Error",
-        text: "An unexpected error occurred",
+        description: "Failed to create course",
+        variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
-  };
-
-  const toggleModule = (index: number) => {
-    setExpandedModules((prev) =>
-      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
-    );
-  };
-
-  const renderAssessmentEditor = () => {
-    if (!editingAssessment) return null;
-
-    const { type, moduleIndex, lessonIndex } = editingAssessment;
-
-    let assessment: Assessment | undefined;
-    let title = "";
-
-    if (
-      type === "lesson" &&
-      moduleIndex !== undefined &&
-      lessonIndex !== undefined
-    ) {
-      assessment = modules[moduleIndex]?.lessons[lessonIndex]?.quiz;
-      title = `${modules[moduleIndex]?.lessons[lessonIndex]?.title} Quiz`;
-    } else if (type === "module" && moduleIndex !== undefined) {
-      assessment = modules[moduleIndex]?.moduleAssessment;
-      title = `${modules[moduleIndex]?.title} Assessment`;
-    } else if (type === "course") {
-      assessment = courseFinalAssessment;
-      title = "Final Course Assessment";
-    }
-
-    if (!assessment) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">Edit {title}</h3>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setEditingAssessment(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <Label>Assessment Title</Label>
-                <Input
-                  value={assessment.title}
-                  onChange={(e) =>
-                    updateAssessment(
-                      type,
-                      "title",
-                      e.target.value,
-                      moduleIndex,
-                      lessonIndex
-                    )
-                  }
-                  placeholder="Assessment title"
-                />
-              </div>
-
-              <div>
-                <Label>Description</Label>
-                <Textarea
-                  value={assessment.description || ""}
-                  onChange={(e) =>
-                    updateAssessment(
-                      type,
-                      "description",
-                      e.target.value,
-                      moduleIndex,
-                      lessonIndex
-                    )
-                  }
-                  placeholder="Assessment description"
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Passing Score (%)</Label>
-                  <Input
-                    type="number"
-                    value={assessment.passingScore}
-                    onChange={(e) =>
-                      updateAssessment(
-                        type,
-                        "passingScore",
-                        Number(e.target.value),
-                        moduleIndex,
-                        lessonIndex
-                      )
-                    }
-                    min={0}
-                    max={100}
-                  />
-                </div>
-
-                <div>
-                  <Label>Time Limit (minutes, optional)</Label>
-                  <Input
-                    type="number"
-                    value={assessment.timeLimit || ""}
-                    onChange={(e) =>
-                      updateAssessment(
-                        type,
-                        "timeLimit",
-                        e.target.value ? Number(e.target.value) : undefined,
-                        moduleIndex,
-                        lessonIndex
-                      )
-                    }
-                    placeholder="No limit"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Questions ({assessment.questions.length})</Label>
-                  <Button
-                    type="button"
-                    onClick={() => addQuestion(type, moduleIndex, lessonIndex)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Question
-                  </Button>
-                </div>
-
-                {assessment.questions.map((question, qIndex) => (
-                  <div key={qIndex} className="border rounded p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <Label>Question {qIndex + 1}</Label>
-                        <Textarea
-                          value={question.questionText}
-                          onChange={(e) =>
-                            updateQuestion(
-                              type,
-                              qIndex,
-                              "questionText",
-                              e.target.value,
-                              moduleIndex,
-                              lessonIndex
-                            )
-                          }
-                          placeholder="Enter question text..."
-                          rows={2}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          removeQuestion(type, qIndex, moduleIndex, lessonIndex)
-                        }
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Question Type</Label>
-                        <Select
-                          value={question.questionType}
-                          onValueChange={(
-                            value:
-                              | "MULTIPLE_CHOICE"
-                              | "TRUE_FALSE"
-                              | "SHORT_ANSWER"
-                          ) =>
-                            updateQuestion(
-                              type,
-                              qIndex,
-                              "questionType",
-                              value,
-                              moduleIndex,
-                              lessonIndex
-                            )
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="MULTIPLE_CHOICE">
-                              Multiple Choice
-                            </SelectItem>
-                            <SelectItem value="TRUE_FALSE">
-                              True/False
-                            </SelectItem>
-                            <SelectItem value="SHORT_ANSWER">
-                              Short Answer
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label>Points</Label>
-                        <Input
-                          type="number"
-                          value={question.points || 1}
-                          onChange={(e) =>
-                            updateQuestion(
-                              type,
-                              qIndex,
-                              "points",
-                              Number(e.target.value),
-                              moduleIndex,
-                              lessonIndex
-                            )
-                          }
-                          min={1}
-                        />
-                      </div>
-                    </div>
-
-                    {question.questionType === "MULTIPLE_CHOICE" && (
-                      <div className="space-y-2">
-                        <Label>Options</Label>
-                        {(question.options || []).map((option, optionIndex) => (
-                          <div
-                            key={optionIndex}
-                            className="flex items-center gap-2"
-                          >
-                            <Input
-                              value={option}
-                              onChange={(e) => {
-                                const newOptions = [
-                                  ...(question.options || []),
-                                ];
-                                newOptions[optionIndex] = e.target.value;
-                                updateQuestion(
-                                  type,
-                                  qIndex,
-                                  "options",
-                                  newOptions,
-                                  moduleIndex,
-                                  lessonIndex
-                                );
-                              }}
-                              placeholder={`Option ${optionIndex + 1}`}
-                            />
-                            <input
-                              type="radio"
-                              name={`correct-${qIndex}`}
-                              checked={question.correctAnswer === option}
-                              onChange={() =>
-                                updateQuestion(
-                                  type,
-                                  qIndex,
-                                  "correctAnswer",
-                                  option,
-                                  moduleIndex,
-                                  lessonIndex
-                                )
-                              }
-                              className="h-4 w-4"
-                            />
-                            <Label>Correct</Label>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {question.questionType === "TRUE_FALSE" && (
-                      <div className="space-y-2">
-                        <Label>Correct Answer</Label>
-                        <Select
-                          value={question.correctAnswer}
-                          onValueChange={(value) =>
-                            updateQuestion(
-                              type,
-                              qIndex,
-                              "correctAnswer",
-                              value,
-                              moduleIndex,
-                              lessonIndex
-                            )
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="true">True</SelectItem>
-                            <SelectItem value="false">False</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-
-                    {question.questionType === "SHORT_ANSWER" && (
-                      <div>
-                        <Label>Correct Answer</Label>
-                        <Input
-                          value={question.correctAnswer}
-                          onChange={(e) =>
-                            updateQuestion(
-                              type,
-                              qIndex,
-                              "correctAnswer",
-                              e.target.value,
-                              moduleIndex,
-                              lessonIndex
-                            )
-                          }
-                          placeholder="Expected answer"
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <Label>Explanation (optional)</Label>
-                      <Textarea
-                        value={question.explanation || ""}
-                        onChange={(e) =>
-                          updateQuestion(
-                            type,
-                            qIndex,
-                            "explanation",
-                            e.target.value,
-                            moduleIndex,
-                            lessonIndex
-                          )
-                        }
-                        placeholder="Explanation for the answer"
-                        rows={2}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditingAssessment(null)}
-                >
-                  Close
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => setEditingAssessment(null)}
-                >
-                  Save Changes
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <div className=" mx-auto ">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="container mx-auto py-8 space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
           <Link
             href="/dashboard/college/courses"
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
+            className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-2"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Courses
           </Link>
-
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Create New Course
-              </h1>
-              <p className="text-gray-600">
-                Fill in the course details to create a new course.
-              </p>
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold">Create New Course</h1>
+          <p className="text-muted-foreground">
+            Create a new course with basic information
+          </p>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           {/* Basic Information */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50 border-b">
-              <CardTitle className="text-xl text-gray-900">
-                Basic Information
-              </CardTitle>
+          <Card>
+            <CardHeader>
+              <CardTitle>Basic Information</CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
+            <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <Label htmlFor="title">Course Title *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      handleFieldChange("title", value);
-                    }}
-                    placeholder="Web Development Bootcamp"
-                    required
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Course Title *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Web Development Bootcamp" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <div className="md:col-span-2">
-                  <Label htmlFor="slug">Slug *</Label>
-                  <Input
-                    id="slug"
-                    value={formData.slug}
-                    onChange={(e) => handleFieldChange("slug", e.target.value)}
-                    placeholder="web-development-bootcamp"
-                    required
-                    disabled
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    URL-friendly version of the title (auto-generated)
-                  </p>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="slug"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Slug *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="web-development-bootcamp" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        URL-friendly version of the title
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-                <div className="md:col-span-2">
-                  <Label htmlFor="shortDescription">Short Description</Label>
-                  <Textarea
-                    id="shortDescription"
-                    value={formData.shortDescription}
-                    onChange={(e) =>
-                      handleFieldChange("shortDescription", e.target.value)
-                    }
-                    placeholder="A brief summary of the course..."
-                    rows={2}
-                  />
-                </div>
+              <FormField
+                control={form.control}
+                name="shortDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Short Description *</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Brief summary of the course..."
+                        className="resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Max 200 characters. Displayed in course cards.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <div className="md:col-span-2">
-                  <Label htmlFor="description">Full Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) =>
-                      handleFieldChange("description", e.target.value)
-                    }
-                    placeholder="Detailed course description..."
-                    rows={6}
-                  />
-                </div>
+              {/* <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Description *</FormLabel>
+                    <FormControl>
+                      <RichTextEditor
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Detailed course description..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              /> */}
 
-                <div>
-                  <Label htmlFor="categoryId">Category *</Label>
-                  <div className="space-y-2">
-                    <Select
-                      value={formData.categoryId}
-                      onValueChange={(value) => {
-                        if (value === "new-category") {
-                          setShowNewCategory(true);
-                        } else {
-                          handleFieldChange("categoryId", value);
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                        <SelectItem
-                          value="new-category"
-                          className="text-blue-600 font-medium"
-                        >
-                          + Create New Category
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                    {showNewCategory && (
-                      <div className="flex gap-2">
-                        <Input
-                          value={newCategoryName}
-                          onChange={(e) => setNewCategoryName(e.target.value)}
-                          placeholder="Enter new category name"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") createNewCategory();
-                          }}
-                        />
-                        <Button
-                          type="button"
-                          onClick={createNewCategory}
-                          disabled={
-                            newCategoryLoading || !newCategoryName.trim()
-                          }
-                          size="sm"
-                        >
-                          {newCategoryLoading ? "Adding..." : "Add"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setShowNewCategory(false);
-                            setNewCategoryName("");
-                          }}
-                          size="sm"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="level"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Level *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select level" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Beginner">Beginner</SelectItem>
+                          <SelectItem value="Intermediate">Intermediate</SelectItem>
+                          <SelectItem value="Advanced">Advanced</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-                <div>
-                  <Label htmlFor="collegeId">College (Optional)</Label>
-                  <Select
-                    value={formData.collegeId || "NONE"}
-                    onValueChange={(value) =>
-                      handleFieldChange(
-                        "collegeId",
-                        value === "NONE" ? "" : value
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select college" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NONE">No college (Admin)</SelectItem>
-                      {colleges.map((college) => (
-                        <SelectItem key={college.id} value={college.id}>
-                          {college.collegeName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="language"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Language</FormLabel>
+                      <FormControl>
+                        <Input placeholder="English" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <div>
-                  <Label htmlFor="level">Level</Label>
-                  <Select
-                    value={formData.level}
-                    onValueChange={(value) => handleFieldChange("level", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Beginner">Beginner</SelectItem>
-                      <SelectItem value="Intermediate">Intermediate</SelectItem>
-                      <SelectItem value="Advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="language">Language</Label>
-                  <Input
-                    id="language"
-                    value={formData.language}
-                    onChange={(e) =>
-                      handleFieldChange("language", e.target.value)
-                    }
-                    placeholder="English"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      handleFieldChange("status", value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DRAFT">Draft</SelectItem>
-                      <SelectItem value="PENDING_APPROVAL">
-                        Pending Approval
-                      </SelectItem>
-                      <SelectItem value="APPROVED">Approved</SelectItem>
-                      <SelectItem value="REJECTED">Rejected</SelectItem>
-                      <SelectItem value="PUBLISHED">Published</SelectItem>
-                      {/* <SelectItem value="ARCHIVED">Archived</SelectItem> */}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="duration">Duration</Label>
-                  <Input
-                    id="duration"
-                    value={formData.duration}
-                    onChange={(e) =>
-                      handleFieldChange("duration", e.target.value)
-                    }
-                    placeholder="40 hours"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="maxStudents">Max Students</Label>
-                  <NumberInput
-                    id="maxStudents"
-                   
-                    value={formData.maxStudents}
-                    onChange={(e) =>
-                      handleFieldChange("maxStudents", e.target.value)
-                    }
-                    placeholder="50"
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Duration</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 40 hours" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
 
-          {/* Course Completion Settings */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-green-50 border-b">
-              <CardTitle className="text-xl text-gray-900">
-                Course Completion Settings
+          {/* Thumbnails & Media */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Thumbnails & Media
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="font-medium">Final Assessment</Label>
-                    <p className="text-sm text-gray-500">
-                      Add a final assessment for the course
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.hasFinalAssessment}
-                    onCheckedChange={(checked) =>
-                      handleFieldChange("hasFinalAssessment", checked)
-                    }
-                  />
-                </div>
-
-                {formData.hasFinalAssessment && (
-                  <div className="border rounded p-4 space-y-4 bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="font-medium">
-                          Final Assessment Required
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Students must pass final assessment to complete course
-                        </p>
-                      </div>
-                      <Switch
-                        checked={formData.finalAssessmentRequired}
-                        onCheckedChange={(checked) =>
-                          handleFieldChange("finalAssessmentRequired", checked)
-                        }
+            <CardContent className="space-y-6">
+              {/* <FormField
+                control={form.control}
+                name="thumbnailUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Thumbnail Image</FormLabel>
+                    <FormControl>
+                      <ImageUpload
+                        value={field.value}
+                        onChange={field.onChange}
+                        folder="course-thumbnails"
                       />
-                    </div>
-
-                    <div>
-                      <Label>Minimum Passing Score for Course</Label>
-                      <Input
-                        type="number"
-                        value={formData.minimumCoursePassingScore}
-                        onChange={(e) =>
-                          handleFieldChange(
-                            "minimumCoursePassingScore",
-                            Number(e.target.value)
-                          )
-                        }
-                        min={0}
-                        max={100}
-                        placeholder="60"
-                      />
-                    </div>
-
-                    <Button
-                      type="button"
-                      onClick={() => setEditingAssessment({ type: "course" })}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Configure Final Assessment
-                    </Button>
-                  </div>
+                    </FormControl>
+                    <FormDescription>
+                      Recommended size: 1280x720px
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
                 )}
+              /> */}
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="font-medium">
-                      Require All Modules Complete
-                    </Label>
-                    <p className="text-sm text-gray-500">
-                      Students must complete all modules to finish course
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.requireAllModulesComplete}
-                    onCheckedChange={(checked) =>
-                      handleFieldChange("requireAllModulesComplete", checked)
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="font-medium">
-                      Require All Assessments Passed
-                    </Label>
-                    <p className="text-sm text-gray-500">
-                      Students must pass all required assessments
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.requireAllAssessmentsPassed}
-                    onCheckedChange={(checked) =>
-                      handleFieldChange("requireAllAssessmentsPassed", checked)
-                    }
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Media */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-50 border-b">
-              <CardTitle className="text-xl text-gray-900">Media</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div>
-                <Label htmlFor="thumbnailUrl">Thumbnail URL</Label>
-                <Input
-                  id="thumbnailUrl"
-                  type="url"
-                  value={formData.thumbnailUrl}
-                  onChange={(e) =>
-                    handleFieldChange("thumbnailUrl", e.target.value)
-                  }
-                  placeholder="https://example.com/thumbnail.jpg"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="previewVideoUrl">Preview Video URL</Label>
-                <Input
-                  id="previewVideoUrl"
-                  type="url"
-                  value={formData.previewVideoUrl}
-                  onChange={(e) =>
-                    handleFieldChange("previewVideoUrl", e.target.value)
-                  }
-                  placeholder="https://youtube.com/..."
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Pricing */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-green-50 border-b">
-              <CardTitle className="text-xl text-gray-900">Pricing</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isFree"
-                  checked={formData.isFree}
-                  onChange={(e) =>
-                    handleFieldChange("isFree", e.target.checked)
-                  }
-                  className="rounded"
-                />
-                <Label htmlFor="isFree">This course is free</Label>
-              </div>
-
-              {!formData.isFree && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="price">Price ($)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) =>
-                        handleFieldChange("price", e.target.value)
-                      }
-                      placeholder="99.00"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="discountPrice">Discount Price ($)</Label>
-                    <Input
-                      id="discountPrice"
-                      type="number"
-                      step="0.01"
-                      value={formData.discountPrice}
-                      onChange={(e) =>
-                        handleFieldChange("discountPrice", e.target.value)
-                      }
-                      placeholder="79.00"
-                    />
-                  </div>
-                </div>
-              )}
+              <FormField
+                control={form.control}
+                name="previewVideoUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preview Video URL</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://youtube.com/watch?v=..." {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Optional. YouTube or Vimeo URL for course preview
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
 
           {/* Learning Outcomes */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50 border-b">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl text-gray-900">
-                  Learning Outcomes
-                </CardTitle>
-                <Button
-                  type="button"
-                  onClick={addLearningOutcome}
-                  size="sm"
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Outcome
-                </Button>
-              </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Learning Outcomes
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                What students will learn in this course
+              </p>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="space-y-4">
               {learningOutcomes.map((outcome, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={outcome}
-                    onChange={(e) =>
-                      updateLearningOutcome(index, e.target.value)
-                    }
-                    placeholder="What students will learn..."
-                  />
+                <div key={index} className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Input
+                      placeholder={`Learning outcome ${index + 1}`}
+                      value={outcome}
+                      onChange={(e) => updateLearningOutcome(index, e.target.value)}
+                    />
+                  </div>
                   {learningOutcomes.length > 1 && (
                     <Button
                       type="button"
@@ -1623,537 +468,364 @@ for (let i = 0; i < modules.length; i++) {
                       size="icon"
                       onClick={() => removeLearningOutcome(index)}
                     >
-                      <X className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
               ))}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addLearningOutcome}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Learning Outcome
+              </Button>
             </CardContent>
           </Card>
 
           {/* Requirements */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-50 border-b">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl text-gray-900">
-                  Requirements
-                </CardTitle>
-                <Button
-                  type="button"
-                  onClick={addRequirement}
-                  size="sm"
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Requirement
-                </Button>
-              </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckSquare className="h-5 w-5" />
+                Requirements
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Prerequisites for this course
+              </p>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              {requirements.map((requirement, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    value={requirement}
-                    onChange={(e) => updateRequirement(index, e.target.value)}
-                    placeholder="Prerequisites for the course..."
-                  />
-                  {requirements.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeRequirement(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="prerequisites"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>General Prerequisites</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Any general requirements for taking this course..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {/* Course Modules */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-50 border-b">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl text-gray-900">
-                  Course Modules
-                </CardTitle>
-                <Button
-                  type="button"
-                  onClick={addModule}
-                  size="sm"
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Module
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              {modules.map((module, moduleIndex) => (
-                <div
-                  key={moduleIndex}
-                  className="border rounded-lg p-4 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+              <Separator />
+
+              <div className="space-y-4">
+                <h4 className="font-medium">Specific Requirements</h4>
+                {requirements.map((requirement, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <Input
+                        placeholder={`Requirement ${index + 1}`}
+                        value={requirement}
+                        onChange={(e) => updateRequirement(index, e.target.value)}
+                      />
+                    </div>
+                    {requirements.length > 1 && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => toggleModule(moduleIndex)}
+                        onClick={() => removeRequirement(index)}
                       >
-                        <ChevronDown
-                          className={`h-4 w-4 transition-transform ${
-                            expandedModules.includes(moduleIndex)
-                              ? "rotate-180"
-                              : ""
-                          }`}
-                        />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                      <Label className="text-sm font-medium">
-                        Module {moduleIndex + 1}
-                      </Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        onClick={() => toggleModuleAssessment(moduleIndex)}
-                        variant={module.hasAssessment ? "default" : "outline"}
-                        size="sm"
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        {module.hasAssessment
-                          ? "Assessment Added"
-                          : "Add Assessment"}
-                      </Button>
-                      {modules.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeModule(moduleIndex)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    )}
                   </div>
-
-                  <Input
-                    value={module.title}
-                    onChange={(e) =>
-                      updateModule(moduleIndex, "title", e.target.value)
-                    }
-                    placeholder="Module title..."
-                  />
-                  <Textarea
-                    value={module.description}
-                    onChange={(e) =>
-                      updateModule(moduleIndex, "description", e.target.value)
-                    }
-                    placeholder="Module description (optional)..."
-                    rows={2}
-                  />
-
-                  {module.hasAssessment && (
-                    <div className="border rounded p-3 space-y-3 bg-blue-50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                          <Label className="font-medium text-blue-800">
-                            Module Assessment
-                          </Label>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Button
-                            type="button"
-                            onClick={() =>
-                              setEditingAssessment({
-                                type: "module",
-                                moduleIndex,
-                              })
-                            }
-                            variant="outline"
-                            size="sm"
-                          >
-                            Configure
-                          </Button>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              id={`module-required-${moduleIndex}`}
-                              checked={module.assessmentRequired}
-                              onChange={(e) =>
-                                updateModule(
-                                  moduleIndex,
-                                  "assessmentRequired",
-                                  e.target.checked
-                                )
-                              }
-                              className="rounded"
-                            />
-                            <Label
-                              htmlFor={`module-required-${moduleIndex}`}
-                              className="text-sm"
-                            >
-                              Required
-                            </Label>
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Minimum Passing Score</Label>
-                        <Input
-                          type="number"
-                          value={module.minimumPassingScore}
-                          onChange={(e) =>
-                            updateModule(
-                              moduleIndex,
-                              "minimumPassingScore",
-                              Number(e.target.value)
-                            )
-                          }
-                          min={0}
-                          max={100}
-                          className="text-sm"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Lessons Section */}
-                  {expandedModules.includes(moduleIndex) && (
-                    <div className="ml-6 border-l-2 border-gray-200 pl-4 space-y-4">
-                      <div className="flex items-center justify-between pt-2">
-                        <Label className="text-sm font-medium text-gray-700">
-                          Lessons ({module.lessons.length})
-                        </Label>
-                        <Button
-                          type="button"
-                          onClick={() => addLesson(moduleIndex)}
-                          size="sm"
-                          variant="outline"
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Lesson
-                        </Button>
-                      </div>
-
-                      {module.lessons.map((lesson, lessonIndex) => (
-                        <div
-                          key={lessonIndex}
-                          className="border rounded p-3 space-y-3 bg-gray-50"
-                        >
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs font-medium">
-                              Lesson {lessonIndex + 1}
-                            </Label>
-                            <div className="flex items-center gap-2">
-                              {lesson.hasQuiz && (
-                                <div className="flex items-center gap-1 text-blue-600">
-                                  <FileText className="h-3 w-3" />
-                                  <span className="text-xs">Quiz</span>
-                                </div>
-                              )}
-                              {module.lessons.length > 1 && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() =>
-                                    removeLesson(moduleIndex, lessonIndex)
-                                  }
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-
-                          <Input
-                            value={lesson.title}
-                            onChange={(e) =>
-                              updateLesson(
-                                moduleIndex,
-                                lessonIndex,
-                                "title",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Lesson title..."
-                            className="text-sm"
-                          />
-
-                          <Textarea
-                            value={lesson.description}
-                            onChange={(e) =>
-                              updateLesson(
-                                moduleIndex,
-                                lessonIndex,
-                                "description",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Lesson description..."
-                            rows={2}
-                            className="text-sm"
-                          />
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div>
-                              <Label
-                                htmlFor={`content-type-${moduleIndex}-${lessonIndex}`}
-                                className="text-xs"
-                              >
-                                Content Type
-                              </Label>
-                              <Select
-                                value={lesson.contentType}
-                                onValueChange={(value: "VIDEO" | "ARTICLE") =>
-                                  updateLesson(
-                                    moduleIndex,
-                                    lessonIndex,
-                                    "contentType",
-                                    value
-                                  )
-                                }
-                              >
-                                <SelectTrigger className="h-8 text-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="VIDEO">Video</SelectItem>
-                                  <SelectItem value="ARTICLE">
-                                    Article
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-6">
-                              <input
-                                type="checkbox"
-                                id={`is-free-${moduleIndex}-${lessonIndex}`}
-                                checked={lesson.isFree}
-                                onChange={(e) =>
-                                  updateLesson(
-                                    moduleIndex,
-                                    lessonIndex,
-                                    "isFree",
-                                    e.target.checked
-                                  )
-                                }
-                                className="rounded"
-                              />
-                              <Label
-                                htmlFor={`is-free-${moduleIndex}-${lessonIndex}`}
-                                className="text-xs"
-                              >
-                                Free Lesson
-                              </Label>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-6">
-                              <input
-                                type="checkbox"
-                                id={`has-quiz-${moduleIndex}-${lessonIndex}`}
-                                checked={lesson.hasQuiz}
-                                onChange={() =>
-                                  toggleQuizForLesson(moduleIndex, lessonIndex)
-                                }
-                                className="rounded"
-                              />
-                              <Label
-                                htmlFor={`has-quiz-${moduleIndex}-${lessonIndex}`}
-                                className="text-xs"
-                              >
-                                Add Quiz
-                              </Label>
-                            </div>
-                          </div>
-
-                          {lesson.hasQuiz && (
-                            <div className="border rounded p-3 space-y-2 bg-blue-50">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <FileText className="h-3 w-3 text-blue-600" />
-                                  <Label className="text-xs font-medium text-blue-800">
-                                    Lesson Quiz
-                                  </Label>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <Button
-                                    type="button"
-                                    onClick={() =>
-                                      setEditingAssessment({
-                                        type: "lesson",
-                                        moduleIndex,
-                                        lessonIndex,
-                                      })
-                                    }
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-6 text-xs"
-                                  >
-                                    Configure Quiz
-                                  </Button>
-                                  <div className="flex items-center gap-1">
-                                    <input
-                                      type="checkbox"
-                                      id={`quiz-required-${moduleIndex}-${lessonIndex}`}
-                                      checked={lesson.quizRequired}
-                                      onChange={(e) =>
-                                        updateLesson(
-                                          moduleIndex,
-                                          lessonIndex,
-                                          "quizRequired",
-                                          e.target.checked
-                                        )
-                                      }
-                                      className="rounded h-3 w-3"
-                                    />
-                                    <Label
-                                      htmlFor={`quiz-required-${moduleIndex}-${lessonIndex}`}
-                                      className="text-xs"
-                                    >
-                                      Required
-                                    </Label>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {lesson.contentType === "VIDEO" && (
-                            <div className="space-y-3">
-                              <Label className="text-xs">Video Content</Label>
-                              <Input
-                                value={lesson.videoUrl || ""}
-                                onChange={(e) =>
-                                  updateLesson(
-                                    moduleIndex,
-                                    lessonIndex,
-                                    "videoUrl",
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="YouTube URL or leave empty for upload..."
-                                className="text-sm"
-                              />
-                              <div className="text-xs text-gray-500">
-                                - OR -
-                              </div>
-                              <FileUpload
-                                onUploadComplete={(url) =>
-                                  handleVideoUploadComplete(
-                                    moduleIndex,
-                                    lessonIndex,
-                                    url
-                                  )
-                                }
-                                accept="video/*"
-                                maxSize={200}
-                                label="Upload Video File"
-                                value={lesson.videoUrl || ""}
-                              />
-                              {lesson.videoUrl &&
-                                lesson.videoUrl.includes(
-                                  "s3.amazonaws.com"
-                                ) && (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div>
-                                      <Label className="text-xs">
-                                        Video Duration (minutes)
-                                      </Label>
-                                      <Input
-                                        type="number"
-                                        value={lesson.videoDuration || ""}
-                                        onChange={(e) =>
-                                          updateLesson(
-                                            moduleIndex,
-                                            lessonIndex,
-                                            "videoDuration",
-                                            parseInt(e.target.value) || 0
-                                          )
-                                        }
-                                        placeholder="e.g., 45"
-                                        className="text-sm"
-                                      />
-                                    </div>
-                                  </div>
-                                )}
-                            </div>
-                          )}
-
-                          {lesson.contentType === "ARTICLE" && (
-                            <Textarea
-                              value={lesson.articleContent || ""}
-                              onChange={(e) =>
-                                updateLesson(
-                                  moduleIndex,
-                                  lessonIndex,
-                                  "articleContent",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Article content..."
-                              rows={4}
-                              className="text-sm"
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addRequirement}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Requirement
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Additional Info */}
-          <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-50 border-b">
-              <CardTitle className="text-xl text-gray-900">
-                Additional Information
+          {/* Pricing */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Pricing
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div>
-                <Label htmlFor="prerequisites">Prerequisites</Label>
-                <Textarea
-                  id="prerequisites"
-                  value={formData.prerequisites}
-                  onChange={(e) =>
-                    handleFieldChange("prerequisites", e.target.value)
-                  }
-                  placeholder="List any prerequisites for this course..."
-                  rows={4}
+            <CardContent className="space-y-6">
+              <FormField
+                control={form.control}
+                name="isFree"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Free Course</FormLabel>
+                      <FormDescription>
+                        Make this course available for free
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {!form.watch("isFree") && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Price ($)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="discountPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Discount Price ($)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormDescription>Optional</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              <FormField
+                control={form.control}
+                name="maxStudents"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Maximum Students</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="1"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Optional. Leave empty for unlimited enrollment
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Course Completion Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Course Completion Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="hasFinalAssessment"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Final Assessment
+                        </FormLabel>
+                        <FormDescription>
+                          Add a final assessment for the course
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch("hasFinalAssessment") && (
+                  <div className="space-y-4 pl-4 border-l-2">
+                    <FormField
+                      control={form.control}
+                      name="finalAssessmentRequired"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between">
+                          <div className="space-y-0.5">
+                            <FormLabel>Assessment Required</FormLabel>
+                            <FormDescription>
+                              Students must pass to complete course
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="minimumCoursePassingScore"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Minimum Passing Score</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 60)}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Score required to pass (0-100)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                <Separator />
+
+                <FormField
+                  control={form.control}
+                  name="requireAllModulesComplete"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel>Require All Modules Complete</FormLabel>
+                        <FormDescription>
+                          Students must complete all modules
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="requireAllAssessmentsPassed"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel>Require All Assessments Passed</FormLabel>
+                        <FormDescription>
+                          Students must pass all required assessments
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
                 />
               </div>
             </CardContent>
           </Card>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-6 pb-8">
-            <Button type="button" variant="outline" asChild>
-              <Link href="/dashboard/college/courses">Cancel</Link>
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {loading ? "Creating…" : "Create Course"}
-            </Button>
-          </div>
-        </form>
-      </div>
+          {/* Status & Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Status & Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="DRAFT">Draft</SelectItem>
+                        <SelectItem value="PENDING_APPROVAL">
+                          Pending Approval
+                        </SelectItem>
+                        <SelectItem value="PUBLISHED">Published</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Save as draft or submit for approval
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-      {/* Assessment Editor Modal */}
-      {renderAssessmentEditor()}
+              <div className="flex justify-end gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push("/dashboard/college/courses")}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Creating..." : "Create Course"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </form>
+      </Form>
     </div>
   );
 }

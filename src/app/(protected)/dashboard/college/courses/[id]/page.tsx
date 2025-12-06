@@ -1,108 +1,73 @@
-/*eslint-disable @typescript-eslint/no-unused-vars */
-// src/app/(protected)/dashboard/college/courses/[id]/page.tsx
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
-  Building2,
-  CheckCircle,
-  ChevronDown,
-  Clock,
   Edit,
-  Eye,
-  ListTree,
-  Plus,
-  Save,
-  Star,
   Trash2,
+  Plus,
+  Eye,
+  FileText,
   Users,
-  X,
-  XCircle,
+  Clock,
+  Award,
+  CheckSquare,
+  BookOpen,
+  Layers,
+  GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import Swal from "sweetalert2";
-
-type Assessment = {
-  id: string;
-  title: string;
-  description: string | null;
-  assessmentLevel: "LESSON_QUIZ" | "MODULE_ASSESSMENT" | "COURSE_FINAL";
-  passingScore: number;
-  questions?: Question[];
-};
-
-type Question = {
-  id: string;
-  questionText: string;
-  questionType: string;
-  options: string[];
-  correctAnswer: string;
-};
-type LearningOutcome = {
-  id: string;
-  outcome: string;
-  sortOrder: number;
-};
-
-type Requirement = {
-  id: string;
-  requirement: string;
-  sortOrder: number;
-};
+import Image from "next/image";
+import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { LoadingState } from "@/components/college/shared/LoadingState";
+import HierarchyBreadcrumb from "@/components/college/shared/HierarchyBreadcrumb";
+import { EmptyState } from "@/components/college/shared/EmptyState";
 
 type Course = {
   id: string;
-  slug: string;
   title: string;
+  slug: string;
   shortDescription: string;
   description: string;
-  status: string;
+  thumbnailUrl: string | null;
+  previewVideoUrl: string | null;
+  duration: string | null;
   level: string;
-  duration: string;
   language: string;
+  prerequisites: string | null;
+  status: string;
   isFeatured: boolean;
-  isFree: boolean;
-  price: number;
-  discountPrice: number | null;
   maxStudents: number | null;
   currentEnrollments: number;
-  createdAt: string;
-  publishedAt: string | null;
-  collegeName: string | null;
-  categoryName: string | null;
-  thumbnailUrl: string | null;
-  outcomes?: LearningOutcome[]; // Add this
-  requirements?: Requirement[];
-  previewVideoUrl: string | null;
-};
-
-type Lesson = {
-  id: string;
-  title: string;
-  description: string | null;
-  contentType: string;
-  videoUrl: string | null;
-  videoDuration: number | null;
-  articleContent: string | null;
   isFree: boolean;
-  sortOrder: number;
-  quizUrl: string;
+  price: number | null;
+  discountPrice: number | null;
+  hasFinalAssessment: boolean;
+  finalAssessmentRequired: boolean;
+  minimumCoursePassingScore: number;
+  requireAllModulesComplete: boolean;
+  requireAllAssessmentsPassed: boolean;
   createdAt: string;
   updatedAt: string;
+  publishedAt: string | null;
+  categoryName?: string;
+  collegeName?: string;
+  learningOutcomes: { id: string; outcome: string }[];
+  requirements: { id: string; requirement: string }[];
+  faculty: any[];
+  assessments: any[];
 };
 
 type Module = {
@@ -110,1181 +75,792 @@ type Module = {
   title: string;
   description: string | null;
   sortOrder: number;
+  hasAssessment: boolean;
+  assessmentRequired: boolean;
+  minimumPassingScore: number;
+  requireAllLessonsComplete: boolean;
   lessons: Lesson[];
+};
+
+type Lesson = {
+  id: string;
+  title: string;
+  description: string | null;
+  contentType: string;
+  sortOrder: number;
+  isFree: boolean;
+  hasQuiz: boolean;
+  quizRequired: boolean;
+};
+
+type Assessment = {
+  id: string;
+  title: string;
+  assessmentLevel: string;
+  description: string | null;
+  passingScore: number;
+  questionsCount: number;
+  timeLimit: number | null;
+  maxAttempts: number | null;
+  isRequired: boolean;
+  showCorrectAnswers: boolean;
+  allowRetake: boolean;
+  randomizeQuestions: boolean;
+  availableFrom: string | null;
+  availableUntil: string | null;
+  lessonId: string | null;
+  moduleId: string | null;
 };
 
 export default function ViewCoursePage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const [course, setCourse] = useState<Course | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showModuleForm, setShowModuleForm] = useState(false);
-  const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [curriculum, setCurriculum] = useState<Module[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [expandedAssessments, setExpandedAssessments] = useState<string[]>([]);
-  const [expandedModules, setExpandedModules] = useState<string[]>([]);
-  const [moduleForm, setModuleForm] = useState({
-    title: "",
-    description: "",
-  });
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
 
-    const fetchCourse = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/courses?id=${params.id}`);
-      const response = await res.json();
-
-      if (response.success) {
-        setCourse(response.data);
-      } else {
-        throw new Error("Course not found");
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire({
-        icon: "error",
-        title: "Not Found",
-        text: "Course not found",
-      });
-      router.back();
-    } finally {
-      setLoading(false);
-    }
-  }, [params.id, router]);
-
-  // Wrap fetchCurriculum in useCallback
-  const fetchCurriculum = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&curriculum=true`);
-      const response = await res.json();
-
-      if (response.success) {
-        setModules(response.data.modules || []);
-      } else {
-        console.error("Failed to fetch curriculum:", response.error);
-      }
-    } catch (err) {
-      console.error("Failed to fetch curriculum:", err);
-    }
-  }, [params.id]);
-
-  // Wrap fetchAssessments in useCallback
-  const fetchAssessments = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&assessments=true`);
-      const response = await res.json();
-
-      if (response.success) {
-        const assessmentsData = response.data?.assessments || [];
-
-        // Fetch questions for each assessment
-        const assessmentsWithQuestions = await Promise.all(
-          assessmentsData.map(async (assessment: Assessment) => {
-            const questionsRes = await fetch(
-              `/api/assessments?id=${assessment.id}&questions=true`
-            );
-            const questionsData = await questionsRes.json();
-
-            return {
-              ...assessment,
-              questions: questionsData.success
-                ? questionsData.data?.questions || []
-                : [],
-            };
-          })
-        );
-
-        setAssessments(assessmentsWithQuestions);
-      }
-    } catch (err) {
-      console.error("Failed to fetch assessments:", err);
-    }
-  }, [params.id]);
-
-  // Update useEffect with proper dependencies
   useEffect(() => {
     if (params.id) {
-      fetchCourse();
+      fetchCourseData();
       fetchCurriculum();
       fetchAssessments();
     }
-  }, [params.id, fetchCourse, fetchCurriculum, fetchAssessments]);
+  }, [params.id]);
+
+  const fetchCourseData = async () => {
+    try {
+      const response = await fetch(`/api/courses?id=${params.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setCourse(data.data);
+      } else {
+        throw new Error("Course not found");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch course data",
+        variant: "destructive",
+      });
+      router.push("/dashboard/college/courses");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCurriculum = async () => {
+    try {
+      const response = await fetch(`/api/courses?id=${params.id}&curriculum=true`);
+      const data = await response.json();
+      if (data.success) {
+        setCurriculum(data.data.modules || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch curriculum:", error);
+    }
+  };
+
+  const fetchAssessments = async () => {
+    try {
+      const response = await fetch(`/api/courses?id=${params.id}&assessments=true`);
+      const data = await response.json();
+      if (data.success) {
+        setAssessments(data.data.assessments || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch assessments:", error);
+    }
+  };
 
   const handleDelete = async () => {
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, delete it!",
-    });
-
-    if (!result.isConfirmed) return;
+    if (!confirm("Are you sure you want to delete this course?")) return;
 
     try {
-      const res = await fetch(`/api/courses?id=${params.id}`, {
+      const response = await fetch(`/api/courses?id=${params.id}`, {
         method: "DELETE",
       });
-      const response = await res.json();
+      const data = await response.json();
 
-      if (response.success) {
-        await Swal.fire({
-          icon: "success",
-          title: "Deleted!",
-          text: "Course deleted successfully",
-          timer: 2000,
-          showConfirmButton: false,
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Course deleted successfully",
         });
         router.push("/dashboard/college/courses");
       } else {
-        Swal.fire({
-          icon: "error",
+        toast({
           title: "Error",
-          text: response.error?.message || "Delete failed",
+          description: data.error?.message || "Failed to delete course",
+          variant: "destructive",
         });
       }
-    } catch (err) {
-      console.error(err);
-      Swal.fire({
-        icon: "error",
+    } catch (error) {
+      toast({
         title: "Error",
-        text: "Error deleting course",
+        description: "Failed to delete course",
+        variant: "destructive",
       });
-    }
-  };
-  const toggleModule = (moduleId: string) => {
-    setExpandedModules((prev) =>
-      prev.includes(moduleId)
-        ? prev.filter((id) => id !== moduleId)
-        : [...prev, moduleId]
-    );
-  };
-  const toggleAssessment = (assessmentId: string) => {
-    setExpandedAssessments((prev) =>
-      prev.includes(assessmentId)
-        ? prev.filter((id) => id !== assessmentId)
-        : [...prev, assessmentId]
-    );
-  };
-  const handleApprove = async () => {
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&approve=true`, {
-        method: "POST",
-      });
-      const response = await res.json();
-
-      if (response.success) {
-        Swal.fire({
-          icon: "success",
-          title: "Approved!",
-          text: "Course has been approved.",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-        fetchCourse();
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: response.error?.message || "Approval failed",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Error approving course",
-      });
-    }
-  };
-
-  const handleReject = async () => {
-    const { value: reason } = await Swal.fire({
-      title: "Reject Course",
-      input: "textarea",
-      inputLabel: "Rejection Reason",
-      inputPlaceholder: "Please provide a reason for rejection...",
-      showCancelButton: true,
-      inputValidator: (value) => {
-        if (!value) {
-          return "You need to provide a reason!";
-        }
-      },
-    });
-
-    if (!reason) return;
-
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&reject=true`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-      const response = await res.json();
-
-      if (response.success) {
-        Swal.fire("Rejected", "Course has been rejected.", "success");
-        fetchCourse();
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "Error rejecting course", "error");
-    }
-  };
-
-  const handlePublish = async () => {
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&publish=true`, {
-        method: "PUT",
-      });
-      const response = await res.json();
-
-      if (response.success) {
-        Swal.fire({
-          icon: "success",
-          title: "Published!",
-          text: "Course is now live.",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-        fetchCourse();
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: response.error?.message || "Publish failed",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "Error publishing course", "error");
-    }
-  };
-
- 
-
-  const handleAddModule = () => {
-    setShowModuleForm(true);
-    setEditingModule(null);
-    setModuleForm({ title: "", description: "" });
-  };
-
-  const handleEditModule = (module: Module) => {
-    setEditingModule(module);
-    setModuleForm({
-      title: module.title,
-      description: module.description || "",
-    });
-    setShowModuleForm(true);
-  };
-
-  const handleSaveModule = async () => {
-    if (!moduleForm.title.trim()) {
-      Swal.fire("Error", "Module title is required", "error");
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/courses?id=${params.id}&modules=true`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(moduleForm),
-      });
-
-      const response = await res.json();
-
-      if (response.success) {
-        Swal.fire({
-          icon: "success",
-          title: "Module Added!",
-          timer: 1500,
-          showConfirmButton: false,
-        });
-        setShowModuleForm(false);
-        setModuleForm({ title: "", description: "" });
-        fetchCurriculum(); // Change this from fetchModules() to fetchCurriculum()
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "Failed to add module", "error");
     }
   };
 
   const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      DRAFT: "bg-gray-500",
-      PENDING_APPROVAL: "bg-yellow-500",
-      APPROVED: "bg-blue-500",
-      PUBLISHED: "bg-green-500",
-      REJECTED: "bg-red-500",
-     
-    };
-    return colors[status] || "bg-gray-500";
+    switch (status) {
+      case "PUBLISHED":
+        return "bg-green-100 text-green-800";
+      case "DRAFT":
+        return "bg-gray-100 text-gray-800";
+      case "PENDING_APPROVAL":
+        return "bg-yellow-100 text-yellow-800";
+      case "APPROVED":
+        return "bg-blue-100 text-blue-800";
+      case "REJECTED":
+        return "bg-red-100 text-red-800";
+      case "ARCHIVED":
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
   };
 
   if (loading || !course) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <LoadingState message="Loading course..." />;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="relative py-8 mb-8 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl">
-            <div className="flex items-center justify-between mb-6">
-              <Link
-                href="/dashboard/college/courses"
-                className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Courses
-              </Link>
-
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs bg-white">
-                  ADMIN VIEW
-                </Badge>
-                <Badge
-                  className={`text-white ${getStatusColor(course.status)}`}
-                >
-                  {course.status.replace(/_/g, " ")}
-                </Badge>
-                {course.isFeatured && (
-                  <Badge className="bg-yellow-500 text-white">
-                    <Star className="h-3 w-3 mr-1" />
-                    Featured
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                {course.title}
-              </h1>
-              {course.shortDescription && (
-                <p className="text-lg text-gray-600 mb-6">
-                  {course.shortDescription}
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Badge variant="outline" className="bg-white">
-                {course.categoryName || "Uncategorized"}
-              </Badge>
-              <Badge variant="outline" className="bg-white">
-                {course.level}
-              </Badge>
-              <Badge variant="outline" className="bg-white">
-                {course.language}
-              </Badge>
-              {course.collegeName && (
-                <Badge
-                  variant="outline"
-                  className="bg-white flex items-center gap-1"
-                >
-                  <Building2 className="h-3 w-3" />
-                  {course.collegeName}
-                </Badge>
-              )}
-            </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <Link
+            href="/dashboard/college/courses"
+            className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Courses
+          </Link>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold">{course.title}</h1>
+            <Badge className={getStatusColor(course.status)}>
+              {course.status.replace(/_/g, " ")}
+            </Badge>
+            {course.isFeatured && <Badge variant="secondary">Featured</Badge>}
           </div>
+          <p className="text-muted-foreground mt-2">{course.shortDescription}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/dashboard/college/courses/${params.id}/edit`)}
+            className="gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Edit
+          </Button>
+          <Button variant="destructive" onClick={handleDelete} className="gap-2">
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Course Overview */}
-            <Card>
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-50">
-                <CardTitle>Course Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {course.description || "No description provided."}
-                </p>
+      {/* Breadcrumb */}
+      <HierarchyBreadcrumb
+        items={[
+          { label: "Courses", href: "/dashboard/college/courses" },
+          { label: course.title, href: `#` },
+        ]}
+      />
 
-                <div className="grid sm:grid-cols-2 gap-6 mt-6 p-4 bg-blue-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Clock className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="text-sm text-gray-600">Duration</p>
-                      <p className="font-semibold">
-                        {course.duration || "Not specified"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Users className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="text-sm text-gray-600">Enrolled</p>
-                      <p className="font-semibold">
-                        {course.currentEnrollments}
-                        {course.maxStudents && ` / ${course.maxStudents}`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            {/* Learning Outcomes */}
-            {course.outcomes && course.outcomes.length > 0 && (
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
+          <TabsTrigger value="assessments">Assessments</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Course Image */}
               <Card>
-                <CardHeader className="bg-gradient-to-r from-green-50 to-green-50">
-                  <CardTitle>Learning Outcomes</CardTitle>
-                  <CardDescription>
-                    What students will learn from this course
-                  </CardDescription>
+                <div className="relative aspect-video bg-muted">
+                  {course.thumbnailUrl ? (
+                    <Image
+                      src={course.thumbnailUrl}
+                      alt={course.title}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <BookOpen className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Description */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Description</CardTitle>
                 </CardHeader>
-                <CardContent className="p-6">
-                  <ul className="space-y-3">
-                    {course.outcomes.map((outcome, index) => (
-                      <li key={outcome.id} className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
-                          {index + 1}
-                        </div>
-                        <span className="text-gray-700">{outcome.outcome}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <CardContent>
+                  <div
+                    className="prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: course.description }}
+                  />
                 </CardContent>
               </Card>
-            )}
 
-            {/* Requirements */}
-            {course.requirements && course.requirements.length > 0 && (
-              <Card>
-                <CardHeader className="bg-gradient-to-r from-orange-50 to-orange-50">
-                  <CardTitle>Requirements</CardTitle>
-                  <CardDescription>
-                    What students need before taking this course
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <ul className="space-y-3">
-                    {course.requirements.map((requirement, index) => (
-                      <li
-                        key={requirement.id}
-                        className="flex items-start gap-3"
-                      >
-                        <div className="flex-shrink-0 w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
-                          {index + 1}
-                        </div>
-                        <span className="text-gray-700">
-                          {requirement.requirement}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Curriculum */}
-            <Card>
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Course Curriculum</CardTitle>
-                    <CardDescription>
-                      {modules?.length || 0} modules •{" "}
-                      {modules?.reduce(
-                        (total, module) =>
-                          total + (module.lessons?.length || 0),
-                        0
-                      ) || 0}{" "}
-                      lessons
-                    </CardDescription>
-                  </div>
-                  <Button onClick={handleAddModule} size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Module
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {showModuleForm && (
-                  <Card className="mb-4 border-2 border-blue-200">
-                    <CardContent className="p-4 space-y-4">
-                      <div>
-                        <Label>Module Title *</Label>
-                        <Input
-                          value={moduleForm.title}
-                          onChange={(e) =>
-                            setModuleForm({
-                              ...moduleForm,
-                              title: e.target.value,
-                            })
-                          }
-                          placeholder="Introduction to Web Development"
-                        />
-                      </div>
-                      <div>
-                        <Label>Description</Label>
-                        <Textarea
-                          value={moduleForm.description}
-                          onChange={(e) =>
-                            setModuleForm({
-                              ...moduleForm,
-                              description: e.target.value,
-                            })
-                          }
-                          placeholder="Module description..."
-                          rows={3}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button onClick={handleSaveModule} size="sm">
-                          <Save className="h-4 w-4 mr-2" />
-                          Save Module
-                        </Button>
-                        <Button
-                          onClick={() => setShowModuleForm(false)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Cancel
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {!modules || modules.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <ListTree className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                    <p>No modules added yet.</p>
-                    <p className="text-sm mt-2">
-                      Add modules to structure your course content.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {modules.map((module, index) => (
-                      <div
-                        key={module.id}
-                        className="border rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        {/* Module Header */}
-                        <div
-                          className="flex items-start gap-3 p-4 cursor-pointer"
-                          onClick={() => toggleModule(module.id)}
-                        >
-                          <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold text-sm mt-1">
-                            {index + 1}
+              {/* Learning Outcomes */}
+              {course.learningOutcomes && course.learningOutcomes.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Award className="h-5 w-5" />
+                      Learning Outcomes
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3">
+                      {course.learningOutcomes.map((outcome) => (
+                        <li key={outcome.id} className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
+                            ✓
                           </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900">
+                          <span className="text-gray-700">{outcome.outcome}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Requirements */}
+              {course.requirements && course.requirements.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CheckSquare className="h-5 w-5" />
+                      Requirements
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3">
+                      {course.requirements.map((requirement) => (
+                        <li key={requirement.id} className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
+                            ✓
+                          </div>
+                          <span className="text-gray-700">{requirement.requirement}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-6">
+              {/* Quick Actions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button
+                    asChild
+                    className="w-full justify-start gap-2"
+                    variant="outline"
+                  >
+                    <Link href={`/dashboard/college/modules/create?courseId=${params.id}`}>
+                      <Layers className="h-4 w-4" />
+                      Add Module
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    className="w-full justify-start gap-2"
+                    variant="outline"
+                  >
+                    <Link href={`/dashboard/college/assessments/create?courseId=${params.id}&level=course`}>
+                      <GraduationCap className="h-4 w-4" />
+                      Add Final Assessment
+                    </Link>
+                  </Button>
+                  <Button
+                    onClick={() => setActiveTab("curriculum")}
+                    className="w-full justify-start gap-2"
+                    variant="outline"
+                  >
+                    <Eye className="h-4 w-4" />
+                    View Curriculum
+                  </Button>
+                  {course.status === "DRAFT" && (
+                    <Button className="w-full gap-2">
+                      <FileText className="h-4 w-4" />
+                      Publish Course
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Course Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Course Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Level</span>
+                      <span className="font-medium">{course.level}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Language</span>
+                      <span className="font-medium">{course.language}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Duration</span>
+                      <span className="font-medium">{course.duration || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Students</span>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{course.currentEnrollments}</span>
+                        {course.maxStudents && (
+                          <span className="text-sm text-muted-foreground">
+                            / {course.maxStudents}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Created</span>
+                      <span className="font-medium">
+                        {format(new Date(course.createdAt), "MMM d, yyyy")}
+                      </span>
+                    </div>
+                    {course.publishedAt && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Published</span>
+                        <span className="font-medium">
+                          {format(new Date(course.publishedAt), "MMM d, yyyy")}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Price</span>
+                      <span className="font-medium">
+                        {course.isFree ? "Free" : `$${course.price}`}
+                      </span>
+                    </div>
+                    {course.discountPrice && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Discount</span>
+                        <span className="font-medium text-green-600">
+                          ${course.discountPrice}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Completion Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Completion Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Final Assessment</span>
+                    <Badge variant={course.hasFinalAssessment ? "default" : "outline"}>
+                      {course.hasFinalAssessment ? "Enabled" : "Disabled"}
+                    </Badge>
+                  </div>
+                  {course.hasFinalAssessment && (
+                    <div className="pl-4 border-l-2 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Required</span>
+                        <Badge variant={course.finalAssessmentRequired ? "default" : "outline"}>
+                          {course.finalAssessmentRequired ? "Yes" : "No"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Passing Score</span>
+                        <span className="font-medium">{course.minimumCoursePassingScore}%</span>
+                      </div>
+                    </div>
+                  )}
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">All Modules Complete</span>
+                    <Badge variant={course.requireAllModulesComplete ? "default" : "outline"}>
+                      {course.requireAllModulesComplete ? "Required" : "Optional"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">All Assessments Passed</span>
+                    <Badge variant={course.requireAllAssessmentsPassed ? "default" : "outline"}>
+                      {course.requireAllAssessmentsPassed ? "Required" : "Optional"}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Curriculum Tab */}
+        <TabsContent value="curriculum" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Course Curriculum</CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Link href={`/dashboard/college/modules/create?courseId=${params.id}`}>
+                      <Plus className="h-4 w-4" />
+                      Add Module
+                    </Link>
+                  </Button>
+                  {course.hasFinalAssessment && (
+                    <Button
+                      asChild
+                      className="gap-2"
+                    >
+                      <Link href={`/dashboard/college/assessments/create?courseId=${params.id}&level=course`}>
+                        <GraduationCap className="h-4 w-4" />
+                        Add Final Assessment
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {curriculum.length === 0 ? (
+                <EmptyState
+                  title="No curriculum yet"
+                  description="Add your first module to get started"
+                  action={
+                    <Link href={`/dashboard/college/modules/create?courseId=${params.id}`}>
+                      <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Module
+                      </Button>
+                    </Link>
+                  }
+                />
+              ) : (
+                <div className="space-y-6">
+                  {curriculum.map((module) => (
+                    <Card key={module.id}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="flex items-center gap-2">
+                              <Layers className="h-5 w-5 text-muted-foreground" />
                               {module.title}
-                            </h4>
+                            </CardTitle>
                             {module.description && (
-                              <p className="text-sm text-gray-600 mt-1">
+                              <p className="text-sm text-muted-foreground mt-1">
                                 {module.description}
                               </p>
                             )}
-                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                              <span>{module.lessons?.length || 0} lessons</span>
-                              <span>•</span>
-                              <span>Sort order: {module.sortOrder}</span>
-                            </div>
                           </div>
-                          {/* <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditModule(module);
-                }}
-              >
-                <Edit className="h-4 w-4" />
-              </Button> */}
-                          <ChevronDown
-                            className={`h-5 w-5 text-gray-400 transition-transform ${
-                              expandedModules.includes(module.id)
-                                ? "rotate-180"
-                                : ""
-                            }`}
-                          />
-                        </div>
-
-                        {/* Lessons Section */}
-                        {expandedModules.includes(module.id) && (
-                          <div className="border-t bg-gray-50">
-                            {!module.lessons || module.lessons.length === 0 ? (
-                              <div className="p-4 text-center text-gray-500 text-sm">
-                                No lessons in this module yet.
-                              </div>
-                            ) : (
-                              <div className="space-y-2 p-4">
-                                {module.lessons.map((lesson, lessonIndex) => (
-                                  <div
-                                    key={lesson.id}
-                                    className="flex items-start gap-3 p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow"
-                                  >
-                                    <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-semibold mt-1">
-                                      {lessonIndex + 1}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-start justify-between">
-                                        <div>
-                                          <h5 className="font-medium text-gray-900 text-sm">
-                                            {lesson.title}
-                                          </h5>
-                                          {lesson.description && (
-                                            <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                                              {lesson.description}
-                                            </p>
-                                          )}
-                                        </div>
-                                        {lesson.isFree && (
-                                          <Badge
-                                            variant="outline"
-                                            className="text-xs bg-green-50 text-green-700"
-                                          >
-                                            Free
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                        <Badge
-                                          variant="outline"
-                                          className="text-xs"
-                                        >
-                                          {lesson.contentType}
-                                        </Badge>
-                                        {lesson.videoDuration && (
-                                          <>
-                                            <span>•</span>
-                                            <span>
-                                              {Math.floor(
-                                                lesson.videoDuration / 60
-                                              )}
-                                              m {lesson.videoDuration % 60}s
-                                            </span>
-                                          </>
-                                        )}
-                                        <span>•</span>
-                                        <span>Sort: {lesson.sortOrder}</span>
-                                      </div>
-                                      {/* Show Video Link */}
-                                      {lesson.contentType === "VIDEO" &&
-                                        lesson.videoUrl && (
-                                          <div className="mt-2">
-                                            <a
-                                              href={lesson.videoUrl}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                                            >
-                                              📹 Video Link
-                                            </a>
-                                          </div>
-                                        )}
-
-                                      {/* Show Quiz Link */}
-                                      {lesson.contentType === "QUIZ" &&
-                                        lesson.quizUrl && (
-                                          <div className="mt-2">
-                                            <a
-                                              href={lesson.quizUrl}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-xs text-purple-600 hover:text-purple-800 hover:underline"
-                                            >
-                                              📝 Quiz Link
-                                            </a>
-                                          </div>
-                                        )}
-
-                                      {/* Show Article Preview */}
-                                      {lesson.contentType === "ARTICLE" &&
-                                        lesson.articleContent && (
-                                          <div className="mt-2">
-                                            <p className="text-xs text-gray-600 line-clamp-3">
-                                              {lesson.articleContent.substring(
-                                                0,
-                                                100
-                                              )}
-                                              ...
-                                            </p>
-                                          </div>
-                                        )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">
+                              Sort: {module.sortOrder}
+                            </Badge>
+                            {module.hasAssessment && (
+                              <Badge variant="secondary">Assessment</Badge>
                             )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Assessments Section */}
-            <Card className="border-green-100 shadow-sm">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <svg
-                      className="h-5 w-5 text-green-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <CardTitle className="text-green-900">
-                      Assessments & Quizzes
-                    </CardTitle>
-                    <CardDescription className="text-green-700">
-                      {assessments.length} assessment
-                      {assessments.length !== 1 ? "s" : ""} • Total{" "}
-                      {assessments.reduce(
-                        (acc, a) => acc + (a.questions?.length || 0),
-                        0
-                      )}{" "}
-                      questions
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {assessments.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full  flex items-center justify-center">
-                      <svg
-                        className="h-8 w-8 text-green-500"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
-                    </div>
-                    <p className="text-gray-600 mb-2">
-                      No assessments added yet
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Add assessments to test student knowledge
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {assessments.map((assessment) => (
-                      <div
-                        key={assessment.id}
-                        className="border border-green-200 rounded-lg overflow-hidden bg-white  transition-all duration-200 hover:shadow-md"
-                      >
-                        {/* Assessment Header */}
-                        <div
-                          className="flex items-center justify-between p-4 cursor-pointer  transition-colors"
-                          onClick={() => toggleAssessment(assessment.id)}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="p-2 rounded-lg">
-                              {assessment.assessmentLevel === "LESSON_QUIZ" && (
-                                <svg
-                                  className="h-5 w-5 text-green-600"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                                  />
-                                </svg>
-                              )}
-                              {assessment.assessmentLevel ===
-                                "MODULE_ASSESSMENT" && (
-                                <svg
-                                  className="h-5 w-5 text-emerald-600"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                                  />
-                                </svg>
-                              )}
-                              {assessment.assessmentLevel ===
-                                "COURSE_FINAL" && (
-                                <svg
-                                  className="h-5 w-5 text-green-700"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                                  />
-                                </svg>
-                              )}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge
-                                  className={`
-                        ${
-                          assessment.assessmentLevel === "LESSON_QUIZ"
-                            ? "bg-green-100 text-green-800 border-green-200"
-                            : ""
-                        }
-                        ${
-                          assessment.assessmentLevel === "MODULE_ASSESSMENT"
-                            ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                            : ""
-                        }
-                        ${
-                          assessment.assessmentLevel === "COURSE_FINAL"
-                            ? "bg-green-200 text-green-900 border-green-300"
-                            : ""
-                        }
-                      `}
-                                >
-                                  {assessment.assessmentLevel.replace(
-                                    /_/g,
-                                    " "
-                                  )}
-                                </Badge>
-                                <span className="text-xs px-2 py-1 rounded">
-                                  Passing: {assessment.passingScore}%
-                                </span>
-                              </div>
-                              <h4 className="font-semibold ">
-                                {assessment.title}
-                              </h4>
-                              {assessment.description && (
-                                <p className="text-sm  mt-1">
-                                  {assessment.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <div className="text-sm font-medium">
-                                {assessment.questions?.length || 0} questions
-                              </div>
-                              <div className="text-xs ">
-                                Click to{" "}
-                                {expandedAssessments.includes(assessment.id)
-                                  ? "collapse"
-                                  : "expand"}
-                              </div>
-                            </div>
-                            <ChevronDown
-                              className={`h-5 w-5  transition-transform duration-200 ${
-                                expandedAssessments.includes(assessment.id)
-                                  ? "rotate-180"
-                                  : ""
-                              }`}
-                            />
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="ghost"
+                            >
+                              <Link href={`/dashboard/college/modules/${module.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="ghost"
+                            >
+                              <Link href={`/dashboard/college/modules/${module.id}/edit`}>
+                                <Edit className="h-4 w-4" />
+                              </Link>
+                            </Button>
                           </div>
                         </div>
-
-                        {/* Questions Section */}
-                        {expandedAssessments.includes(assessment.id) && (
-                          <div className="border-t border-green-100  p-6">
-                            <div className="mb-4 flex items-center justify-between">
-                              <h5 className="font-semibold">
-                                Questions Preview
-                              </h5>
-                              <Badge
-                                variant="outline"
-                                className="border-green-200 text-green-700"
-                              >
-                                {assessment.questions?.length || 0} total
-                              </Badge>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {module.lessons.length === 0 ? (
+                            <div className="text-center py-4 text-muted-foreground">
+                              No lessons in this module
                             </div>
-                            <div className="space-y-4">
-                              {assessment.questions?.map((question, index) => (
+                          ) : (
+                            <div className="space-y-3">
+                              {module.lessons.map((lesson) => (
                                 <div
-                                  key={question.id}
-                                  className="bg-white border border-green-200 rounded-lg p-4"
+                                  key={lesson.id}
+                                  className="flex items-center justify-between p-3 border rounded-lg"
                                 >
-                                  <div className="flex gap-6 items-center mb-3">
-                                    <div className="flex items-center gap-3">
-                                      <h6 className="font-medium text-green-900">
-                                        Q{index + 1}
-                                      </h6>
-                                    </div>
+                                  <div className="flex items-center gap-3">
+                                    <BookOpen className="h-4 w-4 text-muted-foreground" />
                                     <div>
-                                      <p className="text-gray-800">
-                                        {question.questionText}
-                                      </p>
-                                    </div>
-                                    <Badge
-                                      variant="outline"
-                                      className="border-green-200 text-green-700 "
-                                    >
-                                      {question.questionType.replace(/_/g, " ")}
-                                    </Badge>
-                                  </div>
-
-                                  <div className="ml-11 space-y-2">
-                                    {question.questionType ===
-                                      "MULTIPLE_CHOICE" &&
-                                      question.options && (
-                                        <div className="space-y-2">
-                                          {question.options.map(
-                                            (
-                                              option: string,
-                                              optIndex: number
-                                            ) => (
-                                              <div
-                                                key={optIndex}
-                                                className={`flex items-center gap-3 p-2 rounded border ${
-                                                  question.correctAnswer ===
-                                                  option
-                                                    ? "bg-green-50 border-green-300"
-                                                    : "bg-gray-50 border-gray-200"
-                                                }`}
-                                              >
-                                                <div
-                                                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                                                    question.correctAnswer ===
-                                                    option
-                                                      ? "border-green-500 bg-green-500"
-                                                      : "border-gray-400"
-                                                  }`}
-                                                >
-                                                  {question.correctAnswer ===
-                                                    option && (
-                                                    <div className="w-2 h-2 rounded-full bg-white"></div>
-                                                  )}
-                                                </div>
-                                                <span
-                                                  className={`text-sm ${
-                                                    question.correctAnswer ===
-                                                    option
-                                                      ? "text-green-800 font-medium"
-                                                      : "text-gray-700"
-                                                  }`}
-                                                >
-                                                  {option}
-                                                </span>
-                                                {question.correctAnswer ===
-                                                  option && (
-                                                  <Badge className="bg-green-100 text-green-800 border-green-200 text-xs ml-auto">
-                                                    Correct
-                                                  </Badge>
-                                                )}
-                                              </div>
-                                            )
-                                          )}
-                                        </div>
-                                      )}
-                                    {question.questionType === "TRUE_FALSE" && (
-                                      <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                                        <div className="w-8 h-8 bg-green-100 text-green-800 rounded-full flex items-center justify-center">
-                                          ✓
-                                        </div>
-                                        <div>
-                                          <p className="text-sm text-green-800">
-                                            Correct answer:
-                                          </p>
-                                          <p className="font-semibold text-green-900">
-                                            {question.correctAnswer}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    )}
-                                    {question.questionType ===
-                                      "SHORT_ANSWER" && (
-                                      <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
-                                        <p className="text-sm text-amber-800 mb-1">
-                                          Expected answer:
+                                      <h4 className="font-medium">{lesson.title}</h4>
+                                      {lesson.description && (
+                                        <p className="text-sm text-muted-foreground">
+                                          {lesson.description}
                                         </p>
-                                        <div className="bg-white px-3 py-2 rounded border border-amber-300">
-                                          <code className="text-amber-900">
-                                            {question.correctAnswer}
-                                          </code>
-                                        </div>
-                                      </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {lesson.isFree && (
+                                      <Badge variant="outline">Free</Badge>
                                     )}
+                                    {lesson.hasQuiz && (
+                                      <Badge variant="secondary">Quiz</Badge>
+                                    )}
+                                    <Badge variant="outline">
+                                      Sort: {lesson.sortOrder}
+                                    </Badge>
+                                    <Button
+                                      asChild
+                                      size="sm"
+                                      variant="ghost"
+                                    >
+                                      <Link href={`/dashboard/college/lessons/${lesson.id}`}>
+                                        <Eye className="h-4 w-4" />
+                                      </Link>
+                                    </Button>
+                                    <Button
+                                      asChild
+                                      size="sm"
+                                      variant="ghost"
+                                    >
+                                      <Link href={`/dashboard/college/lessons/${lesson.id}/edit`}>
+                                        <Edit className="h-4 w-4" />
+                                      </Link>
+                                    </Button>
                                   </div>
                                 </div>
                               ))}
                             </div>
+                          )}
+                          <div className="flex gap-2">
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                            >
+                              <Link href={`/dashboard/college/lessons/create?moduleId=${module.id}&courseId=${params.id}`}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Lesson
+                              </Link>
+                            </Button>
+                            {!module.hasAssessment && (
+                              <Button
+                                asChild
+                                size="sm"
+                                variant="outline"
+                              >
+                                <Link href={`/dashboard/college/assessments/create?moduleId=${module.id}&level=module`}>
+                                  <GraduationCap className="h-4 w-4 mr-2" />
+                                  Add Assessment
+                                </Link>
+                              </Button>
+                            )}
                           </div>
-                        )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Assessments Tab */}
+        <TabsContent value="assessments" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Course Assessments</CardTitle>
+                <Button
+                  asChild
+                  className="gap-2"
+                >
+                  <Link href={`/dashboard/college/assessments/create?courseId=${params.id}`}>
+                    <Plus className="h-4 w-4" />
+                    Create Assessment
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {assessments.length === 0 ? (
+                <EmptyState
+                  title="No assessments yet"
+                  description="Create assessments for your course"
+                  action={
+                    <Link href={`/dashboard/college/assessments/create?courseId=${params.id}`}>
+                      <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Assessment
+                      </Button>
+                    </Link>
+                  }
+                />
+              ) : (
+                <div className="space-y-4">
+                  {/* Group assessments by type */}
+                  {["COURSE_FINAL", "MODULE_ASSESSMENT", "LESSON_QUIZ"].map((level) => {
+                    const levelAssessments = assessments.filter(
+                      (a) => a.assessmentLevel === level
+                    );
+                    if (levelAssessments.length === 0) return null;
+
+                    return (
+                      <div key={level} className="space-y-3">
+                        <h3 className="font-semibold text-lg">
+                          {level.replace(/_/g, " ")}
+                        </h3>
+                        <div className="grid gap-4">
+                          {levelAssessments.map((assessment) => (
+                            <Card key={assessment.id}>
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h4 className="font-medium">{assessment.title}</h4>
+                                    {assessment.description && (
+                                      <p className="text-sm text-muted-foreground">
+                                        {assessment.description}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                                      <span>Passing: {assessment.passingScore}%</span>
+                                      <span>Questions: {assessment.questionsCount}</span>
+                                      {assessment.timeLimit && (
+                                        <span>Time: {assessment.timeLimit} min</span>
+                                      )}
+                                      {assessment.maxAttempts && (
+                                        <span>Attempts: {assessment.maxAttempts}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      asChild
+                                      size="sm"
+                                      variant="ghost"
+                                    >
+                                      <Link href={`/dashboard/college/assessments/${assessment.id}`}>
+                                        <Eye className="h-4 w-4" />
+                                      </Link>
+                                    </Button>
+                                    <Button
+                                      asChild
+                                      size="sm"
+                                      variant="ghost"
+                                    >
+                                      <Link href={`/dashboard/college/assessments/${assessment.id}/edit`}>
+                                        <Edit className="h-4 w-4" />
+                                      </Link>
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Pricing & Actions */}
-            <Card>
-              <CardHeader className="bg-gradient-to-r from-green-50 to-green-50">
-                <CardTitle>Course Details</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-3xl font-bold text-green-600">
-                      {course.isFree ? "Free" : `$${course.price}`}
-                    </span>
-                    {!course.isFree && course.discountPrice && (
-                      <span className="text-lg text-gray-500 line-through">
-                        ${course.discountPrice}
-                      </span>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                <div className="space-y-2 text-sm border-t pt-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Created</span>
-                    <span className="font-medium">
-                      {new Date(course.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  {course.publishedAt && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Published</span>
-                      <span className="font-medium">
-                        {new Date(course.publishedAt).toLocaleDateString()}
-                      </span>
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Analytics</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Course performance and engagement metrics
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Enrollments</p>
+                        <p className="text-2xl font-bold">{course.currentEnrollments}</p>
+                      </div>
+                      <Users className="h-8 w-8 text-muted-foreground" />
                     </div>
-                  )}
-                </div>
-
-                <div className="space-y-2 pt-4 border-t">
-                  <Button asChild variant="outline" className="w-full">
-                    <Link href={`/courses/${course.slug}`} target="_blank">
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Live Page
-                    </Link>
-                  </Button>
-
-                  <Button
-                    asChild
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Link href={`/dashboard/college/courses/${course.id}/edit`}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Course
-                    </Link>
-                  </Button>
-
-                  {course.status === "PENDING_APPROVAL" && (
-                    <>
-                      <Button
-                        onClick={handleApprove}
-                        className="w-full bg-green-600 hover:bg-green-700"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Approve
-                      </Button>
-                      <Button
-                        onClick={handleReject}
-                        className="w-full bg-red-600 hover:bg-red-700"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Reject
-                      </Button>
-                    </>
-                  )}
-
-                  {course.status === "APPROVED" && (
-                    <Button
-                      onClick={handlePublish}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Publish
-                    </Button>
-                  )}
-
-                  {/* {(course.status === "PUBLISHED" ||
-                    course.status === "APPROVED") && (
-                    <Button
-                      onClick={handleArchive}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      Archive
-                    </Button>
-                  )} */}
-
-                  <Button
-                    onClick={handleDelete}
-                    variant="destructive"
-                    className="w-full"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Course
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Technical Info */}
-            <Card>
-              <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-50">
-                <CardTitle className="text-lg">Technical Details</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">ID</span>
-                  <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-                    {course.id.slice(0, 8)}...
-                  </code>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Slug</span>
-                  <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-                    {course.slug}
-                  </code>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Completion Rate</p>
+                        <p className="text-2xl font-bold">0%</p>
+                      </div>
+                      <Award className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Avg. Score</p>
+                        <p className="text-2xl font-bold">N/A</p>
+                      </div>
+                      <GraduationCap className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="mt-6 text-center text-muted-foreground">
+                <p>Analytics data will be available after course is published and students enroll.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
