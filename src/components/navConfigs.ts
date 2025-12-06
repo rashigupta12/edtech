@@ -4,6 +4,7 @@ import {
   Award,
   BookOpen,
   Briefcase,
+  Building,
   Building2,
   Calendar,
   
@@ -58,24 +59,8 @@ export const navConfigs = {
     // College Management
     {
       title: "College Management",
-      icon: Building2,
-      children: [
-        {
-          title: "All Colleges",
-          href: "/dashboard/admin/colleges",
-          icon: List,
-        },
-        {
-          title: "College Approvals",
-          href: "/dashboard/admin/colleges/approvals",
-          icon: ClipboardList,
-        },
-        {
-          title: "College Analytics",
-          href: "/dashboard/admin/colleges/analytics",
-          icon: TrendingUp,
-        },
-      ],
+      href: "/dashboard/admin/colleges",
+      icon: Building,
     },
 
     // Course Management
@@ -139,16 +124,16 @@ export const navConfigs = {
           href: "/dashboard/admin/students",
           icon: List,
         },
-        {
-          title: "Enrollment Trends",
-          href: "/dashboard/admin/students/enrollments",
-          icon: TrendingUp,
-        },
-        {
-          title: "Student Activity",
-          href: "/dashboard/admin/students/activity",
-          icon: MessageSquare,
-        },
+        // {
+        //   title: "Enrollment Trends",
+        //   href: "/dashboard/admin/students/enrollments",
+        //   icon: TrendingUp,
+        // },
+        // {
+        //   title: "Student Activity",
+        //   href: "/dashboard/admin/students/activity",
+        //   icon: MessageSquare,
+        // },
       ],
     },
 
