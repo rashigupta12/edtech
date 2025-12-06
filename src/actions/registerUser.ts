@@ -19,7 +19,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ⭐ Futuretek Email Verification Template
+// ⭐ EduLearn LMS Email Verification Template
 function createVerificationEmail(name: string, url: string) {
   return `
   <!DOCTYPE html>
@@ -28,9 +28,28 @@ function createVerificationEmail(name: string, url: string) {
     <style>
       body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
       .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-      .header { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-      .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-      .button { background: #4facfe; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }
+      .header { 
+        background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+        color: white; 
+        padding: 30px; 
+        text-align: center; 
+        border-radius: 10px 10px 0 0; 
+      }
+      .content { 
+        background: #f5f8ff; 
+        padding: 30px; 
+        border-radius: 0 0 10px 10px; 
+      }
+      .button { 
+        background: #2563eb; 
+        color: white; 
+        padding: 12px 30px; 
+        text-decoration: none; 
+        border-radius: 6px; 
+        display: inline-block; 
+        margin-top: 20px;
+        font-weight: 600;
+      }
       .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
     </style>
   </head>
@@ -38,32 +57,33 @@ function createVerificationEmail(name: string, url: string) {
     <div class="container">
       <div class="header">
         <h1>Email Verification ✔️</h1>
-        <p>Activate your Futuretek account</p>
+        <p>Activate your EduLearn learning account</p>
       </div>
 
       <div class="content">
-        <h2>Hello ${name || "User"},</h2>
-        <p>Thank you for registering with <strong>Futuretek</strong>.</p>
-        <p>To activate your account, please click the button below:</p>
+        <h2>Hello ${name || "Learner"}, 👋</h2>
+        <p>Thank you for joining <strong>EdTech LMS</strong> — where learning and growth begin!</p>
+        <p>To unlock course access and start learning, please verify your email.</p>
 
         <a href="${url}" class="button">Verify Email</a>
 
-        <p>If the button doesn’t work, copy and paste this link in your browser:</p>
-        <p style="word-break: break-all;">
+        <p>If the button doesn’t work, copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; color:#2563eb;">
           <strong>${url}</strong>
         </p>
 
-        <p>This link is valid for only a short time.</p>
+        <p>This verification link is valid only for a limited time.</p>
       </div>
 
       <div class="footer">
-        <p>Welcome to Futuretek! 🚀</p>
+        <p>Happy learning! 🎓<br/>— EduTech LMS Team</p>
       </div>
     </div>
   </body>
   </html>
   `;
 }
+
 
 // Function to send Futuretek email
 async function sendVerificationEmail(to: string, subject: string, html: string) {

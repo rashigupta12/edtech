@@ -1,250 +1,108 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
-
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
-import {
-  AlertCircle,
-  ArrowRight,
-  BookOpen,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Crown,
-  Loader2,
-  Sparkles,
-  TrendingUp,
-  Users,
-} from "lucide-react";
-import { useSession } from "next-auth/react";
+"use client"
+import { useCurrentUser } from "@/hooks/auth";
+import { Star, Clock, Users, BookOpen, ArrowRight } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-type CourseStatus =
-  | "DRAFT"
-  | "PENDING_APPROVAL"
-  | "APPROVED"
-  | "REJECTED"
-  | "PUBLISHED"
-  | "ARCHIVED";
 
 interface Course {
   id: string;
   slug: string;
   title: string;
-  shortDescription?: string;
-  description?: string;
-  thumbnailUrl?: string | null;
-  status: CourseStatus;
+  shortDescription: string;
+  thumbnailUrl: string | null;
+  duration: string;
+  level: string;
+  language: string;
+  status: string;
+  isFeatured: boolean;
   currentEnrollments: number;
+  createdAt: string;
+  collegeName: string | null;
+  categoryName: string;
+  price: string | null;
   isFree: boolean;
-  price: number | null;
-  discountPrice: number | null;
-  isFeatured?: boolean;
-  level?: string;
-  duration?: string;
-  language?: string;
 }
 
-interface CourseCategory {
-  type: "REGISTRATION_OPEN" | "ONGOING" | "UPCOMING";
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  gradient: string;
-  courses: Course[];
-}
-
-export function CoursesCatalog() {
-  const { data: session, status } = useSession();
-  const userId = session?.user?.id as string | undefined;
-  const userRole = session?.user?.role as string | undefined;
-
+export default function FeaturedCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const scrollRefs = {
-    REGISTRATION_OPEN: useRef<HTMLDivElement>(null),
-    ONGOING: useRef<HTMLDivElement>(null),
-    UPCOMING: useRef<HTMLDivElement>(null),
+  const formatPrice = (price: string | null, isFree: boolean) => {
+    if (isFree) return "Free";
+    if (price) return `$${parseFloat(price).toFixed(2)}`;
+    return "Free";
   };
+  const user = useCurrentUser()
+  const userId = user?.id
 
-  const isAdminOrJyotishi = userRole === "ADMIN" || userRole === "JYOTISHI";
-
-  // Determine which courses should be visible
-const getVisibleCourses = useCallback((allCourses: Course[]): Course[] => {
-  if (isAdminOrJyotishi) {
-    return allCourses.filter(c => !["ARCHIVED", "REJECTED"].includes(c.status));
-  }
-  return allCourses.filter(c => c.status === "PUBLISHED");
-}, [isAdminOrJyotishi]);
-
-const getCategoryFromStatus = useCallback((status: CourseStatus): keyof typeof scrollRefs | null => {
-  if (isAdminOrJyotishi) {
-    switch (status) {
-      case "PUBLISHED":
-        return "REGISTRATION_OPEN";
-      case "APPROVED":
-        return "ONGOING";
-      case "DRAFT":
-      case "PENDING_APPROVAL":
-        return "UPCOMING";
-      default:
-        return null;
-    }
-  }
-
-  switch (status) {
-    case "PUBLISHED":
-      return "REGISTRATION_OPEN";
-    case "APPROVED":
-      return "ONGOING";
-    default:
-      return null;
-  }
-}, [isAdminOrJyotishi]);
-
-
+  // const formatDuration = (duration: string) => {
+  //   const hours = parseInt(duration);
+  //   if (hours >= 60) {
+  //     const days = Math.floor(hours / 60);
+  //     const remainingHours = hours % 60;
+  //     if (remainingHours === 0) {
+  //       return `${days}d`;
+  //     }
+  //     return `${days}d ${remainingHours}h`;
+  //   }
+  //   return `${hours}h`;
+  // };
 
   useEffect(() => {
-    let mounted = true;
-
-    async function loadData() {
+    const fetchCourses = async () => {
       try {
         setLoading(true);
-        setError(null);
-
-        const coursesRes = await fetch("/api/courses");
-        if (!coursesRes.ok) throw new Error("Failed to fetch courses");
-
-        const result = await coursesRes.json();
-        if (!result.success) throw new Error(result.error?.message || "Unknown error");
-
-        const allCourses: Course[] = result.data || [];
-        const visibleCourses = getVisibleCourses(allCourses);
-
-        if (!mounted) return;
-        setCourses(visibleCourses);
-
-        // Load enrollments if logged in
-        if (userId) {
-          const enrollRes = await fetch("/api/user/enrollments");
-          if (enrollRes.ok) {
-            const enrollData = await enrollRes.json();
-            const enrolled = new Set<string>(
-              (enrollData.enrollments || [])
-                .filter((e: any) => ["ACTIVE", "COMPLETED"].includes(e.status))
-                .map((e: any) => e.courseId as string)
-            );
-            setEnrolledCourseIds(enrolled);
-          }
+        const response = await fetch('/api/courses');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch courses: ${response.status}`);
         }
-      } catch (err: any) {
-        if (mounted) {
-          console.error("Catalog error:", err);
-          setError(err.message || "Failed to load courses");
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          const publishedCourses = data.data.filter((course: Course) => 
+            course.status === 'PUBLISHED'
+          );
+          setCourses(publishedCourses);
+        } else {
+          throw new Error('Failed to load courses');
         }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        console.error('Error fetching courses:', err);
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
-    }
-
-    if (status !== "loading") loadData();
-
-    return () => { mounted = false; };
-  }, [userId, status, isAdminOrJyotishi, getVisibleCourses]);
-
-  const courseCategories: CourseCategory[] = useMemo(() => {
-    const grouped = {
-      REGISTRATION_OPEN: [] as Course[],
-      ONGOING: [] as Course[],
-      UPCOMING: [] as Course[],
     };
 
-    courses.forEach((course) => {
-      const category = getCategoryFromStatus(course.status);
-      if (category) grouped[category].push(course);
-    });
-
-    return [
-      {
-        type: "REGISTRATION_OPEN",
-        title: "Enrolling Now",
-        description: "Open for registration",
-        icon: <TrendingUp className="h-4 w-4" />,
-        gradient: "from-blue-600 to-blue-800",
-        courses: grouped.REGISTRATION_OPEN,
-      },
-      {
-        type: "ONGOING",
-        title: "In Progress",
-        description: "Currently running",
-        icon: <BookOpen className="h-4 w-4" />,
-        gradient: "from-blue-700 to-indigo-800",
-        courses: grouped.ONGOING,
-      },
-      {
-        type: "UPCOMING",
-        title: "Coming Soon",
-        description: "Launching soon",
-        icon: <Clock className="h-4 w-4" />,
-        gradient: "from-amber-600 to-amber-800",
-        courses: grouped.UPCOMING,
-      },
-    ];
-  }, [courses, getCategoryFromStatus]);
-
-  const getPlainText = useCallback((html?: string) => {
-    if (!html) return "No description available";
-    const div = document.createElement("div");
-    div.innerHTML = html;
-    return (div.textContent || div.innerText || "").trim();
+    fetchCourses();
   }, []);
 
-const scroll = useCallback((direction: "left" | "right", category: keyof typeof scrollRefs) => {
-  const container = scrollRefs[category].current;
-  if (!container) return;
-  const scrollAmount = 296;
-  container.scrollBy({
-    left: direction === "left" ? -scrollAmount : scrollAmount,
-    behavior: "smooth",
-  });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
-
-  const getPriceDisplay = (course: Course) => {
-    if (course.isFree) {
-      return { display: "Free", original: null, hasDiscount: false };
-    }
-    const original = course.price ?? 0;
-    const discounted = course.discountPrice ?? original;
-    const hasDiscount = original > discounted;
-
-    return {
-      display: discounted,
-      original: hasDiscount ? original : null,
-      hasDiscount,
-      saveAmount: original - discounted,
-    };
-  };
-
-  // Loading / Error / Empty States
-  if (status === "loading" || loading) {
+  if (loading) {
     return (
-      <section className="py-16 bg-gradient-to-br from-slate-50 via-blue-50/30 to-amber-50/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-blue-100 inline-block">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-lg font-semibold">Loading Courses...</p>
+      <section className="py-16 px-4 bg-gradient-to-b from-emerald-50/50 to-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-10 text-center">
+            <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-full mb-4">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-emerald-900">Most Popular</span>
+            </div>
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">Featured Courses</h2>
+            <p className="text-slate-600">Loading amazing courses...</p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-2xl p-6 border border-slate-100 animate-pulse">
+                <div className="h-40 bg-slate-200 rounded-xl mb-4"></div>
+                <div className="h-5 bg-slate-200 rounded mb-3"></div>
+                <div className="h-4 bg-slate-200 rounded mb-2 w-3/4"></div>
+                <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -253,39 +111,31 @@ const scroll = useCallback((direction: "left" | "right", category: keyof typeof 
 
   if (error) {
     return (
-      <section className="py-16 bg-gradient-to-br from-slate-50 via-blue-50/30 to-amber-50/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="bg-white rounded-2xl p-8 shadow-lg border border-red-100">
-            <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold mb-2">Unable to Load Courses</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()}>
-              <ArrowRight className="h-4 w-4 mr-2" />
+      <section className="py-16 px-4 bg-gradient-to-b from-emerald-50/50 to-white">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="bg-white rounded-2xl p-8 border border-red-200">
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Oops! Something went wrong</h2>
+            <p className="text-red-600 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-700 transition font-medium"
+            >
               Try Again
-            </Button>
+            </button>
           </div>
         </div>
       </section>
     );
   }
 
-  const totalVisible = courseCategories.reduce((sum, cat) => sum + cat.courses.length, 0);
-  if (totalVisible === 0) {
+  if (courses.length === 0) {
     return (
-      <section className="py-16 bg-gradient-to-br from-slate-50 via-blue-50/30 to-amber-50/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="bg-white rounded-2xl p-12 shadow-lg border border-blue-100 max-w-2xl mx-auto">
-            <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-6" />
-            <h3 className="text-2xl font-bold mb-3">
-              {isAdminOrJyotishi
-                ? "No Published Courses Yet"
-                : "No Courses Available Yet"}
-            </h3>
-            <p className="text-gray-600">
-              {isAdminOrJyotishi
-                ? "Create and publish your first course to see it here!"
-                : "Check back soon — exciting courses are coming!"}
-            </p>
+      <section className="py-8 px-4 bg-gradient-to-b from-emerald-50/50 to-white">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="bg-white rounded-2xl p-8 border border-slate-200">
+            <BookOpen className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">No Courses Yet</h2>
+            <p className="text-slate-600">Check back soon for amazing courses!</p>
           </div>
         </div>
       </section>
@@ -293,146 +143,129 @@ const scroll = useCallback((direction: "left" | "right", category: keyof typeof 
   }
 
   return (
-    <section className="py-12 bg-gradient-to-br from-slate-50 via-blue-50/30 to-amber-50/30 relative overflow-hidden">
-      <div className="absolute inset-0 bg-grid-slate-100/25 pointer-events-none" />
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-800 to-amber-700 bg-clip-text text-transparent">
-            Our Courses
-          </h2>
-          <p className="mt-4 text-lg text-gray-600">
-            Learn from expert practitioners with structured, high-quality content
-          </p>
+    <section className="py-8 px-4 bg-gradient-to-b from-emerald-50/50 to-white">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-full mb-4">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium text-emerald-900">Most Popular</span>
+          </div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-2">Featured Courses</h2>
+          <p className="text-slate-600">Handpicked courses to accelerate your learning journey</p>
         </div>
 
-        {courseCategories.map((category) => {
-          if (category.courses.length === 0) return null;
-          const showArrows = category.courses.length > 3;
-
-          return (
-            <div key={category.type} className="mb-16">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-xl bg-gradient-to-r ${category.gradient} text-white`}>
-                    {category.icon}
+        {/* Courses Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map((course) => (
+            <div 
+              key={course.id} 
+              className="group bg-green-50 rounded-2xl overflow-hidden border border-slate-100 hover:border-emerald-300 hover:shadow-xl transition-all duration-300 cursor-pointer"
+            >
+              {/* Course Image/Thumbnail */}
+              <div className="relative h-44 bg-gradient-to-br from-emerald-500 to-emerald-700 overflow-hidden">
+                {course.thumbnailUrl ? (
+                  <Image
+                    src={course.thumbnailUrl} 
+                    alt={course.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    width={50}
+                    height={50}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center p-6">
+                    <div className="text-white text-center">
+                      <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-90" />
+                      <h3 className="text-lg font-bold">{course.title}</h3>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900">{category.title}</h3>
-                    <p className="text-gray-600">{category.description}</p>
+                )}
+                
+                {/* Level Badge */}
+                <div className="absolute top-3 right-3">
+                  <span className="bg-white/90 backdrop-blur-sm text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-200">
+                    {course.level}
+                  </span>
+                </div>
+
+                {/* Category Badge */}
+                <div className="absolute bottom-3 left-3">
+                  <span className="bg-white/90 backdrop-blur-sm text-slate-700 text-xs font-medium px-3 py-1 rounded-full">
+                    {course.categoryName}
+                  </span>
+                </div>
+              </div>
+
+              {/* Course Content */}
+              <div className="p-5">
+                {/* Title */}
+                <h3 className="text-lg font-bold text-slate-900 mb-2 line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                  {course.title}
+                </h3>
+
+                {/* College Name */}
+                {course.collegeName && (
+                  <p className="text-xs text-slate-500 mb-3">by {course.collegeName}</p>
+                )}
+
+                {/* Description */}
+                <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                  {course.shortDescription || 'Enhance your skills with this comprehensive course'}
+                </p>
+
+                {/* Stats Row */}
+                <div className="flex items-center gap-4 mb-4 text-xs text-slate-600">
+                  <div className="flex items-center gap-1">
+                    <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                    <span className="font-medium">4.5</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5" />
+                    <span>{course.currentEnrollments.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{(course.duration)}H</span>
                   </div>
                 </div>
 
-                {showArrows && (
-                  <div className="hidden md:flex gap-2">
-                    <Button variant="outline" size="icon" onClick={() => scroll("left", category.type)}>
-                      <ChevronLeft className="h-5 w-5" />
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={() => scroll("right", category.type)}>
-                      <ChevronRight className="h-5 w-5" />
-                    </Button>
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                  <div>
+                    <span className="text-2xl font-bold text-emerald-700">
+                      {formatPrice(course.price, course.isFree)}
+                    </span>
+                    {!course.isFree && course.price && (
+                      <span className="text-slate-400 text-xs line-through ml-2">
+                        ${(parseFloat(course.price) * 1.5).toFixed(2)}
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-
-              <div
-                ref={scrollRefs[category.type]}
-                className="flex overflow-x-auto gap-6 pb-4 snap-x snap-mandatory scrollbar-hide md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-              >
-                {category.courses.map((course) => {
-                  const isEnrolled = userId ? enrolledCourseIds.has(course.id) : false;
-                  const price = getPriceDisplay(course);
-
-                  return (
-                    <Card
-                      key={course.id}
-                      className="w-80 flex-shrink-0 snap-start bg-white border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 group"
-                    >
-                      <CardHeader>
-                        <CardTitle className="line-clamp-2 text-lg group-hover:text-blue-700 transition-colors">
-                          {course.title}
-                        </CardTitle>
-                        {course.level && (
-                          <p className="text-xs text-gray-500 mt-1">{course.level} Level</p>
-                        )}
-                      </CardHeader>
-
-                      <CardContent>
-                        <p className="text-sm text-gray-600 line-clamp-3 mb-4">
-                          {getPlainText(course.shortDescription || course.description)}
-                        </p>
-
-                        {price.hasDiscount && (
-                          <div className="mb-3 inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
-                            <Sparkles className="h-3 w-3" />
-                            Save ₹{(price.saveAmount ?? 0).toLocaleString("en-IN")}
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between mt-4">
-                          <div className="flex items-center gap-1 text-gray-500 text-sm">
-                            <Users className="h-4 w-4" />
-                            <span>{course.currentEnrollments} enrolled</span>
-                          </div>
-
-                          <div className="text-right">
-                            {course.isFree ? (
-                              <span className="text-xl font-bold text-green-600">Free</span>
-                            ) : (
-                              <div>
-                                <span className="text-xl font-bold">
-                                  ₹{price.display.toLocaleString("en-IN")}
-                                </span>
-                                {price.original && (
-                                  <span className="block text-sm text-gray-500 line-through">
-                                    ₹{price.original.toLocaleString("en-IN")}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-
-                      <CardFooter className="flex gap-3">
-                        <Button asChild variant="outline" className="flex-1">
-                          <Link href={`/courses/${course.slug}`}>
-                            View Details
-                          </Link>
-                        </Button>
-
-                        {isEnrolled ? (
-                          <Button disabled className="flex-1 bg-green-600">
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Enrolled
-                          </Button>
-                        ) : isAdminOrJyotishi ? (
-                          <Button disabled variant="secondary" className="flex-1">
-                            <Crown className="h-4 w-4 mr-1" />
-                            Staff
-                          </Button>
-                        ) : (
-                          <Button asChild className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700">
-                            <Link
-                              href={
-                                userId
-                                  ? `/courses/${course.slug}?enroll=true`
-                                  : `/auth/login?callbackUrl=/courses/${course.slug}?enroll=true`
-                              }
-                            >
-                              {course.isFree ? "Enroll Free" : "Enroll Now"}
-                            </Link>
-                          </Button>
-                        )}
-                      </CardFooter>
-                    </Card>
-                  );
-                })}
+                  <Link   href={
+                                    userId
+                                      ? `/courses/${course.slug}?enroll=true`
+                                      : `/auth/login?callbackUrl=/courses/${course.slug}?enroll=true`
+                                  }>
+                  <button className="flex items-center gap-1 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-all group-hover:gap-2 text-sm font-medium">
+                    {course.isFree ? 'Enroll Free' : 'Enroll'}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  </Link>
+                </div>
               </div>
             </div>
-          );
-        })}
+          ))}
+        </div>
+
+     {/* <div className="text-center mt-10">
+  <Link 
+    href="/courses"
+    className="inline-flex items-center justify-center gap-2 bg-white text-emerald-700 px-8 py-3 rounded-lg border-2 border-emerald-600 hover:bg-emerald-600 hover:text-white transition-all font-medium"
+  >
+    View All Courses
+    <ArrowRight className="w-5 h-5" />
+  </Link>
+</div> */}
       </div>
     </section>
   );
