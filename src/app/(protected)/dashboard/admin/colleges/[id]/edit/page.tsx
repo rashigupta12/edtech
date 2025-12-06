@@ -70,12 +70,7 @@ export default function EditCollegePage() {
   const [errors, setErrors] = useState<FormErrors>({});
 
   // Fetch college data on component mount
-  useEffect(() => {
-    if (collegeId) {
-      fetchCollegeData();
-    }
-  }, [collegeId]);
-
+ useEffect(() => {
   const fetchCollegeData = async () => {
     try {
       setIsLoading(true);
@@ -119,6 +114,11 @@ export default function EditCollegePage() {
       setIsLoading(false);
     }
   };
+
+  if (collegeId) {
+    fetchCollegeData();
+  }
+}, [collegeId, user?.id]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
