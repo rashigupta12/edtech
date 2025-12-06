@@ -99,18 +99,18 @@ export default function TestimonialsListPage() {
   useEffect(() => {
     fetchTestimonials();
   }, [fetchTestimonials]);
+  
+useEffect(() => {
+  const timer = setTimeout(() => {
+    if (pagination.page === 1) {
+      fetchTestimonials();
+    } else {
+      setPagination((prev) => ({ ...prev, page: 1 }));
+    }
+  }, 500);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (pagination.page === 1) {
-        fetchTestimonials();
-      } else {
-        setPagination((prev) => ({ ...prev, page: 1 }));
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+  return () => clearTimeout(timer);
+}, [searchTerm, fetchTestimonials, pagination.page]);
 
   const handleDelete = async (id: string, studentName: string) => {
     const result = await Swal.fire({

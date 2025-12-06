@@ -3,7 +3,7 @@
 "use client";
 
 import { useCurrentUser } from "@/hooks/auth";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -107,16 +107,17 @@ const BatchCoursesPage = () => {
     academicYear: "",
   });
 
-  const fetchCollegeId = async () => {
+const fetchCollegeId = useCallback(async () => {
     if (!user?.id) return;
     const res = await fetch(`/api/colleges?userId=${user.id}`, {
       cache: "no-store",
     });
     const data = await res.json();
     if (data.success) setCollegeId(data.data.id);
-  };
+  }, [user]);
 
-  const loadBatches = async () => {
+  // Wrap loadBatches in useCallback
+  const loadBatches = useCallback(async () => {
     if (!collegeId) return;
     try {
       const res = await fetch(`/api/batches?collegeId=${collegeId}`);
@@ -130,9 +131,10 @@ const BatchCoursesPage = () => {
     } catch (error) {
       console.error("Error loading batches:", error);
     }
-  };
+  }, [collegeId, selectedBatch]);
 
-  const loadCourses = async () => {
+  // Wrap loadCourses in useCallback
+  const loadCourses = useCallback(async () => {
     if (!collegeId) return;
     try {
       const res = await fetch(`/api/courses?collegeId=${collegeId}`);
@@ -143,9 +145,10 @@ const BatchCoursesPage = () => {
     } catch (error) {
       console.error("Error loading courses:", error);
     }
-  };
+  }, [collegeId]);
 
-  const loadFaculty = async () => {
+  // Wrap loadFaculty in useCallback
+  const loadFaculty = useCallback(async () => {
     if (!collegeId) return;
     try {
       const res = await fetch(`/api/faculty?collegeId=${collegeId}`);
@@ -156,9 +159,10 @@ const BatchCoursesPage = () => {
     } catch (error) {
       console.error("Error loading faculty:", error);
     }
-  };
+  }, [collegeId]);
 
-  const loadBatchCourses = async () => {
+  // Wrap loadBatchCourses in useCallback
+  const loadBatchCourses = useCallback(async () => {
     if (!selectedBatch) return;
     setLoading(true);
     try {
@@ -172,11 +176,12 @@ const BatchCoursesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedBatch]);
 
+  // Update useEffect dependencies
   useEffect(() => {
     fetchCollegeId();
-  }, [user]);
+  }, [user, fetchCollegeId]);
 
   useEffect(() => {
     if (collegeId) {
@@ -184,13 +189,14 @@ const BatchCoursesPage = () => {
       loadCourses();
       loadFaculty();
     }
-  }, [collegeId]);
+  }, [collegeId, loadBatches, loadCourses, loadFaculty]);
 
   useEffect(() => {
     if (selectedBatch) {
       loadBatchCourses();
     }
-  }, [selectedBatch]);
+  }, [selectedBatch, loadBatchCourses]);
+
 
   const getBatchName = (batchId: string) => {
     const batch = batches.find(b => b.id === batchId);

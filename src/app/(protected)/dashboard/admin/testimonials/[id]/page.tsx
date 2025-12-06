@@ -3,7 +3,7 @@
 // app/dashboard/admin/testimonials/[id]/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -45,11 +45,7 @@ export default function ViewTestimonialPage() {
   const [testimonial, setTestimonial] = useState<Testimonial | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchTestimonial();
-  }, [id]);
-
-  const fetchTestimonial = async () => {
+  const fetchTestimonial = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/testimonials?id=${id}`);
@@ -75,7 +71,12 @@ export default function ViewTestimonialPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, router]); // Add dependencies
+
+  // Update useEffect with proper dependency
+  useEffect(() => {
+    fetchTestimonial();
+  }, [fetchTestimonial]); // Add fetchTestimonial to dependencies
 
   const handleDelete = async () => {
     const result = await Swal.fire({

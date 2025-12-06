@@ -2,7 +2,7 @@
 // app/dashboard/admin/testimonials/[id]/edit/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -37,11 +37,7 @@ export default function EditTestimonialPage() {
     sortOrder: 0,
   });
 
-  useEffect(() => {
-    fetchTestimonial();
-  }, [id]);
-
-  const fetchTestimonial = async () => {
+ const fetchTestimonial = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/testimonials?id=${id}`);
@@ -78,7 +74,13 @@ export default function EditTestimonialPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, router]); // Add dependencies
+
+  // Update useEffect with proper dependency
+  useEffect(() => {
+    fetchTestimonial();
+  }, [fetchTestimonial]); // Add fetchTestimonial to dependencies
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
