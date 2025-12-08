@@ -1,4 +1,5 @@
 import { CheckCircle, ArrowRight, Sparkles } from "lucide-react";
+import Link from "next/link";
 
 export default function CTA() {
   return (
@@ -33,9 +34,11 @@ export default function CTA() {
                 Get Started Free
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
+              <Link href="/courses">
               <button className="bg-transparent border border-white/40 text-white hover:bg-white/10 px-6 py-3 rounded-lg font-semibold text-base transition-all duration-200">
                 View Courses
               </button>
+              </Link>
             </div>
 
             {/* Features */}

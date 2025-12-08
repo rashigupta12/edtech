@@ -21,7 +21,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// 🔹 Futuretek Email Verification Template
 function createVerificationEmail(name: string, url: string) {
   return `
   <!DOCTYPE html>
@@ -31,26 +30,27 @@ function createVerificationEmail(name: string, url: string) {
       body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
       .container { max-width: 600px; margin: 0 auto; padding: 20px; }
       .header { 
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
         color: white; 
         padding: 30px; 
         text-align: center; 
         border-radius: 10px 10px 0 0; 
       }
-      .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+      .content { background: #f5f8ff; padding: 30px; border-radius: 0 0 10px 10px; }
       .verify-box { 
         background: white; 
         padding: 20px; 
         border-radius: 8px; 
         margin: 20px 0; 
-        border-left: 4px solid #4facfe; 
+        border-left: 4px solid #3b82f6; 
       }
       .button { 
-        background: #4facfe; 
+        background: #2563eb; 
         color: white; 
         padding: 12px 30px; 
         text-decoration: none; 
-        border-radius: 5px; 
+        border-radius: 6px; 
+        font-weight: 600;
         display: inline-block; 
       }
       .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
@@ -59,36 +59,37 @@ function createVerificationEmail(name: string, url: string) {
   <body>
     <div class="container">
       <div class="header">
-        <h1>Email Verification Required</h1>
-        <p>Secure your Futuretek account</p>
+        <h1>Email Verification</h1>
+        <p>Welcome to EduLearn LMS</p>
       </div>
 
       <div class="content">
-        <h2>Hello ${name || "User"},</h2>
-        <p>Thank you for signing up with <strong>Futuretek</strong>!</p>
-        <p>Please verify your email address to activate your account.</p>
+        <h2>Hello ${name || "Learner"},</h2>
+        <p>Thank you for registering with <strong>EdTech LMS</strong> — your learning journey starts here!</p>
+        <p>Please verify your email address to activate your learning account and access your courses.</p>
 
         <div class="verify-box">
-          <p>Click the button below to verify your email:</p>
+          <p>Click the button below to confirm your email:</p>
           <a href="${url}" class="button">Verify Email</a>
         </div>
 
-        <p>If the button doesn't work, copy and paste this link:</p>
-        <p style="word-break: break-all; color: #4facfe;">
+        <p>If the button doesn't work, simply copy and paste this link in your browser:</p>
+        <p style="word-break: break-all; color: #2563eb;">
           ${url}
         </p>
 
-        <p>If you didn't create this account, you can safely ignore this email.</p>
+        <p>If you didn't sign up for this account, please ignore this email.</p>
       </div>
 
       <div class="footer">
-        <p>Happy Learning!<br>The Futuretek Team</p>
+        <p>Happy Learning 🎓<br/>The EdTech LMS Team</p>
       </div>
     </div>
   </body>
   </html>
   `;
 }
+
 
 // 🔹 For sending email directly
 async function sendEmailDirectly(to: string, subject: string, html: string) {
