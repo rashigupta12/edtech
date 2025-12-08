@@ -7,6 +7,7 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {

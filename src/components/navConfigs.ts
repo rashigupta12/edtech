@@ -17,7 +17,7 @@ import {
   List,
   MessageCircle,
   MessageSquare,
-  Package,
+  
   Plus,
   Settings,
   Tag,
@@ -444,36 +444,36 @@ export const navConfigs = {
           href: "/dashboard/faculty/courses/create",
           icon: Plus,
         },
-        {
-          title: "Edit Course",
-          href: "/dashboard/faculty/courses/edit",
-          icon: FileText,
-        },
+        // {
+        //   title: "Edit Course",
+        //   href: "/dashboard/faculty/courses/edit",
+        //   icon: FileText,
+        // },
       ],
     },
 
     // Content Management
-    {
-      title: "Content Management",
-      icon: Package,
-      children: [
-        {
-          title: "Modules",
-          href: "/dashboard/faculty/content/modules",
-          icon: List,
-        },
-        {
-          title: "Lessons",
-          href: "/dashboard/faculty/content/lessons",
-          icon: BookOpen,
-        },
-        {
-          title: "Resources",
-          href: "/dashboard/faculty/content/resources",
-          icon: FileText,
-        },
-      ],
-    },
+    // {
+    //   title: "Content Management",
+    //   icon: Package,
+    //   children: [
+    //     {
+    //       title: "Modules",
+    //       href: "/dashboard/faculty/content/modules",
+    //       icon: List,
+    //     },
+    //     {
+    //       title: "Lessons",
+    //       href: "/dashboard/faculty/content/lessons",
+    //       icon: BookOpen,
+    //     },
+    //     {
+    //       title: "Resources",
+    //       href: "/dashboard/faculty/content/resources",
+    //       icon: FileText,
+    //     },
+    //   ],
+    // },
 
     // Assessment Management
     {
@@ -481,14 +481,14 @@ export const navConfigs = {
       icon: ClipboardList,
       children: [
         {
+          title: "Assessment",
+          href: "/dashboard/faculty/assessments",
+          icon: List,
+        },
+        {
           title: "Create Assessment",
           href: "/dashboard/faculty/assessments/create",
           icon: Plus,
-        },
-        {
-          title: "Question Banks",
-          href: "/dashboard/faculty/assessments/question-banks",
-          icon: List,
         },
         {
           title: "Assessment Results",

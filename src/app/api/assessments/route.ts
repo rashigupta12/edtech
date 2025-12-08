@@ -150,9 +150,10 @@ const calculateScore = (questions: any[], answers: any): { score: number; totalP
 // ===========================
 
 // CREATE ASSESSMENT
+// CREATE ASSESSMENT (with questions)
 const createAssessment = async (request: NextRequest) => {
   try {
-    const body = await request.json() as AssessmentData;
+    const body = await request.json() as any; // Change from AssessmentData to any to include questions
 
     // Validation
     if (!body.title || !body.courseId || !body.createdBy) {
@@ -231,38 +232,100 @@ const createAssessment = async (request: NextRequest) => {
       }
     }
 
-    // Create assessment
-    const [newAssessment] = await db
-      .insert(AssessmentsTable)
-      .values({
-        courseId: body.courseId,
-        moduleId: body.moduleId || null,
-        lessonId: body.lessonId || null,
-        assessmentLevel: body.assessmentLevel,
-        title: body.title,
-        description: body.description || null,
-        duration: body.duration || null,
-        passingScore: body.passingScore || 60,
-        maxAttempts: body.maxAttempts || null,
-        timeLimit: body.timeLimit || null,
-        isRequired: body.isRequired || false,
-        showCorrectAnswers: body.showCorrectAnswers || false,
-        allowRetake: body.allowRetake || true,
-        randomizeQuestions: body.randomizeQuestions || false,
-        availableFrom: body.availableFrom ? new Date(body.availableFrom) : null,
-        availableUntil: body.availableUntil ? new Date(body.availableUntil) : null,
-        createdBy: body.createdBy,
-        facultyId: body.facultyId || null,
-      })
-      .returning();
+    // Use transaction to create assessment and questions together
+    const result = await db.transaction(async (tx) => {
+      // Create assessment
+      const [newAssessment] = await tx
+        .insert(AssessmentsTable)
+        .values({
+          courseId: body.courseId,
+          moduleId: body.moduleId || null,
+          lessonId: body.lessonId || null,
+          assessmentLevel: body.assessmentLevel,
+          title: body.title,
+          description: body.description || null,
+          duration: body.duration || null,
+          passingScore: body.passingScore || 60,
+          maxAttempts: body.maxAttempts || null,
+          timeLimit: body.timeLimit || null,
+          isRequired: body.isRequired !== undefined ? body.isRequired : true,
+          showCorrectAnswers: body.showCorrectAnswers !== undefined ? body.showCorrectAnswers : true,
+          allowRetake: body.allowRetake !== undefined ? body.allowRetake : true,
+          randomizeQuestions: body.randomizeQuestions || false,
+          availableFrom: body.availableFrom ? new Date(body.availableFrom) : null,
+          availableUntil: body.availableUntil ? new Date(body.availableUntil) : null,
+          createdBy: body.createdBy,
+          facultyId: body.facultyId || null,
+        })
+        .returning();
+
+      // Handle questions if provided
+      if (body.questions && Array.isArray(body.questions) && body.questions.length > 0) {
+        const questionData = body.questions.map((question: any, index: number) => ({
+          assessmentId: newAssessment.id,
+          questionText: question.questionText,
+          questionType: question.questionType,
+          difficulty: question.difficulty || 'MEDIUM',
+          options: question.questionType === 'MULTIPLE_CHOICE' ? question.options : null,
+          correctAnswer: question.correctAnswer,
+          explanation: question.explanation || null,
+          points: question.points || 1,
+          negativePoints: question.negativePoints || 0,
+          questionBankId: question.questionBankId || null,
+          sortOrder: index,
+          isActive: true,
+        }));
+
+        await tx
+          .insert(AssessmentQuestionsTable)
+          .values(questionData);
+      }
+
+      // Get assessment with questions
+      const [finalAssessment] = await tx
+        .select()
+        .from(AssessmentsTable)
+        .where(eq(AssessmentsTable.id, newAssessment.id))
+        .limit(1);
+
+      const finalQuestions = await tx
+        .select()
+        .from(AssessmentQuestionsTable)
+        .where(eq(AssessmentQuestionsTable.assessmentId, newAssessment.id))
+        .orderBy(asc(AssessmentQuestionsTable.sortOrder));
+
+      return {
+        ...finalAssessment,
+        questions: finalQuestions.map(q => ({
+          id: q.id,
+          assessmentId: q.assessmentId,
+          questionText: q.questionText,
+          questionType: q.questionType,
+          difficulty: q.difficulty,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation,
+          points: q.points || 1,
+          negativePoints: q.negativePoints || 0,
+          sortOrder: q.sortOrder,
+          questionBankId: q.questionBankId,
+          isActive: q.isActive,
+          createdAt: q.createdAt,
+          updatedAt: q.updatedAt,
+        })),
+      };
+    });
 
     // Update course/module/lesson flags
+    const isRequired = body.isRequired !== undefined ? body.isRequired : true;
+    const passingScore = body.passingScore || 60;
+
     if (body.assessmentLevel === 'LESSON_QUIZ' && body.lessonId) {
       await db
         .update(CourseLessonsTable)
         .set({
           hasQuiz: true,
-          quizRequired: body.isRequired || false,
+          quizRequired: isRequired,
         })
         .where(eq(CourseLessonsTable.id, body.lessonId));
     } else if (body.assessmentLevel === 'MODULE_ASSESSMENT' && body.moduleId) {
@@ -270,8 +333,8 @@ const createAssessment = async (request: NextRequest) => {
         .update(CourseModulesTable)
         .set({
           hasAssessment: true,
-          assessmentRequired: body.isRequired || false,
-          minimumPassingScore: body.passingScore || 60,
+          assessmentRequired: isRequired,
+          minimumPassingScore: passingScore,
         })
         .where(eq(CourseModulesTable.id, body.moduleId));
     } else if (body.assessmentLevel === 'COURSE_FINAL') {
@@ -279,13 +342,13 @@ const createAssessment = async (request: NextRequest) => {
         .update(CoursesTable)
         .set({
           hasFinalAssessment: true,
-          finalAssessmentRequired: body.isRequired !== undefined ? body.isRequired : true,
-          minimumCoursePassingScore: body.passingScore || 60,
+          finalAssessmentRequired: isRequired,
+          minimumCoursePassingScore: passingScore,
         })
         .where(eq(CoursesTable.id, body.courseId));
     }
 
-    return successResponse(newAssessment, 'Assessment created successfully', 201);
+    return successResponse(result, 'Assessment created successfully', 201);
   } catch (error: any) {
     console.error('Create assessment error:', error);
     return errorResponse(error.message || 'Failed to create assessment', 'CREATE_ERROR', 500);
@@ -311,9 +374,10 @@ const createAssessment = async (request: NextRequest) => {
 //   }
 // };
 // UPDATE ASSESSMENT
+// UPDATE ASSESSMENT (with questions)
 const updateAssessment = async (id: string, request: NextRequest) => {
   try {
-    const body = await request.json() as Partial<AssessmentData>;
+    const body = await request.json() as any;
     const validation = validateId(id);
     if (!validation.valid) {
       return errorResponse(validation.error!);
@@ -330,61 +394,133 @@ const updateAssessment = async (id: string, request: NextRequest) => {
       return errorResponse('Assessment not found', 'NOT_FOUND', 404);
     }
 
-    // Prepare update data
-    const updateData: any = {};
-
-    if (body.title !== undefined) updateData.title = body.title;
-    if (body.description !== undefined) updateData.description = body.description;
-    if (body.duration !== undefined) updateData.duration = body.duration;
-    if (body.passingScore !== undefined) updateData.passingScore = body.passingScore;
-    if (body.maxAttempts !== undefined) updateData.maxAttempts = body.maxAttempts;
-    if (body.timeLimit !== undefined) updateData.timeLimit = body.timeLimit;
-    if (body.isRequired !== undefined) updateData.isRequired = body.isRequired;
-    if (body.showCorrectAnswers !== undefined) updateData.showCorrectAnswers = body.showCorrectAnswers;
-    if (body.allowRetake !== undefined) updateData.allowRetake = body.allowRetake;
-    if (body.randomizeQuestions !== undefined) updateData.randomizeQuestions = body.randomizeQuestions;
-    if (body.availableFrom !== undefined) updateData.availableFrom = body.availableFrom ? new Date(body.availableFrom) : null;
-    if (body.availableUntil !== undefined) updateData.availableUntil = body.availableUntil ? new Date(body.availableUntil) : null;
-    
-    // Update assessment
-    const [updatedAssessment] = await db
-      .update(AssessmentsTable)
-      .set({
-        ...updateData,
+    // Start a transaction to update assessment and questions
+    const result = await db.transaction(async (tx) => {
+      // Prepare assessment update data
+      const updateData: any = {
         updatedAt: new Date(),
-      })
-      .where(eq(AssessmentsTable.id, id))
-      .returning();
+      };
+
+      if (body.title !== undefined) updateData.title = body.title;
+      if (body.description !== undefined) updateData.description = body.description;
+      if (body.courseId !== undefined) updateData.courseId = body.courseId;
+      if (body.moduleId !== undefined) updateData.moduleId = body.moduleId;
+      if (body.lessonId !== undefined) updateData.lessonId = body.lessonId;
+      if (body.assessmentLevel !== undefined) updateData.assessmentLevel = body.assessmentLevel;
+      if (body.duration !== undefined) updateData.duration = body.duration;
+      if (body.passingScore !== undefined) updateData.passingScore = body.passingScore;
+      if (body.maxAttempts !== undefined) updateData.maxAttempts = body.maxAttempts;
+      if (body.timeLimit !== undefined) updateData.timeLimit = body.timeLimit;
+      if (body.isRequired !== undefined) updateData.isRequired = body.isRequired;
+      if (body.showCorrectAnswers !== undefined) updateData.showCorrectAnswers = body.showCorrectAnswers;
+      if (body.allowRetake !== undefined) updateData.allowRetake = body.allowRetake;
+      if (body.randomizeQuestions !== undefined) updateData.randomizeQuestions = body.randomizeQuestions;
+
+      // Update assessment
+      const [updatedAssessment] = await tx
+        .update(AssessmentsTable)
+        .set(updateData)
+        .where(eq(AssessmentsTable.id, id))
+        .returning();
+
+      // Handle questions if provided
+      if (body.questions && Array.isArray(body.questions)) {
+        // Delete existing questions
+        await tx
+          .delete(AssessmentQuestionsTable)
+          .where(eq(AssessmentQuestionsTable.assessmentId, id));
+
+        // Insert new questions
+        if (body.questions.length > 0) {
+          const questionData = body.questions.map((question: any, index: number) => ({
+            assessmentId: id,
+            questionText: question.questionText,
+            questionType: question.questionType,
+            difficulty: question.difficulty || 'MEDIUM',
+            options: question.questionType === 'MULTIPLE_CHOICE' ? question.options : null,
+            correctAnswer: question.correctAnswer,
+            explanation: question.explanation || null,
+            points: question.points || 1,
+            negativePoints: question.negativePoints || 0,
+            questionBankId: question.questionBankId || null,
+            sortOrder: index,
+            isActive: true,
+          }));
+
+          await tx
+            .insert(AssessmentQuestionsTable)
+            .values(questionData);
+        }
+      }
+
+      // Get updated assessment with questions
+      const [finalAssessment] = await tx
+        .select()
+        .from(AssessmentsTable)
+        .where(eq(AssessmentsTable.id, id))
+        .limit(1);
+
+      const finalQuestions = await tx
+        .select()
+        .from(AssessmentQuestionsTable)
+        .where(eq(AssessmentQuestionsTable.assessmentId, id))
+        .orderBy(asc(AssessmentQuestionsTable.sortOrder));
+
+      return {
+        ...finalAssessment,
+        questions: finalQuestions.map(q => ({
+          id: q.id,
+          assessmentId: q.assessmentId,
+          questionText: q.questionText,
+          questionType: q.questionType,
+          difficulty: q.difficulty,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation,
+          points: q.points || 1,
+          negativePoints: q.negativePoints || 0,
+          sortOrder: q.sortOrder,
+          questionBankId: q.questionBankId,
+          isActive: q.isActive,
+          createdAt: q.createdAt,
+          updatedAt: q.updatedAt,
+        })),
+      };
+    });
 
     // Update flags on course/module/lesson if changed
-    if (body.isRequired !== undefined) {
-      if (existingAssessment.assessmentLevel === 'LESSON_QUIZ' && existingAssessment.lessonId) {
+    if (body.isRequired !== undefined || body.passingScore !== undefined) {
+      const assessmentLevel = body.assessmentLevel || existingAssessment.assessmentLevel;
+      const passingScore = body.passingScore || existingAssessment.passingScore;
+      const isRequired = body.isRequired !== undefined ? body.isRequired : existingAssessment.isRequired;
+
+      if (assessmentLevel === 'LESSON_QUIZ' && existingAssessment.lessonId) {
         await db
           .update(CourseLessonsTable)
           .set({
-            quizRequired: body.isRequired,
+            quizRequired: isRequired,
           })
           .where(eq(CourseLessonsTable.id, existingAssessment.lessonId));
-      } else if (existingAssessment.assessmentLevel === 'MODULE_ASSESSMENT' && existingAssessment.moduleId) {
+      } else if (assessmentLevel === 'MODULE_ASSESSMENT' && existingAssessment.moduleId) {
         await db
           .update(CourseModulesTable)
           .set({
-            assessmentRequired: body.isRequired,
-            minimumPassingScore: body.passingScore || existingAssessment.passingScore,
+            assessmentRequired: isRequired,
+            minimumPassingScore: passingScore,
           })
           .where(eq(CourseModulesTable.id, existingAssessment.moduleId));
-      } else if (existingAssessment.assessmentLevel === 'COURSE_FINAL') {
+      } else if (assessmentLevel === 'COURSE_FINAL') {
         await db
           .update(CoursesTable)
           .set({
-            finalAssessmentRequired: body.isRequired !== undefined ? body.isRequired : true,
-            minimumCoursePassingScore: body.passingScore || existingAssessment.passingScore,
+            finalAssessmentRequired: isRequired,
+            minimumCoursePassingScore: passingScore,
           })
           .where(eq(CoursesTable.id, existingAssessment.courseId));
       }
     }
 
-    return successResponse(updatedAssessment, 'Assessment updated successfully');
+    return successResponse(result, 'Assessment updated successfully');
   } catch (error: any) {
     console.error('Update assessment error:', error);
     return errorResponse(error.message || 'Failed to update assessment', 'UPDATE_ERROR', 500);
@@ -478,6 +614,46 @@ const getAssessmentWithQuestions = async (id: string, userId?: string) => {
   }
 };
 
+const getAllAssessments = async () => {
+  try {
+    // Fetch all assessments with course information
+    const assessments = await db
+      .select({
+        id: AssessmentsTable.id,
+        title: AssessmentsTable.title,
+        description: AssessmentsTable.description,
+        assessmentLevel: AssessmentsTable.assessmentLevel,
+        courseId: AssessmentsTable.courseId,
+        moduleId: AssessmentsTable.moduleId,
+        lessonId: AssessmentsTable.lessonId,
+        duration: AssessmentsTable.duration,
+        passingScore: AssessmentsTable.passingScore,
+        maxAttempts: AssessmentsTable.maxAttempts,
+        timeLimit: AssessmentsTable.timeLimit,
+        isRequired: AssessmentsTable.isRequired,
+        showCorrectAnswers: AssessmentsTable.showCorrectAnswers,
+        allowRetake: AssessmentsTable.allowRetake,
+        randomizeQuestions: AssessmentsTable.randomizeQuestions,
+        
+        createdBy: AssessmentsTable.createdBy,
+        createdAt: AssessmentsTable.createdAt,
+        updatedAt: AssessmentsTable.updatedAt,
+        courseTitle: CoursesTable.title,
+        moduleTitle: CourseModulesTable.title,
+        lessonTitle: CourseLessonsTable.title,
+      })
+      .from(AssessmentsTable)
+      .leftJoin(CoursesTable, eq(AssessmentsTable.courseId, CoursesTable.id))
+      .leftJoin(CourseModulesTable, eq(AssessmentsTable.moduleId, CourseModulesTable.id))
+      .leftJoin(CourseLessonsTable, eq(AssessmentsTable.lessonId, CourseLessonsTable.id))
+      .orderBy(desc(AssessmentsTable.createdAt));
+
+    return successResponse(assessments);
+  } catch (error: any) {
+    console.error('Get all assessments error:', error);
+    return errorResponse(error.message || 'Failed to get assessments', 'GET_ERROR', 500);
+  }
+};
 // GET USER ATTEMPTS FOR ASSESSMENT
 const getUserAttempts = async (assessmentId: string, userId: string) => {
   try {
@@ -915,7 +1091,6 @@ const getCourseAssessments = async (courseId: string) => {
 };
 
 // GET Handler
-// GET Handler
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -958,6 +1133,9 @@ export async function GET(request: NextRequest) {
       return await getQuestionBankQuestions(params.questionsBank);
     }
 
+    if (!params.id && !params.courseId && !params.questionsBank) {
+      return await getAllAssessments();
+    }
     // Route: GET /api/assessments?courseId=123
     if (params.courseId) {
       return await getCourseAssessments(params.courseId);
